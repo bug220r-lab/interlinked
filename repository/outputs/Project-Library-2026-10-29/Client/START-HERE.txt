@@ -1,0 +1,43 @@
+MSI PROJECT LIBRARY -- START HERE
+
+After the MSI sharing setup has completed:
+
+1. Keep the old MSI powered on, awake, and connected to the same trusted
+   private network as the new PC.
+2. Extract this entire client package to a LOCAL folder on the new PC.
+   Keep Runtime and all other supplied files together. Do not run inside
+   the ZIP or directly from a network share. No Python installation is needed.
+3. Double-click Project-Library.cmd normally, without administrator mode.
+4. If access fails, choose main-menu option 2, Open MSI network share.
+   Sign in through Windows with the OLD MSI account and its password.
+   A Windows Hello PIN is not a network password. Never send it to chat.
+5. Choose option 1, search for a project, and select it. There are 135
+   catalog entries, including some large collections; search to see entries
+   beyond the first 60. Review its size, notes, and warnings.
+6. In the project menu choose 1, Fetch project. Wait for FETCH_VERIFIED.
+   Then choose 2, Open local files, or 7, Open a configured project terminal.
+   For The Stats, the configured terminal sets STATS_DATA_DIR for that session.
+7. Work in this fetched cache, keeping all project files under its Files
+   directory. When finished, close the editor and background jobs; choose
+   4, Save changes back. Wait for SAVE_COMMITTED.
+8. To reclaim local space, close every app using the project, choose
+   6, Free local space, and type the exact displayed project ID. The helper
+   rechecks the saved remote version and local files before releasing them.
+   Fetch the project again when you need it.
+
+Use ONE active working copy per project. The MSI and its background jobs
+must also work in managed caches, not the original library source folders.
+Never edit, rename, or delete files directly in ProjectLibrary/ProjectReturns.
+
+Default cache: %LOCALAPPDATA%\ProjectLibrary\Cache
+Default library: \\MSI\ProjectLibrary
+Returned versions: \\MSI\ProjectReturns
+Main-menu option 3 selects another local cache folder, such as D:\ProjectCache.
+It does not move or delete any existing cache. Fetch/save keep a 2 GiB floor.
+
+Important: library originals are mostly live hard links to files on the MSI.
+Returned versions can refer to those originals. This is NOT an independent
+archival backup. Protect the MSI originals and keep a separate backup.
+Some MAGIX projects have unresolved or unavailable media; read their warnings.
+
+For conflicts, interrupted operations, and fuller details, read README.txt.

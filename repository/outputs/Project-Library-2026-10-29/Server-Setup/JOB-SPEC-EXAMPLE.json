@@ -1,0 +1,9 @@
+{
+  "format": "msi-job-spec-v1",
+  "projectId": "replace-with-fetched-project-id",
+  "kind": "python",
+  "entry": "replace/with/path/inside/Files/analysis.py",
+  "workingDirectory": "replace/with/path/inside/Files",
+  "arguments": ["--output", "results"],
+  "environmentPaths": {}
+}

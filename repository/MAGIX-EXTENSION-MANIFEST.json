@@ -1,0 +1,111 @@
+{
+  "format": "interlinked-magix-extension-source-v1",
+  "createdUtc": "2026-10-29T23:24:06.117009+00:00",
+  "files": [
+    {
+      "path": "work/magix-all-projects/candidate/magix_projects.py",
+      "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-all-projects\\candidate\\magix_projects.py",
+      "sourceSha256": "6c2ea58d9ac89a20c4b2bb42347b79f5802b049b2c81812314e09412578de1bf",
+      "sha256": "6c2ea58d9ac89a20c4b2bb42347b79f5802b049b2c81812314e09412578de1bf",
+      "bytes": 29710,
+      "exactCopy": true,
+      "change": null
+    },
+    {
+      "path": "work/magix-all-projects/candidate/build_index.py",
+      "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-all-projects\\candidate\\build_index.py",
+      "sourceSha256": "76ddf2b505be85acbde65895bff4d58d25b12f647e5b5db7002cca7c8bf06fb5",
+      "sha256": "76ddf2b505be85acbde65895bff4d58d25b12f647e5b5db7002cca7c8bf06fb5",
+      "bytes": 3021,
+      "exactCopy": true,
+      "change": null
+    },
+    {
+      "path": "work/magix-all-projects/candidate/test_projects.py",
+      "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-all-projects\\candidate\\test_projects.py",
+      "sourceSha256": "654fb6a612070ee36af576653bc2f3c8424b71b683cddecbb04f91c6bc307210",
+      "sha256": "e125b41507940f62671a0b895982c1c95bd5b965d816da68e946c3eacacdceea",
+      "bytes": 13694,
+      "exactCopy": false,
+      "change": "Only engine-path assignment changed to packaged repository-relative Client source; test logic unchanged."
+    },
+    {
+      "path": "work/magix-all-projects/candidate/test_launch_paths.py",
+      "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-all-projects\\candidate\\test_launch_paths.py",
+      "sourceSha256": "42f9acb4d0e0d1169d578c2f670f4133e4c6ee07d266c61a2a8a37e1b8d23d65",
+      "sha256": "7ca1b083ed9d60dc7b0d1790661884a32e279f02c0f6510cfa83903d88cc24e1",
+      "bytes": 3682,
+      "exactCopy": false,
+      "change": "Only engine-path assignment changed to packaged repository-relative Client source; test logic unchanged."
+    },
+    {
+      "path": "work/magix-all-projects/candidate/MAGIX-Local-Workspace.cmd",
+      "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-all-projects\\candidate\\MAGIX-Local-Workspace.cmd",
+      "sourceSha256": "f4f31ea31b13cf1ec947bc9652083036d2a94a2e2be76fa7611033cb6b34898c",
+      "sha256": "f4f31ea31b13cf1ec947bc9652083036d2a94a2e2be76fa7611033cb6b34898c",
+      "bytes": 171,
+      "exactCopy": true,
+      "change": null
+    },
+    {
+      "path": "work/magix-all-projects/candidate/Set-Up-MAGIX-Workspace.cmd",
+      "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-all-projects\\candidate\\Set-Up-MAGIX-Workspace.cmd",
+      "sourceSha256": "67d7876e4515c23614af37439c087ad4bf377353ef2617b782ff1f8a2e5dd0ec",
+      "sha256": "67d7876e4515c23614af37439c087ad4bf377353ef2617b782ff1f8a2e5dd0ec",
+      "bytes": 172,
+      "exactCopy": true,
+      "change": null
+    },
+    {
+      "path": "work/magix-bootstrap-fix-2026-10-29/magix_workspace.py",
+      "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-bootstrap-fix-2026-10-29\\magix_workspace.py",
+      "sourceSha256": "c60fb2559a90a2301aa3d741c1d2e676e5ed90559fb40a63e27ef83d75f697aa",
+      "sha256": "c60fb2559a90a2301aa3d741c1d2e676e5ed90559fb40a63e27ef83d75f697aa",
+      "bytes": 36460,
+      "exactCopy": true,
+      "change": null
+    },
+    {
+      "path": "docs/MAGIX-WORKSPACE-START-HERE.txt",
+      "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-all-projects\\deployment\\MAGIX-WORKSPACE-START-HERE.txt",
+      "sourceSha256": "c4ebd56d516db18d159152c630eca22c59fa42081bd964b68dd0c8309cdb7a66",
+      "sha256": "fbc0ffba188af90d250da5b21f84bc57b7ca4c6c9d550bff42e60b86b5bbaf96",
+      "bytes": 4659,
+      "exactCopy": false,
+      "change": "Authored guide: neutral client-folder wording; removed sample figures; records prior workflow, actual new-PC activation readback and user-confirmed 43-family picker; additional-family playback/export untested."
+    }
+  ],
+  "preservedBaselineSha256": "c60fb2559a90a2301aa3d741c1d2e676e5ed90559fb40a63e27ef83d75f697aa",
+  "sourceCodeStatus": "FROZEN_DEPLOYED",
+  "capabilities": {
+    "projectFamilies": 43,
+    "projectEntrypoints": 276,
+    "allowedLegacyRoots": 6
+  },
+  "validation": {
+    "lifecycleChecks": 46,
+    "launchPathChecks": 7,
+    "independentReviewChecks": 8,
+    "originalProjectActualWorkflow": "OPEN_PLAY_DONE_SAVE_VERIFY_RELEASE_PASSED",
+    "allProjectClientUpgrade": "ACTUAL_NEW_PC_PROTOCOL_ACTIVATION_READBACK_PASS",
+    "allProjectPlayback": "NOT_VERIFIED",
+    "packagedTests": "Engine path assignment adjusted only; syntax verified, full private-index-dependent tests not rerun during packaging.",
+    "pickerUserConfirmation": "PASS_43_FAMILY_LIST_USER_CONFIRMED",
+    "installationStage1AndAccessUnchanged": true,
+    "mappingStateAfterActivation": "UNBOUND"
+  },
+  "privateInputsExcluded": [
+    "MAGIX-All-Projects-Index.json",
+    "Published catalog",
+    "Fixture trees",
+    "Test/deployment receipts",
+    "Workspace state"
+  ],
+  "testPrerequisites": "Supply or regenerate the exact private pinned index locally; run test_projects.py first, then test_launch_paths.py, which consumes its generated fixture receipt.",
+  "summary": {
+    "files": 8,
+    "exactCopies": 5,
+    "adaptedFiles": 3,
+    "bytes": 91569
+  }
+}

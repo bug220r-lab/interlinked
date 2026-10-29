@@ -1,0 +1,1069 @@
+{
+  "format": "interlinked-source-snapshot-v1",
+  "createdUtc": "2026-10-29T23:16:21.954663+00:00",
+  "files": [
+    {
+      "path": "outputs/Project-Library-2026-10-29/Helper/project_library.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Helper\\project_library.py",
+      "bytes": 42875,
+      "sha256": "3d66f560abee179b861867d9ebea6c64bff21ae240c88712db957496f5d1109d",
+      "role": "host publication and SMB setup source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Helper/publish_library.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Helper\\publish_library.py",
+      "bytes": 22615,
+      "sha256": "056d206fa35f5a0603cd9ab6703daf1b8775d73b123ced8d9d69f88041f1c660",
+      "role": "host publication and SMB setup source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Helper/Set-Up-MSI-Sharing.cmd",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Helper\\Set-Up-MSI-Sharing.cmd",
+      "bytes": 814,
+      "sha256": "6f2ff9b7c1b3fa39b1dd46806da89634f8185e92953125dd7e3b3074a2e85a98",
+      "role": "host publication and SMB setup source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Helper/Set-Up-MSI-Sharing.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Helper\\Set-Up-MSI-Sharing.ps1",
+      "bytes": 18466,
+      "sha256": "968ac3be37448b0929dd5cce6c4eae3af0a35a9a9e5ac928fbc04dbc43345581",
+      "role": "host publication and SMB setup source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Client/project_library.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Client\\project_library.py",
+      "bytes": 42875,
+      "sha256": "3d66f560abee179b861867d9ebea6c64bff21ae240c88712db957496f5d1109d",
+      "role": "exact sealed client text or checksum dependency",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Client/Project-Library.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Client\\Project-Library.ps1",
+      "bytes": 14534,
+      "sha256": "a74e3303f03b67d072e64988874272c3343b818b66d81dd868f96a455f4b8e79",
+      "role": "exact sealed client text or checksum dependency",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Client/Project-Library.cmd",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Client\\Project-Library.cmd",
+      "bytes": 273,
+      "sha256": "8cad8e162f33ac4ffe5d57a2049f1b9e030d3d4b2842264e08d507868e224b99",
+      "role": "exact sealed client text or checksum dependency",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Client/Open-ProjectConsole.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Client\\Open-ProjectConsole.ps1",
+      "bytes": 899,
+      "sha256": "206cdd2caf97bb4f86a0435b07d0e09faedb8beac528bf97c9a3777dfdc373b5",
+      "role": "exact sealed client text or checksum dependency",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Client/README.txt",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Client\\README.txt",
+      "bytes": 7841,
+      "sha256": "60001f9c04ed8402cc98b9c96dddbcb9871edd3fe023309289102e67bc62b282",
+      "role": "exact sealed client text or checksum dependency",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Client/START-HERE.txt",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Client\\START-HERE.txt",
+      "bytes": 2496,
+      "sha256": "abd06d1c18b8033b477763a9b458fc7c822d23638b07756fe58256cde7535067",
+      "role": "exact sealed client text or checksum dependency",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Client/HELPER-CHECKSUMS.json",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Client\\HELPER-CHECKSUMS.json",
+      "bytes": 9165,
+      "sha256": "362517385124df2ad6d55363fc0b39d072b4378c11e3f468b1bfebf8bc21f3fc",
+      "role": "exact sealed client text or checksum dependency",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Client/Runtime/LICENSE.txt",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Client\\Runtime\\LICENSE.txt",
+      "bytes": 25066,
+      "sha256": "886a0ead2d89030ee62dbff52b04e47ab91998341295bb9c56fb952b4e081c7a",
+      "role": "exact sealed client text or checksum dependency",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Client/Runtime/python312._pth",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Client\\Runtime\\python312._pth",
+      "bytes": 28,
+      "sha256": "8e4ac3e5a2b8f58484e4135c66323717ac7fd2fc3b74b44a96a1a74992a66c89",
+      "role": "exact sealed client text or checksum dependency",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Check-MSI-Connection.cmd",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Check-MSI-Connection.cmd",
+      "bytes": 498,
+      "sha256": "e9c2c7d724694a519f0134dcd8ee4c116cee2f14b7245eb889c18cc8ac577df7",
+      "role": "connection helper source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Check-MSI-Connection.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Check-MSI-Connection.ps1",
+      "bytes": 10721,
+      "sha256": "6d7f766c052c3fb195af5444950fce12367f6a96b51796ec2800e57a87672441",
+      "role": "connection helper source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Repair-Direct-PC-Names.cmd",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Repair-Direct-PC-Names.cmd",
+      "bytes": 714,
+      "sha256": "9ece06f89c1aed61f0914b446843f9a8636dd3452a710c5f1e6e67d737517873",
+      "role": "connection helper source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Repair-Direct-PC-Names.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Repair-Direct-PC-Names.ps1",
+      "bytes": 12989,
+      "sha256": "7b50e266d1269b4e1bb9d97bfc1e760a0effb5e9b8c7453e83d58a55bab1a4a7",
+      "role": "connection helper source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Sign-In-To-MSI.cmd",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Sign-In-To-MSI.cmd",
+      "bytes": 866,
+      "sha256": "7d7d1d26a0ba5902cf79b0296ed7b52a9eb3d2ebae7e71e32c34713991fe8d69",
+      "role": "connection helper source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Open-MSI-Terminal.cmd",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Open-MSI-Terminal.cmd",
+      "bytes": 465,
+      "sha256": "990652e19b22d30b16017d40db46638921fee2668540ad8a9962e6713b47ab49",
+      "role": "connection helper source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Server-Setup/Enable-Trusted-Direct-Ethernet.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Enable-Trusted-Direct-Ethernet.ps1",
+      "bytes": 2032,
+      "sha256": "5f6bbb83ff4bb8590f8dfcdab9e59746eb1dc502718374064928cee54af879dc",
+      "role": "guarded host setup or background-job source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Server-Setup/Invoke-MSIJob.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Invoke-MSIJob.ps1",
+      "bytes": 586,
+      "sha256": "a22f70985cb38b8dabe4859134d4efc9705b766d54b5bad639feaa7150a3fd2c",
+      "role": "guarded host setup or background-job source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Server-Setup/JOB-SPEC-EXAMPLE.json",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\JOB-SPEC-EXAMPLE.json",
+      "bytes": 283,
+      "sha256": "26c2c2d53e5a2c4d696f927718f4ba165c64259173311634c055e311f5b1468e",
+      "role": "guarded host setup or background-job source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Server-Setup/Launch-Coding-Server-Setup.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Launch-Coding-Server-Setup.ps1",
+      "bytes": 2025,
+      "sha256": "857637ee66e01f712222a57e1edc32ca14930f58f38b6c9f7a7adccfd06ea98b",
+      "role": "guarded host setup or background-job source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Server-Setup/msi_job_process.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\msi_job_process.py",
+      "bytes": 11439,
+      "sha256": "004b041547291241d2d4674fd08234e68ba26f43b69b77aeaf6d03d38264a60b",
+      "role": "guarded host setup or background-job source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Server-Setup/msi_job_runner.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\msi_job_runner.py",
+      "bytes": 10577,
+      "sha256": "e6052a9fc82fd970c95435ea31f8d65d6e9bc87160c921685b981252dab0cf8f",
+      "role": "guarded host setup or background-job source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Server-Setup/Repair-Coding-Server-Firewall.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Repair-Coding-Server-Firewall.ps1",
+      "bytes": 10337,
+      "sha256": "26fb66f88497eaf2b8e6c8fbd1b50b39bc24279d6a0d5b00571f302dc36f2677",
+      "role": "guarded host setup or background-job source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Server-Setup/Repair-Trusted-Direct-Ethernet.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Repair-Trusted-Direct-Ethernet.ps1",
+      "bytes": 6177,
+      "sha256": "0a5167837a462ba53db9ba869c7b1eaeab4a24e5201087206856249c037b94d0",
+      "role": "guarded host setup or background-job source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Server-Setup/Restore-Trusted-Direct-Ethernet-Now.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Restore-Trusted-Direct-Ethernet-Now.ps1",
+      "bytes": 3968,
+      "sha256": "cfd417656815a788835ccfaa72bcc38b0a541daf9cbec56b4a75403ffde52304",
+      "role": "guarded host setup or background-job source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Server-Setup/Set-Up-Coding-Server.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Set-Up-Coding-Server.ps1",
+      "bytes": 38003,
+      "sha256": "a20002f27f21bc03cc5754374d3a070d7a8b0e9bce9b79b3b6261312e4064e19",
+      "role": "guarded host setup or background-job source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Server-Setup/Set-Up-Direct-Ethernet-Repair.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Set-Up-Direct-Ethernet-Repair.ps1",
+      "bytes": 13747,
+      "sha256": "abade4a3b7126b8398bfbc2d5900c1de6bf81289c7659635d944fdd2280a3918",
+      "role": "guarded host setup or background-job source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Server-Setup/Start-MSIJob.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Start-MSIJob.ps1",
+      "bytes": 3968,
+      "sha256": "eaec6e1a4287e44d05426e474f714bb4b58d8624936035df494d1a05d42e8bcb",
+      "role": "guarded host setup or background-job source",
+      "exactCopy": true
+    },
+    {
+      "path": "outputs/Project-Library-2026-10-29/Server-Setup/Verify-Coding-Server.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Verify-Coding-Server.ps1",
+      "bytes": 6450,
+      "sha256": "f495e963bbce27297ea23e972a2e1ff7bf094b71e7488a4351887205116857a9",
+      "role": "guarded host setup or background-job source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/build_ethernet_manifest.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\build_ethernet_manifest.py",
+      "bytes": 15273,
+      "sha256": "b78c4a8620ef816d9f23a360edfec5da87d486c24115dada8fb8bee09654e916",
+      "role": "historical selection builder; local inputs excluded",
+      "exactCopy": true
+    },
+    {
+      "path": "work/prepare_magix_selection.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\prepare_magix_selection.py",
+      "bytes": 17261,
+      "sha256": "08830442161b18b9250bb6f5fcdb792eff07d9f8f06b1dfe49bc86069e31a8d9",
+      "role": "historical selection builder; local inputs excluded",
+      "exactCopy": true
+    },
+    {
+      "path": "work/prepare_magix_capture_selection.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\prepare_magix_capture_selection.py",
+      "bytes": 4569,
+      "sha256": "74dc36895632a91a842956c4a7e69643a90c78f2cb6f19dda5de111c84e80042",
+      "role": "historical selection builder; local inputs excluded",
+      "exactCopy": true
+    },
+    {
+      "path": "work/full-export-tools/capture_export.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\full-export-tools\\capture_export.py",
+      "bytes": 22635,
+      "sha256": "b4daf4fa43268718d86ab4c4eec18aa89bf091ac4a5c4d41fdfccc9163f687f4",
+      "role": "selection builder import dependency and original archive tooling",
+      "exactCopy": true
+    },
+    {
+      "path": "work/full-export-tools/restore_export.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\full-export-tools\\restore_export.py",
+      "bytes": 14964,
+      "sha256": "77ccbaf66c0c65600f74ec4d54be676df7742dc2518b2c1d7e40ccd041e4e927",
+      "role": "selection builder import dependency and original archive tooling",
+      "exactCopy": true
+    },
+    {
+      "path": "work/project-library-catalog/build_catalog.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-catalog\\build_catalog.py",
+      "bytes": 16890,
+      "sha256": "2bcdc43c6a48683b1cd996f3b0c775447a9a598da34a68d6bb6338c61bb1338c",
+      "role": "catalog builder; local inputs excluded",
+      "exactCopy": true
+    },
+    {
+      "path": "work/project-library-tests/test_project_library.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-tests\\test_project_library.py",
+      "bytes": 15015,
+      "sha256": "4fd1dda03cb2c593806200e7326ccc01c4e8057710dad512ff992d2be7a2f433",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/project-library-tests/test_name_repair.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-tests\\test_name_repair.ps1",
+      "bytes": 3985,
+      "sha256": "50ed53d681cff0bbbdf9864d8c9ab943ece9f85f3ffcf2348ed75c6f40f1a3a3",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/project-library-tests/check_connection_checker.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-tests\\check_connection_checker.ps1",
+      "bytes": 2914,
+      "sha256": "b8decd268a53b5c1e44f591cf42a7c6d55fb7805ab10d714fcf75ed6403366a2",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/project-library-tests/check_client_package.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-tests\\check_client_package.ps1",
+      "bytes": 938,
+      "sha256": "2b0e860c858924e1792eb2aa1f417d923c61373e9391ade30177b9724ca0c109",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/project-library-tests/client_runtime_smoke.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-tests\\client_runtime_smoke.py",
+      "bytes": 2213,
+      "sha256": "030bf7970b962738fc5df3f3c267a94eb47910ced1b6e5c2b7278563d34a6d2d",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/project-library-tests/build_project_index.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-tests\\build_project_index.py",
+      "bytes": 12271,
+      "sha256": "1ba0f2684f103e7c266c1b06246942712c976a340d8831dc7b761516f3189d34",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/project-library-sharing/test_client_independent.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-sharing\\test_client_independent.py",
+      "bytes": 10988,
+      "sha256": "b106fdfc5538edfb17cae8b30048c8d0ba1acecd799f98155b6efb12fb91ca5a",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/project-library-sharing/test_publisher.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-sharing\\test_publisher.py",
+      "bytes": 6019,
+      "sha256": "179ef4396f41525eadcb6070c6ff0ba68c5a36641a1f26d1b398e2285bfb51fe",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/project-library-sharing/test_sharing_helper.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-sharing\\test_sharing_helper.ps1",
+      "bytes": 8292,
+      "sha256": "e19ccae5b206ed83f2d83575af462562f542d60189ad2cee04a30f409f8f3910",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/msi-server-conversion/test_job_process.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\test_job_process.py",
+      "bytes": 6349,
+      "sha256": "989e5038282b847a314870919173afe095a51afea9a4f5fffe3ed8e1aa1357db",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/msi-server-conversion/test_job_unc_identity.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\test_job_unc_identity.py",
+      "bytes": 7031,
+      "sha256": "78026bbf375bbc275a2cc0ad3e7670c17406da83f4fc861252638f72adbece5f",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/msi-server-conversion/test_scheduled_job.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\test_scheduled_job.ps1",
+      "bytes": 9351,
+      "sha256": "7cff21d5faec0d132d53e7d53ace76982ff7ecd566bdb5c1f08d9ae1be4589ee",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/msi-server-conversion/test_direct_ethernet_repair.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\test_direct_ethernet_repair.ps1",
+      "bytes": 8847,
+      "sha256": "b48fc3ee6ecc54849e635dcfffa79b219932d8e0c73cdb5d02ec673548aaacdc",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/msi-server-conversion/test_installed_direct_ethernet_task.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\test_installed_direct_ethernet_task.ps1",
+      "bytes": 3378,
+      "sha256": "e5d76168bb3885101dfbb8efcc82b1fcc09604492db14c53c316fdcf9f014296",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/msi-server-conversion/test-ssh-firewall-repair.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\test-ssh-firewall-repair.ps1",
+      "bytes": 2908,
+      "sha256": "87662c996e9317d77b317d75aa0a724d2ee20f488eff35d12fc26a4fee6eac97",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/msi-server-conversion/test-ssh-resume-guards.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\test-ssh-resume-guards.ps1",
+      "bytes": 6688,
+      "sha256": "75dd28f8ee9161fbfcd87771848a633bf6db2d90642d5b69a5db2e77968cdb50",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/msi-server-conversion/test-ssh-retry-native-guards.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\test-ssh-retry-native-guards.ps1",
+      "bytes": 6194,
+      "sha256": "bc6466774ad9973b3aa9d8a451e7315e277f71da98b1b3d32e6556dc0af9033e",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/msi-server-conversion/Prepare-SSH-Job-Fixture.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\Prepare-SSH-Job-Fixture.ps1",
+      "bytes": 5314,
+      "sha256": "dfa817c3334dd7286b7c821b825ad5f37babcf1f7a6ffee9a8c0f426b992776a",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/msi-server-conversion/Read-Verified-SSH-Public-Key.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\Read-Verified-SSH-Public-Key.ps1",
+      "bytes": 5548,
+      "sha256": "5ea7952417ebe708ce11116cc9d0d1b74014c14a6d24e849f1444bff05109ac7",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/msi-server-conversion/probe_job_cache_lock.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\probe_job_cache_lock.py",
+      "bytes": 1099,
+      "sha256": "be7176ec44b202d07d7241801e0c2a09d0f6f439482783a45e420ad58c96bc53",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/magix-workspace-launcher/MAGIX-Workspace-Access.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-workspace-launcher\\MAGIX-Workspace-Access.ps1",
+      "bytes": 13544,
+      "sha256": "f123d1ca489841f415bf8b21cfe799c2edc093a55b96c08d2287e0aee65aa741",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/magix-workspace-launcher/Set-Up-MAGIX-Workspace.cmd",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-workspace-launcher\\Set-Up-MAGIX-Workspace.cmd",
+      "bytes": 355,
+      "sha256": "27cd0f4a55c4ad6adf606182b06bcd00604aeacf199ae430da8dd4f3dedfd685",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/magix-workspace-launcher/MAGIX-Local-Workspace.cmd",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-workspace-launcher\\MAGIX-Local-Workspace.cmd",
+      "bytes": 172,
+      "sha256": "1b063d9ccebfbbe9cb0a56a55f61ee16e23cba45e8c9d78d213e777a44135725",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/magix-workspace-launcher/test_workspace.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-workspace-launcher\\test_workspace.py",
+      "bytes": 10011,
+      "sha256": "5a8ec85f1ff9d87f39145538d0c99ba7d2490c2546d5f94c717f49aeaf837bd4",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/magix-workspace-launcher/test_access_native.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-workspace-launcher\\test_access_native.ps1",
+      "bytes": 5286,
+      "sha256": "f26192b03052d67fac9d609e1d92d2626b06d5b87447592e088d6b685a4fd189",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/magix-workspace-launcher/test_access_plan.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-workspace-launcher\\test_access_plan.ps1",
+      "bytes": 2474,
+      "sha256": "72c6047ac96a187d710b27be110979c161f18d11216c7925f6a8dc17e511b982",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/magix-workspace-launcher/test_new_junction_leaf.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-workspace-launcher\\test_new_junction_leaf.py",
+      "bytes": 1319,
+      "sha256": "f43ffd353a40b62b65d5e5fc2ec5fbb6c83a3bb01524828ec5797926c9122374",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/magix-workspace-launcher/independent_process_guard_check.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-workspace-launcher\\independent_process_guard_check.py",
+      "bytes": 3514,
+      "sha256": "f07c4daeb2a51037d93cfb1ac33d0bcf4b92c3792968f58d6df595cbaf42a687",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/magix-legacy-path-option/MAGIX-Legacy-Path.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-legacy-path-option\\MAGIX-Legacy-Path.ps1",
+      "bytes": 25970,
+      "sha256": "3a7332607a9fd59d460ca7eb0db8c5e46e892c67b9c9c63a68b03d076120f880",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/magix-legacy-path-option/test_local_option.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-legacy-path-option\\test_local_option.ps1",
+      "bytes": 6181,
+      "sha256": "9bbf1405f2dfc8dae28e7040c147e81dd3bf6d49c12331d47329be7183012f6c",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/ssh-job-verification/Connect-To-MSI.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\Connect-To-MSI.ps1",
+      "bytes": 11347,
+      "sha256": "675bd77841f2665fe89b86805d690cbd4fbd1aa60aaf6ce898382916f0cf223f",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/ssh-job-verification/Invoke-SSH-Job-Verification.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\Invoke-SSH-Job-Verification.ps1",
+      "bytes": 11084,
+      "sha256": "b6eb8e979a853d66de62c404120ea03ede5de162799ff21155e090ffd5b3353c",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/ssh-job-verification/Open-MSI-Terminal.cmd",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\Open-MSI-Terminal.cmd",
+      "bytes": 295,
+      "sha256": "8a251646ed9c0e437ae6e777192289e68810ef0766968eeb59688fe12a26778d",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/ssh-job-verification/SSH-Verification-Common.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\SSH-Verification-Common.ps1",
+      "bytes": 3463,
+      "sha256": "983c000df2bc1958a74dc9986cdacdceab9bb30f18572b40ddeefe773ec28833",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/ssh-job-verification/Verify-MSI-SSH-Job.cmd",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\Verify-MSI-SSH-Job.cmd",
+      "bytes": 327,
+      "sha256": "2a16d742ce56ec29b381b3d036663d5a948d1097e6c1355923ea73bafab29be5",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/ssh-job-verification/prepare_plan.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\prepare_plan.py",
+      "bytes": 4172,
+      "sha256": "bacb56735ec4f1d5da6d61ffdabde2e3aa002d54845f7375614383dabe0f35a1",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/ssh-job-verification/prepare_null_trigger_retest.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\prepare_null_trigger_retest.py",
+      "bytes": 8267,
+      "sha256": "25630101e0c60b257dbc3ac190baa88a42cda91df4fad7e76795b88888fc6e9a",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/ssh-job-verification/test_preparation.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\test_preparation.ps1",
+      "bytes": 5675,
+      "sha256": "8292e73ee50bf82a180e7f70860a55678f6e05b7b4abe6e8ca2884166d204fb0",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/ssh-job-verification/test-null-trigger-repair.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\test-null-trigger-repair.ps1",
+      "bytes": 3364,
+      "sha256": "75fe8ff71e6c42d3c697a0726eb9804b8ee24ccec34bfe171c98576ec771ecee",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/new-pc-workflow/prepare_fixture.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\new-pc-workflow\\prepare_fixture.py",
+      "bytes": 3639,
+      "sha256": "7a777a9199d039ad08c7e2339c3e429b7382c19f866765fa97ed2a37836873b1",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/new-pc-workflow/Publish-Reviewed-Fixture.ps1",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\new-pc-workflow\\Publish-Reviewed-Fixture.ps1",
+      "bytes": 5980,
+      "sha256": "2c37fcbe8cf34bff7ba7e4b0294eefa6094b4d9d40bdd3a0c5530d7567d4607f",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/new-pc-workflow/test_workflow.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\new-pc-workflow\\test_workflow.py",
+      "bytes": 4376,
+      "sha256": "20866f05abcdce06a460f61d30ef6e687b514b3378f045c02c51928ee3596c0e",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/new-pc-workflow/verify_new_pc_workflow.py",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\new-pc-workflow\\verify_new_pc_workflow.py",
+      "bytes": 17229,
+      "sha256": "4e699908efe5e03495924a0a93630b782a2dff8e6503eb1d366c5102c7559bf0",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/new-pc-workflow/Verify-New-PC-Workflow.cmd",
+      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\new-pc-workflow\\Verify-New-PC-Workflow.cmd",
+      "bytes": 780,
+      "sha256": "471d5883908f2b7875693c61de39e40fc5ba294635a37a70a45331ca70b1e148",
+      "role": "reviewed helper or bounded/historical validation source",
+      "exactCopy": true
+    },
+    {
+      "path": "work/magix-workspace-launcher/magix_workspace.py",
+      "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-bootstrap-fix-2026-10-29\\magix_workspace.py",
+      "bytes": 36460,
+      "sha256": "c60fb2559a90a2301aa3d741c1d2e676e5ed90559fb40a63e27ef83d75f697aa",
+      "role": "exact deployed bootstrap-corrected baseline",
+      "exactCopy": true
+    }
+  ],
+  "summary": {
+    "exactTextFiles": 83,
+    "bytes": 726010
+  },
+  "reviewedPins": {
+    "outputs/Project-Library-2026-10-29/Helper/project_library.py": "3d66f560abee179b861867d9ebea6c64bff21ae240c88712db957496f5d1109d",
+    "outputs/Project-Library-2026-10-29/Client/project_library.py": "3d66f560abee179b861867d9ebea6c64bff21ae240c88712db957496f5d1109d",
+    "outputs/Project-Library-2026-10-29/Helper/publish_library.py": "056d206fa35f5a0603cd9ab6703daf1b8775d73b123ced8d9d69f88041f1c660",
+    "outputs/Project-Library-2026-10-29/Client/HELPER-CHECKSUMS.json": "362517385124df2ad6d55363fc0b39d072b4378c11e3f468b1bfebf8bc21f3fc",
+    "outputs/Project-Library-2026-10-29/Server-Setup/msi_job_process.py": "004b041547291241d2d4674fd08234e68ba26f43b69b77aeaf6d03d38264a60b",
+    "outputs/Project-Library-2026-10-29/Server-Setup/msi_job_runner.py": "e6052a9fc82fd970c95435ea31f8d65d6e9bc87160c921685b981252dab0cf8f",
+    "work/magix-workspace-launcher/magix_workspace.py": "c60fb2559a90a2301aa3d741c1d2e676e5ed90559fb40a63e27ef83d75f697aa",
+    "work/magix-workspace-launcher/MAGIX-Workspace-Access.ps1": "f123d1ca489841f415bf8b21cfe799c2edc093a55b96c08d2287e0aee65aa741",
+    "work/magix-legacy-path-option/MAGIX-Legacy-Path.ps1": "3a7332607a9fd59d460ca7eb0db8c5e46e892c67b9c9c63a68b03d076120f880"
+  },
+  "sealedClient": {
+    "manifestSha256": "362517385124df2ad6d55363fc0b39d072b4378c11e3f468b1bfebf8bc21f3fc",
+    "requiredFiles": 52,
+    "providedFiles": 8,
+    "dependencies": [
+      {
+        "path": "Open-ProjectConsole.ps1",
+        "bytes": 899,
+        "sha256": "206cdd2caf97bb4f86a0435b07d0e09faedb8beac528bf97c9a3777dfdc373b5",
+        "inSourceSnapshot": true,
+        "omissionReason": null
+      },
+      {
+        "path": "Project-Library.cmd",
+        "bytes": 273,
+        "sha256": "8cad8e162f33ac4ffe5d57a2049f1b9e030d3d4b2842264e08d507868e224b99",
+        "inSourceSnapshot": true,
+        "omissionReason": null
+      },
+      {
+        "path": "Project-Library.ps1",
+        "bytes": 14534,
+        "sha256": "a74e3303f03b67d072e64988874272c3343b818b66d81dd868f96a455f4b8e79",
+        "inSourceSnapshot": true,
+        "omissionReason": null
+      },
+      {
+        "path": "project_library.py",
+        "bytes": 42875,
+        "sha256": "3d66f560abee179b861867d9ebea6c64bff21ae240c88712db957496f5d1109d",
+        "inSourceSnapshot": true,
+        "omissionReason": null
+      },
+      {
+        "path": "README.txt",
+        "bytes": 7841,
+        "sha256": "60001f9c04ed8402cc98b9c96dddbcb9871edd3fe023309289102e67bc62b282",
+        "inSourceSnapshot": true,
+        "omissionReason": null
+      },
+      {
+        "path": "RUNTIME-VERIFICATION.json",
+        "bytes": 8444,
+        "sha256": "e1bdfb922f9cc7eb43a02967764806ee1262bc5927cca3c2c5b7057c21a20dae",
+        "inSourceSnapshot": false,
+        "omissionReason": "local runtime validation receipt intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_asyncio.pyd",
+        "bytes": 75056,
+        "sha256": "6d86fefd411bac347ac52d2bb06379b06d47cd8ac3e81d425b8559d53343e197",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_bz2.pyd",
+        "bytes": 88880,
+        "sha256": "538d21186927914039c42fe2473aaf052abadbde9fc373883c5d848aecc8a62c",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_ctypes.pyd",
+        "bytes": 131888,
+        "sha256": "94f5e1801f982c86c1e3121d359f198b303a555668d60a42618e6e94d7d3e580",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_ctypes_test.pyd",
+        "bytes": 40752,
+        "sha256": "114ea0011af223aa4fafe504387c12796512e08fc6bc12a75713aca047174b4e",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_decimal.pyd",
+        "bytes": 263984,
+        "sha256": "8e2abfa85936c606d5f08accf5072823eb452308db4dae2f8bf41eab16c7fbfb",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_elementtree.pyd",
+        "bytes": 137520,
+        "sha256": "0fcc9c1e05d47bf2c5b492e42220ba668f9097c249042cb4260e25b808801367",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_hashlib.pyd",
+        "bytes": 70448,
+        "sha256": "00f94f34de2637c87dba0209ef22d728e90fa519ae46bde39df60df725dff496",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_lzma.pyd",
+        "bytes": 168240,
+        "sha256": "85a41379ef09827ae55f28fd567be791fa50fce35a69dbb5a71288b2d817d424",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_msi.pyd",
+        "bytes": 48944,
+        "sha256": "4d3c66d89a6780d2155bc23488e659153207cc24507bff8271022f7089a5ded9",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_multiprocessing.pyd",
+        "bytes": 39728,
+        "sha256": "180212b6055a51950e2169e7468713f7a12cb6d406550265ab0db2e93f377fef",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_overlapped.pyd",
+        "bytes": 59696,
+        "sha256": "8be3fbd1e1de1e5af58db5b15bf657085b8d01aee3e071fdb39cdf30aa756742",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_queue.pyd",
+        "bytes": 36144,
+        "sha256": "0ab4148d0f53e4257d9a4f2d18da151167e90694ae3cdb4809b5a53979cabed6",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_socket.pyd",
+        "bytes": 87344,
+        "sha256": "0313f76c51107429703e1de6512f66f748a61a65d7f01c063d13c44ebf8660d0",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_sqlite3.pyd",
+        "bytes": 127792,
+        "sha256": "bcdc1a6da767c541d11737be8317e308bc5d37a09219d5e00e12e7cf2b504765",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_ssl.pyd",
+        "bytes": 180528,
+        "sha256": "a524c08819e4e4e6b186e8686a6a091f17616a599b3f825bde60e05919f097fb",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_testbuffer.pyd",
+        "bytes": 59184,
+        "sha256": "2996bfff982d9c78b638622979b10411032c3aed4df3766e37f0dafa2b113ef7",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_testcapi.pyd",
+        "bytes": 313648,
+        "sha256": "9498e53d179053ee7890f5c78f6c1d313b8e9266af5937a11455cf9abdb5dd36",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_testclinic.pyd",
+        "bytes": 70960,
+        "sha256": "ebbff32787706fa79075bae23a572a158b50f197bb03ed4ab8258e08b2df5bdd",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_testconsole.pyd",
+        "bytes": 31024,
+        "sha256": "f56bd20c5c48002fb8995f7bba0cfd52f2336ea26d58e3d69978883574e15450",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_testimportmultiple.pyd",
+        "bytes": 28976,
+        "sha256": "d669c06a6e3b241d130dd4247887a0a55fca3153e2f4d3e9028e76098ee954bb",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_testinternalcapi.pyd",
+        "bytes": 55600,
+        "sha256": "32c1789d03f4d2065066913ac55e0bfb67839bd62e6c817ef5f6c67dd724cd13",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_testmultiphase.pyd",
+        "bytes": 43312,
+        "sha256": "c3a3bae4f901715d80a85c8aa58c7de086125d4457dfe06184321429a87bc3e6",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_testsinglephase.pyd",
+        "bytes": 34096,
+        "sha256": "7dfd3ffe8187ae124a7b6b262b1bc5d45f75539d8d08882adfe4cfba08bc258d",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_tkinter.pyd",
+        "bytes": 70960,
+        "sha256": "5b5ca94841d231e965cd7ce0ee25747fad4297d852bfc4ccfa508ada0f5981f1",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_uuid.pyd",
+        "bytes": 29488,
+        "sha256": "f1b6cf9efa0169ce68854766965ec4ccf27a465df27ebc788a873e533364f342",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_wmi.pyd",
+        "bytes": 41264,
+        "sha256": "fac8e2ce1e839ee0f94fb8a77f6a7b518f1d00d84fd930c6b0d3156c219501f8",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/_zoneinfo.pyd",
+        "bytes": 52016,
+        "sha256": "27bef453957e5a015d14e886b9e49fea74e0a8be52d2e04750e4d84a581eeed2",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/libcrypto-3-x64.dll",
+        "bytes": 8003376,
+        "sha256": "587c56108d7af19b02ff8fa785c9df703af66a0e8e2bd66031870ff4000bb6a9",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/libffi-8.dll",
+        "bytes": 43824,
+        "sha256": "f5fbc815520d987431124b1d2a79f687d8166a1b6cec205e03f9a9d51ea3d380",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/libssl-3-x64.dll",
+        "bytes": 1599280,
+        "sha256": "f77484cd42cfcee649abd12867d0a26b1bf5c171c1ac80a0aa7c1083c2e58e10",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/pyexpat.pyd",
+        "bytes": 226096,
+        "sha256": "9d31f81b7ae59851794c496b920dde678b12b812748aa7570ebe4a50c9d10ea0",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/select.pyd",
+        "bytes": 34608,
+        "sha256": "0fe0f9261b247f8405250c8ad5e2a0b42e88205fc8b095224b796fa69bc14d95",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/sqlite3.dll",
+        "bytes": 1623344,
+        "sha256": "ee6af52d64d99036df3b94f1c233dfef3d29732bb783d74470daf42a074366af",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/tcl86t.dll",
+        "bytes": 1866480,
+        "sha256": "fbfd065f861ec0a90dd513bc209c56bbc23c54d2839964a0ec2df95848af7860",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/tk86t.dll",
+        "bytes": 1541872,
+        "sha256": "cd2f60075064dfc2e65c88b239a970cb4bd07cb3eec7cc26fb1bf978d4356b08",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/unicodedata.pyd",
+        "bytes": 1143600,
+        "sha256": "06c8c710869f7ab725f1e47dd2b7d6578fa865eab97aa1210a423380f2cc4c74",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/DLLs/winsound.pyd",
+        "bytes": 34096,
+        "sha256": "50b20a35d02901c2519d45a12cf67e322e7506ba2bd2e95345e91304fff0e51c",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/LICENSE.txt",
+        "bytes": 25066,
+        "sha256": "886a0ead2d89030ee62dbff52b04e47ab91998341295bb9c56fb952b4e081c7a",
+        "inSourceSnapshot": true,
+        "omissionReason": null
+      },
+      {
+        "path": "Runtime/python.exe",
+        "bytes": 107312,
+        "sha256": "5640e9be2fd33d05a1a9ae1228e2354609a69ab831605995ec4e2bd6da8fff5e",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/python3.dll",
+        "bytes": 71984,
+        "sha256": "62845ba25fcd76557c127b01b9dc6680845f8a4acb97fadf72035d7a6eb2d2d3",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/python312._pth",
+        "bytes": 28,
+        "sha256": "8e4ac3e5a2b8f58484e4135c66323717ac7fd2fc3b74b44a96a1a74992a66c89",
+        "inSourceSnapshot": true,
+        "omissionReason": null
+      },
+      {
+        "path": "Runtime/python312.dll",
+        "bytes": 6985520,
+        "sha256": "886fa6b89e09ca6c87599c802402fdca160e06b2fa9c658f6fe91ed926f63e1f",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/python312.zip",
+        "bytes": 3031412,
+        "sha256": "4788a5b9aee9f7bd60778685ff9e9192c25069c98e7f8f9268b7565423feedb8",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/vcruntime140.dll",
+        "bytes": 124544,
+        "sha256": "d5e4d9a3e835fa679450145d6a7d94e36573a509317111904d9b3712c30d9066",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "Runtime/vcruntime140_1.dll",
+        "bytes": 49792,
+        "sha256": "1f2d41c4aa5db0bc33ebf7b66d72943a817d7ce6cbe880502a9403823633093f",
+        "inSourceSnapshot": false,
+        "omissionReason": "portable runtime binary or standard-library archive intentionally excluded"
+      },
+      {
+        "path": "START-HERE.txt",
+        "bytes": 2496,
+        "sha256": "abd06d1c18b8033b477763a9b458fc7c822d23638b07756fe58256cde7535067",
+        "inSourceSnapshot": true,
+        "omissionReason": null
+      }
+    ]
+  },
+  "pendingFinalIntegration": [
+    "All-project MAGIX module, index generator, new command wrappers and current tests: owner will synchronize after freeze; generated personal index is excluded."
+  ],
+  "excluded": [
+    "Media and project payloads",
+    "Catalogs, personal inventories and generated index payloads",
+    "Logs, receipts, active state, lock files and version payloads",
+    "Credentials, authentication material, private/public host-key files",
+    "Runtime executables, DLLs, PYDs and standard-library archive",
+    "Live editable Settings.json; source template is supplied separately"
+  ],
+  "sourceFilesModified": false,
+  "gitActions": false
+}

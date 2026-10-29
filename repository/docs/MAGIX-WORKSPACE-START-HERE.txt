@@ -1,0 +1,77 @@
+MAGIX PROJECT LIBRARY
+
+On the client PC, open the deployed project-library folder and run
+MAGIX-Local-Workspace.cmd. Close older launcher windows and MAGIX first.
+The first run upgrades the existing workspace records, preserving the previous
+ownership record. It does not fetch all projects or change project files.
+
+DAILY WORKFLOW
+1. Choose 1 - Choose project. The list contains all 43 MAGIX families in the
+   reviewed library, with their download sizes and local-cache status.
+2. Choose 2 - Prepare and open, then select a numbered project file. Some
+   families contain several versions: select the one you intend to edit.
+   An absent/released copy is fetched from MSI. Existing READY copies keep
+   your edits and deletions and can be used while MSI is offline.
+3. Keep the launcher open. Save your work in MAGIX, close all MAGIX windows,
+   and type DONE in the launcher. DONE retains local work; it does not save
+   changes back to MSI.
+4. Choose 3 - Save selected project to MSI + Verify when MSI is connected.
+5. Optional: choose 5 - Free selected local space, and type the displayed
+   project ID. Release runs only after the client's verification checks pass.
+   Opening that project later fetches its saved version.
+
+Save project files and newly added media inside the selected cache's Files
+folder, or its mapped old folder paths. Files saved elsewhere on THIS-MACHINE
+are not included in Save to MSI. Option L in the project-file picker lets you
+open a newly saved file by its path relative to that selected Files folder.
+
+Switching projects does not save or free the previous project automatically.
+Only one MAGIX session can use the old paths at a time. The launcher removes
+the old mappings before fetching/opening another project's working copy.
+
+BACKUPS AND RECOVERY
+MV_ entries are explicitly labeled BACKUP. The launcher prepares their local
+working set and starts MAGIX. Use File > Load backup project to choose the
+exact local backup path printed in the launcher. Save recovered work under a
+new name inside the selected Files folder. Backup contents are not renamed.
+Official MAGIX guidance:
+https://help.magix-hub.com/video/videodlx/en/content/topics/backupproject.htm
+
+After an interrupted launcher, close MAGIX and choose 6 - Recover/unbind.
+Recovery preserves local project files and never saves or releases them.
+If MAGIX never opens, dismiss pending launch dialogs and use CANCEL STARTUP.
+Keep the launcher open while editing. Force-closing it cannot retain its lock.
+Use this launcher for MAGIX lifecycle operations; do not mix the old manual
+Enable/Unbind helpers or the generic client's release command into a session.
+Older single-project launcher code intentionally refuses work after upgrade.
+
+SCOPE AND STORAGE
+The reviewed catalog contains 43 families and 276 project/recovery entries.
+Only the selected family is fetched. Some conservative working sets are about
+81-85 GiB; review the displayed size before proceeding. Shared media can occupy
+space in multiple project caches. This is local caching, not per-file streaming.
+
+The mappings cover six specific old user-folder locations: OneDrive Documents,
+Pictures and Desktop; Downloads; the university OneDrive Rialto Theatre folder;
+and the old MAGIX application-data folder. They target only the selected local
+cache. Unexpected existing paths stop the operation rather than being replaced.
+
+All indexed projects are selectable, but missing historical media, unresolved
+same-name matches, cloud-only files, installed effects/codecs, and incompatible
+formats can still need attention. The launcher does not restore missing cloud
+files, convert media, or replace installed MAGIX content. Successful opening or
+rendering of every project has not been verified. The index is a reviewed
+snapshot; newly added projects require an index refresh and review.
+
+MSI must be awake and connected for Fetch, Save, server Verify and Free space.
+Use one active working copy per project. Conflicting source/returned versions
+stop the operation for review. Returned versions can depend on MSI originals;
+maintain a separate archival backup.
+
+Keep MAGIX-Workspace-State and its receipts. The previously tested project
+completed Open/play/close/DONE, Save + Verify, and explicit release. That
+acceptance applies to that project. The all-project upgrade was deployed and
+its actual client activation passed readback, preserving installation, Stage1
+and access records with mappings UNBOUND. The user confirmed the 43-family
+picker appears on the new PC. Playback/export of additional families remains
+untested.
