@@ -39,6 +39,8 @@ The subsequent preset comparison matched 6,804 existing definitions on the new P
 
 ## Source integrity
 
+For the primary Codex workstation on THIS-MACHINE, see the [workstation handoff](repository/handoff/README.md). It identifies the separate source, installed client, working cache and MSI data locations. Private continuation context is supplied outside Git.
+
 From the repository root with Python 3.12 available:
 
 ```powershell

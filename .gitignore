@@ -3,10 +3,12 @@
 !/.gitignore
 !/.gitattributes
 !/README.md
+!/AGENTS.md
 !/LICENSE
 !/repository/
 
 # Local execution and private deployment material, at any depth.
+**/.handoff/
 **/__pycache__/
 *.py[cod]
 **/.venv/

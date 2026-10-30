@@ -1,8 +1,8 @@
 {
   "format": "interlinked-distribution-manifest-v1",
-  "createdUtc": "2026-10-30T01:01:25.200882+00:00",
+  "createdUtc": "2026-10-30T01:19:21.176016+00:00",
   "scope": "Reviewed source plus Matrix GUI, media/preset/font inventories and guarded preset import; private reports, payloads and this manifest excluded.",
-  "previousManifestSha256": "408c7d1a80e3088b1551b6aa6f29b91a03d254cea34333dd53c809f8f4ae69af",
+  "previousManifestSha256": "caeed7a6e23aa992df7cf5fd4114317c629c8feb7cfe81a58131f03c26652bfe",
   "files": [
     {
       "path": ".gitattributes",
@@ -12,14 +12,20 @@
     },
     {
       "path": ".gitignore",
-      "bytes": 1485,
-      "sha256": "5e77cc84c1eee8ed49f7a07eef841e0f074a6fb0a3802ffb37b6d3be487245f0",
+      "bytes": 1510,
+      "sha256": "c31cecb07a7948087924b3529851156cada23fb71c9e1c7f7a7cbce85c8c84d6",
       "origin": "authored documentation or packaging metadata"
     },
     {
+      "path": "AGENTS.md",
+      "origin": "Codex workstation guidance",
+      "bytes": 3337,
+      "sha256": "e545a1d04690d02c7bab63601c89c3a0e41a2341aa16faecb16cbd2da49ac835"
+    },
+    {
       "path": "README.md",
-      "bytes": 6577,
-      "sha256": "d8c3d87cca48e5232f54ea91de6463add8b88c930324692aee380db1745e9901",
+      "bytes": 6837,
+      "sha256": "de9675ef5dd75530382c97f816d28a3ce6b927de7211d4bb51f84bd16d4e78e3",
       "origin": "authored documentation or packaging metadata"
     },
     {
@@ -184,6 +190,24 @@
       "sha256": "fbc0ffba188af90d250da5b21f84bc57b7ca4c6c9d550bff42e60b86b5bbaf96",
       "origin": "documented extension adaptation",
       "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-all-projects\\deployment\\MAGIX-WORKSPACE-START-HERE.txt"
+    },
+    {
+      "path": "repository/handoff/Pull-INTERLINKED-Context.ps1",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 14197,
+      "sha256": "94de795b5d0885735ae40d852acc5b2bb9b4210da4db09a2eea2d6a017eb0e0d"
+    },
+    {
+      "path": "repository/handoff/README.md",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 4951,
+      "sha256": "66a0a8142ebb73fb524861c976f1238d28ff3fa3bf2895dfe75fffec6db493f4"
+    },
+    {
+      "path": "repository/handoff/Test-Context-Pull.ps1",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 6029,
+      "sha256": "957a143ca9af92c3ba2cf6cad6142979b2664b7d17ec8b5d5ddacd1dad1e622c"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Check-MSI-Connection.cmd",
@@ -829,8 +853,8 @@
     }
   ],
   "summary": {
-    "files": 122,
-    "bytes": 1147507,
+    "files": 126,
+    "bytes": 1176306,
     "pythonSourcesParsed": 42
   },
   "preservedBaseline": "Original SOURCE-MANIFEST and MAGIX-EXTENSION-MANIFEST remain exact; accepted launcher and client bytes unchanged.",
