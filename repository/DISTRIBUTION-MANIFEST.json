@@ -1,8 +1,8 @@
 {
   "format": "interlinked-distribution-manifest-v1",
-  "createdUtc": "2026-10-30T00:01:26.646816+00:00",
+  "createdUtc": "2026-10-30T00:14:36.278922+00:00",
   "scope": "Reviewed source plus Matrix GUI and read-only MAGIX media auditor; private reports and this manifest excluded.",
-  "previousManifestSha256": "c8765d9379d1362bf1223bf57dc89ca4e35ffd60b1fad68f69bee826b1acd892",
+  "previousManifestSha256": "c341d877e6fc3688e034eccc1018a3aaa98f6078091d912f773e63710f1911e1",
   "files": [
     {
       "path": ".gitattributes",
@@ -55,8 +55,8 @@
     {
       "path": "repository/app/README.md",
       "origin": "GUI and source-library audit addition",
-      "bytes": 3601,
-      "sha256": "5ee8ef5820f8389bc3a6887f57ca07a35d12c3f37c21404125aaea2b135e92d4"
+      "bytes": 4085,
+      "sha256": "958dd38ecb452bdf1a7ef42e62143852b91a9db3d68d4ae753f09928f6032c91"
     },
     {
       "path": "repository/app/interlinked_gui.py",
@@ -71,22 +71,28 @@
       "sha256": "70c4eaea2235176aac7d7d80e41a8afcc833afaca0dbfa4c54c455006292d4c7"
     },
     {
+      "path": "repository/app/test_open_feedback.js",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 5535,
+      "sha256": "208943a1b9e52beb9780642eb5a1d41d007a73d70e459d02bb13096e628ecfa0"
+    },
+    {
       "path": "repository/app/web/app.js",
       "origin": "GUI and source-library audit addition",
-      "bytes": 17069,
-      "sha256": "372fa3750dbc7749a6b3ea57d7965b1bc2cb01849b724ecc4c4b5cc96fe25d6e"
+      "bytes": 20918,
+      "sha256": "5c6491f142d2a1a675a9e4506382b630e125afac3daaf1e2b58fee5a7e80dc26"
     },
     {
       "path": "repository/app/web/index.html",
       "origin": "GUI and source-library audit addition",
-      "bytes": 6834,
-      "sha256": "be99b9c804b5044aac1d8569b6c804aa35e4517ac7aae46d1cf2f4d4deba248b"
+      "bytes": 7174,
+      "sha256": "01fa17b24f1c4f0038afcf2437faa9c72eff10aae03ba20dcb00510e5e920fee"
     },
     {
       "path": "repository/app/web/style.css",
       "origin": "GUI and source-library audit addition",
-      "bytes": 13362,
-      "sha256": "6c7ed5202e0ef45aa5bb77fb61c29e86d81b9adc0aa5ff331851647f24e3d21a"
+      "bytes": 13949,
+      "sha256": "e460642a29cebc5bbef73c732f495d3d446b0a43b47a0b98da6c65c5632a3b0e"
     },
     {
       "path": "repository/assemble_source_snapshot.py",
@@ -115,8 +121,8 @@
     {
       "path": "repository/deployment/Publish-Interlinked-GUI.ps1",
       "origin": "GUI and source-library audit addition",
-      "bytes": 5764,
-      "sha256": "89154ce2cd429603952499c51bf5cb58f801539109caa1c22f5f3ab64f5f0021"
+      "bytes": 6130,
+      "sha256": "d20962d9982bbac54b0e869b4911b6c0f49f653eff48707cf8549386b8bc0128"
     },
     {
       "path": "repository/docs/MAGIX-WORKSPACE-START-HERE.txt",
@@ -769,8 +775,8 @@
     }
   ],
   "summary": {
-    "files": 112,
-    "bytes": 1037264,
+    "files": 113,
+    "bytes": 1048425,
     "pythonSourcesParsed": 39
   },
   "preservedBaseline": "Original SOURCE-MANIFEST and MAGIX-EXTENSION-MANIFEST remain exact; accepted launcher and client bytes unchanged.",

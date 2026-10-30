@@ -56,6 +56,13 @@ try {
     foreach($row in ($manifest.files | Sort-Object @{Expression={if($_.path -ceq 'INTERLINKED.cmd'){2}elseif($_.path -like '*GUI-CHECKSUMS.json'){1}else{0}}},path)){
         $target=Join-Path $kit $row.path
         Ordinary ([IO.Path]::GetDirectoryName($target))
+        if($row.beforeSha256 -and $row.beforeSha256 -ceq $row.sha256){
+            Ordinary $target
+            if((Digest $target) -cne $row.sha256){throw 'Unchanged target drifted during publication.'}
+            $receipt.files+=@([ordered]@{path=$row.path;sha256=$row.sha256;backup=$null;unchanged=$true})
+            Save-Receipt
+            continue
+        }
         $temp=$target+'.pending-'+$run
         if(Test-Path -LiteralPath $temp){throw 'Staging file exists.'}
         Copy-Item -LiteralPath $row.source -Destination $temp

@@ -26,6 +26,8 @@ Media audit rows are historical reference strings, not proof of active missing c
 
 Logs, startup evidence and operation receipts are stored under the kit's owned `INTERLINKED-GUI-State`, outside project Files. The startup receipt records verified application/audit hashes without the capability token. HTTP APIs require the per-run token and exact origin/host checks; static HTML/CSS/JS are public local assets. One native instance lock prevents duplicate GUI servers for the same kit. The existing global workflow and cache locks remain authoritative against the console launcher.
 
+Prepare/Open displays pending work, recent per-file fetch/verification output, and confirmed terminal errors directly below its button. A held workspace lock explains how to finish the older console session; it never bypasses the lock or retries automatically. Activity details remain available through an explicit link. Error/progress presentation has 18 synthetic DOM/model checks and 15 independent checks. Run its isolated tests with `node repository/app/test_open_feedback.js`.
+
 For a synthetic visual preview, using an installed Python3.12:
 
 ```powershell

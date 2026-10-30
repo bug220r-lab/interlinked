@@ -4,6 +4,7 @@ let token=location.hash.slice(1)||sessionStorage.getItem('interlinked-token')||'
 if(token){sessionStorage.setItem('interlinked-token',token);history.replaceState(null,'',location.pathname+location.search);}
 let projects=[], selected=null, state={busy:false,revision:0}, filter='all', auditLoaded=null, releaseTarget=null, lastCompleted=null, stopped=false;
 let mutation=false,pollSequence=0,appliedPoll=0,entrySequence=0,auditSequence=0;
+let requestedAction=null;
 const chosenEntries=new Map();
 const initialProject=new URLSearchParams(location.search).get('project');
 const human=value=>String(value||'Not audited').replaceAll('_',' ').toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
@@ -18,7 +19,55 @@ async function api(path,body){
  return value;
 }
 function safe(fn){return async(...args)=>{clearError();try{await fn(...args);}catch(error){showError(error);}};}
-async function mutate(fn){if(mutation)throw new Error('Please wait for the current request.');mutation=true;renderState();try{return await fn();}finally{mutation=false;renderState();}}
+async function mutate(fn,request=null){if(mutation)throw new Error('Please wait for the current request.');mutation=true;requestedAction=request;renderState();try{return await fn();}finally{mutation=false;requestedAction=null;renderState();}}
+// BEGIN PURE OPEN FEEDBACK
+function terminalCliError(output){
+ const text=String(output||'');
+ const candidates=text.split(/\r?\n/).map(line=>line.trim()).reverse();
+ // The pinned CLI normally prints one JSON line. Also accept its indented
+ // terminal object, without executing output or trusting a success status.
+ for(let at=text.lastIndexOf('{');at>=0;at=text.lastIndexOf('{',at-1)){
+  candidates.push(text.slice(at).trim());if(at===0)break;
+ }
+ for(const candidate of candidates){
+  if(!candidate.startsWith('{'))continue;
+  try{const value=JSON.parse(candidate);if(['BLOCKED_OR_INTERRUPTED','BLOCKED','FAILED'].includes(value.status)&&typeof value.error==='string')return value.error;}catch(_){/* Output is data, not code. */}
+ }
+ return '';
+}
+function openFeedbackModel(snapshot,project,request){
+ if(!project)return null;
+ if(request==='open')return {tone:'pending',title:'Starting your request…',text:'Waiting for the local launcher. Keep this interface service open.',progress:''};
+ const job=snapshot.operation;
+ if(!job||job.action!=='open'||job.projectId!==project.id)return null;
+ if(snapshot.busy){
+  const lines=String(snapshot.output||'').split(/[\r\n]+/).map(line=>line.trim());
+  const progress=lines.filter(line=>/^(Fetch preview:|Fetching:|Copying:|Verifying:)/i.test(line)).pop()||'';
+  return {tone:'pending',title:job.awaitingDone?'Working copy protected — confirmation stays in Activity':'Preparing your local working copy…',text:job.awaitingDone?'After MAGIX opens, save your work and close all its windows. Then confirm Done in Activity.':'The selected family may need fetching and verification before MAGIX opens. This can take time; do not start another copy.',progress:progress.length>220?progress.slice(0,217)+'…':progress};
+ }
+ if(['BLOCKED','FAILED','FAILED_NO_PROCESS'].includes(job.status)&&Number.isInteger(job.exitCode)&&job.exitCode!==0){
+  const reason=job.error||terminalCliError(snapshot.output)||'The launcher stopped before completing this request. Open Activity details for its result.';
+  const heldLock=/\.workflow\.lock/i.test(reason)&&/(used by another|in use|sharing violation|winerror 32)/i.test(reason);
+  const text=heldLock?'Another MAGIX launcher may still hold the workspace lock. Save and close MAGIX, then type DONE in that original console. After it finishes, retry Prepare & open.':reason;
+  return {tone:'blocked',title:'Prepare & open did not complete',text,progress:''};
+ }
+ if(job.status==='COMPLETED'&&job.exitCode===0)return {tone:'complete',title:'Launcher finished',text:'Local work was not automatically saved to MSI or freed. Use Save to MSI + verify when you are ready.',progress:''};
+ return null;
+}
+let lastOpenFeedbackSignature='';
+function renderOpenFeedback(){
+ const model=openFeedbackModel(state,selected,requestedAction);
+ const signature=JSON.stringify({project:selected?.id,operation:state.operation?.id,model});
+ if(signature===lastOpenFeedbackSignature)return;
+ lastOpenFeedbackSignature=signature;
+ $('open-feedback').hidden=!model;
+ if(!model)return;
+ $('open-feedback').className='open-feedback '+model.tone;
+ $('open-feedback-title').textContent=model.title;$('open-feedback-text').textContent=model.text;
+ $('open-feedback-progress').textContent=model.progress;$('open-feedback-progress').hidden=!model.progress;
+ $('open-feedback-link').textContent=state.busy?'Go to Activity / session controls ↓':'View Activity details ↓';
+}
+// END PURE OPEN FEEDBACK
 function isLocal(p){return ['READY','PENDING_SAVE','FETCHING','RELEASING'].includes(p.cache.status);}
 function needsReview(p){const text=String(p.mediaStatus).toLowerCase();return !text.includes('covered')&&!text.includes('ready')||p.warnings.length>0;}
 function renderList(){
@@ -67,7 +116,7 @@ async function loadCatalog(){
 async function action(name){
  if(!selected&&name!=='recover')throw new Error('Choose a project first.');
  if(name==='recover'&&!confirm('Close all MAGIX windows first. Recover removes only the recorded local mappings; it does not save or free project files. Continue?'))return;
- await mutate(async()=>{await api('/api/action',{action:name,project:selected?.id,entry:name==='open'?$('entry').value:undefined});await poll();});
+ await mutate(async()=>{await api('/api/action',{action:name,project:selected?.id,entry:name==='open'?$('entry').value:undefined});await poll();},name);
 }
 function renderState(){
  const job=state.operation,busy=state.busy,locked=busy||mutation||state.closing;
@@ -87,6 +136,7 @@ function renderState(){
  $('log-warning').hidden=!job?.reportingWarning;$('log-warning').textContent=job?.reportingWarning||'';
  $('recovery-note').hidden=!state.previousIncomplete?.length;
  $('recovery-note').textContent='A previous service run ended with an unfinished operation. Do not assume it stopped. Close MAGIX and check the prior launcher before using Recover. No files were automatically released.';
+ renderOpenFeedback();
 }
 async function poll(){
  if(stopped)return;
@@ -139,6 +189,7 @@ $('done').addEventListener('click',safe(()=>sendResponse('DONE')));$('cancel-sta
 $('workspace-tab').addEventListener('click',safe(()=>setTab(false)));$('audit-tab').addEventListener('click',safe(()=>setTab(true)));
 $('audit-window').addEventListener('click',()=>{if(selected)window.open('/audit?project='+encodeURIComponent(selected.id)+'#'+token,'_blank','noopener');});
 $('toggle-log').addEventListener('click',()=>{$('operation-log').hidden=!$('operation-log').hidden;$('toggle-log').textContent=$('operation-log').hidden?'Show details':'Hide details';});
+$('open-feedback-link').addEventListener('click',()=>{$('operation-log').hidden=false;$('toggle-log').textContent='Hide details';document.querySelector('.activity').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});});
 $('release').addEventListener('click',()=>{releaseTarget={id:selected.id,name:selected.name,revision:state.revision};$('release-description').textContent=selected.name+' · '+size(selected.bytes)+' selected working set estimate.';$('release-expected').textContent=selected.id;$('release-id').value='';$('release-confirm').disabled=true;$('release-dialog').showModal();});
 $('release-id').addEventListener('input',()=>{$('release-confirm').disabled=$('release-id').value!==releaseTarget?.id;});
 $('release-confirm').addEventListener('click',safe(()=>mutate(async()=>{if(!releaseTarget)throw new Error('Choose a project again.');await api('/api/action',{action:'release',project:releaseTarget.id,confirmation:$('release-id').value,expectedRevision:releaseTarget.revision});$('release-dialog').close();releaseTarget=null;await poll();})));
