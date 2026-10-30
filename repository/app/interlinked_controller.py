@@ -243,6 +243,7 @@ def controller_class(g):
                 if self.active is None:self._workflow_release()
 
         def session_input(self,value,operation_id,prompt_generation):
+            g.need(not getattr(getattr(self,'buddy',None),'pending',None),'Wait for the current asset delivery to finish.')
             if self.active and self.active['kind']=='folder-recovery':
                 with self.lock:
                     g.need(value=='DONE' and self.job['id']==operation_id and prompt_generation==1,'Stale or invalid recovered-session confirmation.')

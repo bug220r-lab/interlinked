@@ -17,7 +17,7 @@ if(-not ([IO.Path]::GetFullPath($ManifestPath)).StartsWith($workspace+'\',[Strin
 $allowed=@('INTERLINKED.cmd','INTERLINKED-Browser.cmd','INTERLINKED-App/interlinked_gui.py','INTERLINKED-App/GUI-CHECKSUMS.json',
  'INTERLINKED-App/interlinked_controller.py','INTERLINKED-App/interlinked_hub.py','INTERLINKED-App/interlinked_mw5.py',
  'INTERLINKED-App/interlinked_master.py','INTERLINKED-App/master_hook.py','INTERLINKED-App/master_bridge.py',
- 'INTERLINKED-App/interlinked_jobs.py',
+ 'INTERLINKED-App/interlinked_jobs.py','INTERLINKED-App/interlinked_buddy.py',
  'INTERLINKED-App/web/index.html','INTERLINKED-App/web/app.js','INTERLINKED-App/web/style.css',
  'INTERLINKED-Desktop/INTERLINKED.exe','INTERLINKED-Desktop/INTERLINKED.exe.config',
  'INTERLINKED-Desktop/INTERLINKED.Master.Worker.exe','INTERLINKED-Desktop/INTERLINKED.Master.Worker.exe.config','INTERLINKED-Desktop/Violet.png',
@@ -26,7 +26,7 @@ $allowed=@('INTERLINKED.cmd','INTERLINKED-Browser.cmd','INTERLINKED-App/interlin
  'INTERLINKED-Desktop/WebView2-NOTICE.txt','INTERLINKED-Desktop/DESKTOP-CHECKSUMS.json')
 $context=[pscustomobject]@{Workspace=$workspace;Kit=$kit;Allowed=$allowed;ClientFileCount=52;
  ClientSealSha256='362517385124df2ad6d55363fc0b39d072b4378c11e3f468b1bfebf8bc21f3fc';
- Pins=@{'magix_projects.py'='6c2ea58d9ac89a20c4b2bb42347b79f5802b049b2c81812314e09412578de1bf';
+ Pins=@{'magix_projects.py'='29434d26caa8c656ea6fd181d2a0d79e3eaad2a56b77e6b8bfae5751e22205b9';
         'magix_workspace.py'='c60fb2559a90a2301aa3d741c1d2e676e5ed90559fb40a63e27ef83d75f697aa';
         'MAGIX-All-Projects-Index.json'='bccb71983d23a3baa88926aca4d14fe6ce95d003e46e1d3d696350e47b746a83'}}
 $modulePath=Join-Path $PSScriptRoot 'Interlinked-Desktop-Publication.psm1'

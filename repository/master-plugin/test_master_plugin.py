@@ -129,7 +129,11 @@ def main():
             raise AssertionError('Unsafe configuration accepted: ' + label)
 
     seal = read_json(KIT / 'INTERLINKED-App/GUI-CHECKSUMS.json')
-    check(seal.get('format') == 'interlinked-gui-checksums-v4', 'Installed application uses the current reviewed GUI seal')
+    expected_gui = {'interlinked_gui.py','interlinked_controller.py','interlinked_hub.py','interlinked_mw5.py',
+                    'interlinked_master.py','master_hook.py','master_bridge.py','interlinked_jobs.py','interlinked_buddy.py',
+                    'web/index.html','web/app.js','web/style.css'}
+    check(seal.get('format') == 'interlinked-gui-checksums-v5' and set(seal.get('files', {})) == expected_gui,
+          'Installed application uses the current twelve-file Buddy-compatible GUI seal')
     check(all(seal['files'].get(name) == digest(ordinary(KIT / 'INTERLINKED-App' / name))
               for name in ('master_bridge.py', 'interlinked_master.py', 'master_hook.py')),
           'Installed bridge and companions match the application seal')

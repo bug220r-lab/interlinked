@@ -152,7 +152,7 @@ function renderDetail(){
  for(const warning of [...(selected.warnings||[]),...(selected.notes||[])]){const li=document.createElement('li');li.textContent=String(warning);$('warnings').append(li);}
  updateEntry();renderState();
 }
-function select(id,record=false){const previous=selected?.id;selected=projects.find(p=>p.id===id)||projects[0];auditLoaded=null;auditSequence++;if(previous!==selected?.id){mw5Readiness=null;mw5Preview=null;mw5Sequence++;}if(selected)selected.loadingEntries=isMagix(selected);renderList();renderDetail();if(!selected)return;if(isMagix(selected)){loadEntries(selected.id).catch(error=>{if(selected?.id===id){selected.loadingEntries=false;renderState();}showError(error);});if(previous!==selected.id){$('missing-path').value='';$('missing-note').value='';}loadMissing().catch(missingError);if(!$('audit-panel').hidden)loadAudit().catch(showError);}if(projectType(selected)==='mw5')loadMw5().catch(showError);if(record)recordRecent(selected.id).catch(showError);}
+function select(id,record=false){const previous=selected?.id;selected=projects.find(p=>p.id===id)||projects[0];auditLoaded=null;auditSequence++;if(previous!==selected?.id){mw5Readiness=null;mw5Preview=null;mw5Sequence++;}if(selected)selected.loadingEntries=isMagix(selected);renderList();renderDetail();if(!selected)return;if(isMagix(selected)){loadEntries(selected.id).catch(error=>{if(selected?.id===id){selected.loadingEntries=false;renderState();}showError(error);});if(previous!==selected.id){$('missing-path').value='';$('missing-note').value='';}loadMissing().catch(missingError);if(!$('audit-panel').hidden)loadAudit().catch(showError);}if(projectType(selected)==='mw5')loadMw5().catch(showError);if(record)recordRecent(selected.id).catch(showError);if($('buddy-report-panel'))buddyLoadReport();}
 async function loadEntries(id){const sequence=++entrySequence,result=await api('/api/entries?project='+encodeURIComponent(id));if(selected?.id!==id||sequence!==entrySequence)return;selected.entryPoints=result.entries;selected.loadingEntries=false;renderDetail();if(result.warnings.length)$('entry-note').textContent+=' '+result.warnings.join(' ');}
 function updateEntry(){if(!isMagix(selected)){$('entry-note').textContent=projectType(selected)==='mw5'?'Stage the reviewed mod plugins below before opening the editor. Collect changes after the editor closes.':'Open working folder starts a protected editing session. Close your editors and running tools before finishing it.';return;}const item=selected?.entryPoints.find(e=>e.path===$('entry').value);$('entry-note').textContent=item?.kind==='recovery'?'Backup selected: MAGIX opens, then choose File > Load backup project using the exact local path shown in Activity. The backup is not renamed.':'The reviewed launcher uses a short local path to the selected cached project. It does not stream media from MSI.';}
 async function loadCatalog(){
@@ -196,6 +196,7 @@ async function poll(){
  const sequence=++pollSequence,value=await api('/api/state');if(sequence<appliedPoll)return;appliedPoll=sequence;state=value;renderState();
  if(state.operation&&!state.transferring&&!['STARTING','RUNNING','WAITING_FOR_MAGIX'].includes(state.operation.status)&&state.operation.id!==lastCompleted){const completed=state.operation.id;await loadCatalog();lastCompleted=completed;}
  else if(Date.now()-lastCatalogRefresh>8000&&!mutation){await loadCatalog();}
+ if($('buddy-report-panel')&&!document.hidden&&Date.now()-buddyReportRefreshed>5000)await buddyLoadReport();
 }
 async function sendResponse(response){
  const job=state.operation;if(!job)throw new Error('No active session.');
@@ -613,3 +614,61 @@ if($('msi-jobs-view')){
  setInterval(()=>{if(jobsVisible&&!document.hidden&&!stopped)jobsPoll().catch(jobsShowError);},1500);
  if(new URLSearchParams(location.search).get('view')==='jobs')jobsSetView();
 }
+
+
+
+
+
+// BEGIN BUDDY PROJECT REPORT
+let buddyReportSequence=0,buddyReportRefreshed=0,buddyReportProject=null,buddyReportSnapshot=null;
+function buddyReportModel(value){
+ const available=value?.available===true,raw=value?.counts||{};
+ const number=key=>Number.isSafeInteger(raw[key])&&raw[key]>=0?raw[key]:0;
+ return {available,observed:String(value?.source_observed_at||value?.observed_at||''),counts:{total:number('total'),prepared:number('prepared'),delivered:number('delivered'),attention:number('attention'),running:number('running'),queued:number('queued')},tasks:(Array.isArray(value?.tasks)?value.tasks:[]).slice(0,100),truncated:value?.truncated===true};
+}
+function buddyRenderReport(value){
+ const model=buddyReportModel(value),panel=$('buddy-report-panel');if(!panel)return;
+ for(const key of ['prepared','delivered','attention','queued'])$('buddy-report-'+key).textContent=model.available?String(model.counts[key]):'—';
+ $('buddy-report-observed').textContent=model.available?'Last Buddy report · '+(model.observed||'observation time not recorded'):'No Buddy report received for this project.';
+ $('buddy-report-empty').hidden=model.available&&model.tasks.length>0;
+ $('buddy-report-empty').textContent=model.available?'The latest report contains no tasks.':'Run work in ED-IT Buddy and publish its project report to see results here.';
+ $('buddy-report-list').replaceChildren();
+ for(const task of model.tasks){
+  if(!task||typeof task!=='object')continue;
+  const item=document.createElement('li');item.className='buddy-report-task'+(task.attention?' attention':'');
+  const title=document.createElement('strong');title.textContent=String(task.kind||'Task')+' · '+String(task.status||'unknown');
+  const delivery=document.createElement('span');delivery.className='buddy-report-delivery';delivery.textContent='Project delivery: '+String(task.delivery_status||'not_delivered');
+  item.append(title,delivery);
+  if(task.message){const message=document.createElement('p');message.textContent=String(task.message).slice(0,1000);item.append(message);}
+  const outputs=Array.isArray(task.outputs)?task.outputs:[];
+  if(outputs.length){
+   const references=document.createElement('ul');references.className='buddy-report-outputs';
+   for(const output of outputs.slice(0,10)){
+    const row=document.createElement('li');row.textContent=String(output?.path||'Recorded output').slice(0,2048)+(typeof output?.sha256==='string'&&/^[a-f0-9]{64}$/.test(output.sha256)?' · SHA-256 '+output.sha256.slice(0,12):'');references.append(row);
+   }
+   item.append(references);
+  }
+  if(task.outputs_truncated){const note=document.createElement('small');note.textContent='Additional output references remain in Buddy’s complete report.';item.append(note);}
+  if(task.reviewed_by_user_at){const review=document.createElement('small');review.textContent='User marked reviewed: '+String(task.reviewed_by_user_at);item.append(review);}
+  $('buddy-report-list').append(item);
+ }
+ $('buddy-report-limits').textContent=(model.truncated?'Showing up to 100 tasks, with attention items first. ':'')+'Prepared, delivered, and saved to MSI are separate outcomes. Save-back remains explicit.';
+}
+async function buddyLoadReport(){
+ const id=selected?.id,sequence=++buddyReportSequence;if(!$('buddy-report-panel'))return;
+ buddyReportRefreshed=Date.now();
+ if(buddyReportProject!==id){buddyReportProject=id;buddyReportSnapshot=null;buddyRenderReport(null);}
+ $('buddy-report-error').hidden=true;$('buddy-report-refresh').disabled=!id;
+ if(!id)return;
+ try{
+  const value=await api('/api/buddy-report?project='+encodeURIComponent(id));
+  if(selected?.id!==id||sequence!==buddyReportSequence)return;
+  buddyReportSnapshot=value;buddyRenderReport(value);
+ }catch(error){
+  if(selected?.id!==id||sequence!==buddyReportSequence)return;
+  $('buddy-report-error').textContent='Buddy report unavailable. '+String(error.message||error);$('buddy-report-error').hidden=false;
+  if(buddyReportSnapshot)$('buddy-report-observed').textContent='Retained report · local refresh failed. Last source observation: '+String(buddyReportSnapshot.source_observed_at||buddyReportSnapshot.observed_at||'unknown');
+ }
+}
+if($('buddy-report-panel'))$('buddy-report-refresh').addEventListener('click',()=>buddyLoadReport());
+// END BUDDY PROJECT REPORT

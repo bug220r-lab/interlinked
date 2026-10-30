@@ -89,13 +89,14 @@ function Assert-DesktopObjectKeys($Object,[string[]]$Keys) {
 function Assert-DesktopGuiSeal($Context,$Seal,[hashtable]$Prospective) {
     Assert-DesktopObjectKeys $Seal @('format','files','auditSha256')
     $names=@('interlinked_gui.py','web/index.html','web/app.js','web/style.css')
-    if($Prospective -and $Seal.format -cne 'interlinked-gui-checksums-v4'){
-        throw 'The read-only MSI Jobs release requires an exact eleven-file v4 GUI seal.'
+    if($Prospective -and $Seal.format -cne 'interlinked-gui-checksums-v5'){
+        throw 'The Buddy integration release requires an exact twelve-file v5 GUI seal.'
     }
-    if($Seal.format -cin @('interlinked-gui-checksums-v2','interlinked-gui-checksums-v3','interlinked-gui-checksums-v4')){
+    if($Seal.format -cin @('interlinked-gui-checksums-v2','interlinked-gui-checksums-v3','interlinked-gui-checksums-v4','interlinked-gui-checksums-v5')){
         $names+=@('interlinked_controller.py','interlinked_hub.py','interlinked_mw5.py')
-        if($Seal.format -cin @('interlinked-gui-checksums-v3','interlinked-gui-checksums-v4')){$names+=@('interlinked_master.py','master_hook.py','master_bridge.py')}
-        if($Seal.format -ceq 'interlinked-gui-checksums-v4'){$names+=@('interlinked_jobs.py')}
+        if($Seal.format -cin @('interlinked-gui-checksums-v3','interlinked-gui-checksums-v4','interlinked-gui-checksums-v5')){$names+=@('interlinked_master.py','master_hook.py','master_bridge.py')}
+        if($Seal.format -cin @('interlinked-gui-checksums-v4','interlinked-gui-checksums-v5')){$names+=@('interlinked_jobs.py')}
+        if($Seal.format -ceq 'interlinked-gui-checksums-v5'){$names+=@('interlinked_buddy.py')}
     } elseif($Seal.format -ceq 'interlinked-gui-checksums-v1'){
     } else {throw 'Unknown GUI seal format.'}
     Assert-DesktopObjectKeys $Seal.files $names

@@ -30,7 +30,7 @@ from urllib.parse import parse_qs, urlsplit
 import uuid
 import webbrowser
 
-MAGIX_SHA='6c2ea58d9ac89a20c4b2bb42347b79f5802b049b2c81812314e09412578de1bf'
+MAGIX_SHA='29434d26caa8c656ea6fd181d2a0d79e3eaad2a56b77e6b8bfae5751e22205b9'
 BASE_SHA='c60fb2559a90a2301aa3d741c1d2e676e5ed90559fb40a63e27ef83d75f697aa'
 INDEX_SHA='bccb71983d23a3baa88926aca4d14fe6ce95d003e46e1d3d696350e47b746a83'
 CLIENT_SEAL_SHA='362517385124df2ad6d55363fc0b39d072b4378c11e3f468b1bfebf8bc21f3fc'
@@ -102,7 +102,7 @@ def identifier(value):
     return value
 
 def load_companion(name):
-    need(name in ('interlinked_controller','interlinked_hub','interlinked_mw5','interlinked_master','interlinked_jobs'),'Unknown companion module.')
+    need(name in ('interlinked_controller','interlinked_hub','interlinked_mw5','interlinked_master','interlinked_jobs','interlinked_buddy'),'Unknown companion module.')
     if name in sys.modules:return sys.modules[name]
     path=Path(__file__).resolve().parent/(name+'.py')
     spec=importlib.util.spec_from_file_location(name,ordinary(path))
@@ -309,8 +309,8 @@ def production_runtime():
     need(app==KIT/'INTERLINKED-App','Use the local deployed INTERLINKED kit.')
     ordinary(app);ordinary(KIT)
     seal=read_json(app/'GUI-CHECKSUMS.json',1024*1024)
-    expected={'interlinked_gui.py','interlinked_controller.py','interlinked_hub.py','interlinked_mw5.py','interlinked_master.py','master_hook.py','master_bridge.py','interlinked_jobs.py','web/index.html','web/app.js','web/style.css'}
-    need(seal.get('format')=='interlinked-gui-checksums-v4' and set(seal.get('files',{}))==expected,'GUI seal is missing or incomplete.')
+    expected={'interlinked_gui.py','interlinked_controller.py','interlinked_hub.py','interlinked_mw5.py','interlinked_master.py','master_hook.py','master_bridge.py','interlinked_jobs.py','interlinked_buddy.py','web/index.html','web/app.js','web/style.css'}
+    need(seal.get('format')=='interlinked-gui-checksums-v5' and set(seal.get('files',{}))==expected,'GUI seal is missing or incomplete.')
     for rel,sha in seal['files'].items():
         path=ordinary(app/rel);need(digest(path)==sha,'GUI file differs: '+rel)
     for name,sha in (('magix_projects.py',MAGIX_SHA),('magix_workspace.py',BASE_SHA),('MAGIX-All-Projects-Index.json',INDEX_SHA)):
@@ -751,6 +751,7 @@ def main():
     runtime=demo_runtime(args.demo_state or Path(os.environ.get('TEMP','.'))/('INTERLINKED-Demo-'+uuid.uuid4().hex)) if args.demo else production_runtime()
     if args.demo:
         runtime.master_worker=args.master_worker;runtime.master_violet=args.master_violet
+    load_companion('interlinked_buddy').install(sys.modules[__name__])
     controller=load_companion('interlinked_controller').controller_class(sys.modules[__name__])(runtime);server=Server(controller,args.port)
     write_json(controller.run/'startup.json',dict(format='interlinked-gui-startup-v1',utc=utc(),mode='DEMO' if args.demo else 'PRODUCTION',projectCount=len(controller.projects),appSha256=digest(Path(__file__)),webSha256={name:digest(runtime.web/name) for name in ('index.html','app.js','style.css')},auditSha256=digest(KIT/'MAGIX-Media-Audit.json') if runtime.audit is not None else None,loopbackOnly=True,port=server.server_port,busy=False,canQuit=True,tokenRecorded=False))
     url=server.origin+'/#'+server.token
