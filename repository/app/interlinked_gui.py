@@ -102,7 +102,7 @@ def identifier(value):
     return value
 
 def load_companion(name):
-    need(name in ('interlinked_controller','interlinked_hub','interlinked_mw5','interlinked_master','interlinked_jobs','interlinked_buddy'),'Unknown companion module.')
+    need(name in ('interlinked_controller','interlinked_hub','interlinked_mw5','interlinked_master','interlinked_jobs','interlinked_buddy','interlinked_stats','interlinked_stats_process'),'Unknown companion module.')
     if name in sys.modules:return sys.modules[name]
     path=Path(__file__).resolve().parent/(name+'.py')
     spec=importlib.util.spec_from_file_location(name,ordinary(path))
@@ -310,7 +310,8 @@ def production_runtime():
     ordinary(app);ordinary(KIT)
     seal=read_json(app/'GUI-CHECKSUMS.json',1024*1024)
     expected={'interlinked_gui.py','interlinked_controller.py','interlinked_hub.py','interlinked_mw5.py','interlinked_master.py','master_hook.py','master_bridge.py','interlinked_jobs.py','interlinked_buddy.py','web/index.html','web/app.js','web/style.css'}
-    need(seal.get('format')=='interlinked-gui-checksums-v5' and set(seal.get('files',{}))==expected,'GUI seal is missing or incomplete.')
+    expected.update({'interlinked_stats.py','interlinked_stats_process.py'})
+    need(seal.get('format')=='interlinked-gui-checksums-v6' and set(seal.get('files',{}))==expected,'GUI seal is missing or incomplete.')
     for rel,sha in seal['files'].items():
         path=ordinary(app/rel);need(digest(path)==sha,'GUI file differs: '+rel)
     for name,sha in (('magix_projects.py',MAGIX_SHA),('magix_workspace.py',BASE_SHA),('MAGIX-All-Projects-Index.json',INDEX_SHA)):
@@ -687,6 +688,10 @@ class Handler(BaseHTTPRequestHandler):
                 if picture:self.respond(200,picture,'image/jpeg')
                 else:self.respond(503,dict(error='MASTER preview is not available yet.'))
             elif path=='/api/catalog' and not parsed.query:self.respond(200,self.server.controller.catalog())
+            elif path=='/api/stats':
+                query=parse_qs(parsed.query,strict_parsing=True)
+                need(set(query)=={'project'} and len(query['project'])==1,'Select one Stats project.')
+                self.respond(200,self.server.controller.stats.view(query['project'][0]))
             elif path=='/api/mw5':
                 query=parse_qs(parsed.query,strict_parsing=True)
                 need(set(query)=={'project'} and len(query['project'])==1,'Select one MW5 project.')
@@ -710,7 +715,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             self.gate(api=True,write=True)
-            need(self.path in ('/api/action','/api/session','/api/quit','/api/missing/report','/api/missing/status','/api/preferences','/api/hub/refresh','/api/mw5/check','/api/mw5/preview','/api/mw5/apply','/api/mw5/finish','/api/master/settings','/api/master/display','/api/msi/jobs/refresh'),'Unknown action route.')
+            need(self.path in ('/api/action','/api/session','/api/quit','/api/missing/report','/api/missing/status','/api/preferences','/api/hub/refresh','/api/mw5/check','/api/mw5/preview','/api/mw5/apply','/api/mw5/finish','/api/master/settings','/api/master/display','/api/msi/jobs/refresh','/api/stats/action'),'Unknown action route.')
             need(self.headers.get('Content-Type','').split(';')[0]=='application/json','JSON content type required.')
             need(self.headers.get('Transfer-Encoding') is None,'Chunked request bodies are not accepted.')
             length=int(self.headers.get('Content-Length','-1'));need(0<=length<=MAX_BODY,'Request too large or missing length.')
@@ -722,6 +727,7 @@ class Handler(BaseHTTPRequestHandler):
                 need(set(body)=={'response','operationId','promptGeneration'},'Unexpected session fields.');result=self.server.controller.session_input(body['response'],body['operationId'],body['promptGeneration'])
             elif self.path=='/api/missing/report':result=self.server.controller.report_missing(body)
             elif self.path=='/api/missing/status':result=self.server.controller.status_missing(body)
+            elif self.path=='/api/stats/action':result=self.server.controller.stats.request(body)
             elif self.path=='/api/preferences':result=self.server.controller.preferences(body)
             elif self.path=='/api/hub/refresh':result=self.server.controller.refresh_hub(body)
             elif self.path=='/api/msi/jobs/refresh':

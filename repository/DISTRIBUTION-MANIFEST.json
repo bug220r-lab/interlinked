@@ -1,8 +1,8 @@
 {
   "format": "interlinked-distribution-manifest-v1",
-  "createdUtc": "2026-10-30T19:11:21.677108+00:00",
-  "scope": "Reviewed project hub, MW5, read-only MSI Jobs, MASTER observatory and restricted local Violet bridge, Windows rendering/capture/sensor worker, desktop host and guarded publication; private telemetry, payloads, credentials and binaries excluded. Additive Buddy companion, lock-owner media ingestion and authenticated project work report.",
-  "previousManifestSha256": "4dc887c3a2b815427dc4bfb58bcc97ef11c2c708a67a451394a96c015d620efd",
+  "createdUtc": "2026-10-30T20:18:31.967683+00:00",
+  "scope": "Reviewed project hub, MW5, read-only MSI Jobs, MASTER observatory and restricted local Violet bridge, Windows rendering/capture/sensor worker, desktop host and guarded publication; private telemetry, payloads, credentials and binaries excluded. Additive Buddy companion, lock-owner media ingestion and authenticated project work report. Independent Stats workspace, contained native process lifecycle and guarded v6 application publication.",
+  "previousManifestSha256": "1a86372282d365dd39c1a1fe8bbb157e39a5e5dbe67308064da56eb130aa271c",
   "files": [
     {
       "path": ".gitattributes",
@@ -67,8 +67,8 @@
     {
       "path": "repository/app/README.md",
       "origin": "GUI and source-library audit addition",
-      "bytes": 19679,
-      "sha256": "bd44f4f1b9f328c4a2791d64c23631343e24841fb971403614a0029684471afa"
+      "bytes": 22168,
+      "sha256": "e9e11b1f96f419222cd78a56d9fc9359f543188d0107845a064c6a922233c086"
     },
     {
       "path": "repository/app/interlinked_buddy.py",
@@ -79,14 +79,14 @@
     {
       "path": "repository/app/interlinked_controller.py",
       "origin": "Buddy companion integration reviewed source",
-      "bytes": 27229,
-      "sha256": "093cd4d17dc32251c98c8fbaf54d8fe2dc4467ac7e3ac3ca9bebda631fbee8a0"
+      "bytes": 27959,
+      "sha256": "7906c4dbc820696d0fb9ead2683f4ae1598f4277060668f54a44f38ba4c8b8d4"
     },
     {
       "path": "repository/app/interlinked_gui.py",
       "origin": "Buddy companion integration reviewed source",
-      "bytes": 53353,
-      "sha256": "6f5028eaa8f9851440b82fdcf411645bcb866bfb8e6bb669fe48098fedd90e0f"
+      "bytes": 53890,
+      "sha256": "fe0f3f6135d03752cf8d3ac9109e1f40fd81980c9e4c5e1dc33c57022f0195bf"
     },
     {
       "path": "repository/app/interlinked_hub.py",
@@ -103,14 +103,26 @@
     {
       "path": "repository/app/interlinked_master.py",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 52741,
-      "sha256": "446a9ec115a6053c05d9a3300aaa36d7e3d467c83221d7120e08ef86dc195192"
+      "bytes": 53070,
+      "sha256": "4efbb8f867777b455e3c78c077ca4bed1524c24bff12a52dcb8d22c945801ba0"
     },
     {
       "path": "repository/app/interlinked_mw5.py",
       "origin": "reviewed unified hub and MW5 orchestration or synthetic validation",
       "bytes": 36856,
       "sha256": "a2fc965b482b629eeef6ab60ff8c2814f646d64622e98ef12ed37b14c16fa57a"
+    },
+    {
+      "path": "repository/app/interlinked_stats.py",
+      "origin": "Reviewed Stats application integration and isolated fixtures",
+      "bytes": 18023,
+      "sha256": "8766e53a83e637f1764b07c25de8967e04b30d430827dea49aab90d67020b63b"
+    },
+    {
+      "path": "repository/app/interlinked_stats_process.py",
+      "origin": "Reviewed Stats application integration and isolated fixtures",
+      "bytes": 12196,
+      "sha256": "261eeb4b8d678aa8315cbd8106893798991add6c14d2882902217a292a8e9305"
     },
     {
       "path": "repository/app/master_bridge.py",
@@ -145,14 +157,14 @@
     {
       "path": "repository/app/test_hub_integration.py",
       "origin": "reviewed unified hub and MW5 orchestration or synthetic validation",
-      "bytes": 26780,
-      "sha256": "4a9a21fd25b0b23b598ac6894e86629931bbac2466c34a8d50b49e86c6f718b6"
+      "bytes": 28313,
+      "sha256": "3820feaf897b7b212be63da4bf93a8048c7032220a155e29769ea8162529a227"
     },
     {
       "path": "repository/app/test_hub_ui.js",
       "origin": "reviewed unified hub and MW5 orchestration or synthetic validation",
-      "bytes": 10262,
-      "sha256": "ff6b6278b44a90a17a3eb8492769cd7cf77a9127530ef6eb8ffd7d9db1d1014c"
+      "bytes": 11618,
+      "sha256": "546d0a2341c0005971ce1f75e2560284f5fef58547bef2a812f5a5fd7ede46cc"
     },
     {
       "path": "repository/app/test_jobs.py",
@@ -227,16 +239,22 @@
       "sha256": "2466131550e2f862abae335d22ff34b2b8745365ca9707312e267b71547cb3c4"
     },
     {
+      "path": "repository/app/test_stats.py",
+      "origin": "Reviewed Stats application integration and isolated fixtures",
+      "bytes": 8472,
+      "sha256": "0290f2d03ad7e2671116ccc7740775d8b81b0dc443c65578cb75570b965488d9"
+    },
+    {
       "path": "repository/app/web/app.js",
       "origin": "Buddy companion integration reviewed source",
-      "bytes": 73402,
-      "sha256": "f8f554aa11a1b6ba0eec397f62c37d39fee1ed55f4c9e49f8e1bd96fdf828b80"
+      "bytes": 77096,
+      "sha256": "8673fb4b3e0f469cfb9e266067e6672bcb30e95d320ad7d82153f101976fce7f"
     },
     {
       "path": "repository/app/web/index.html",
       "origin": "Buddy companion integration reviewed source",
-      "bytes": 24041,
-      "sha256": "e765b5aa189154c74b942bf7105fc5dfb5b16234e76a9d22c75dcfb6b4810c10"
+      "bytes": 25293,
+      "sha256": "bb8aec13699b924133adc91c17d65e8ddf12643beeb6fed915d7a34264e860d9"
     },
     {
       "path": "repository/app/web/style.css",
@@ -301,14 +319,14 @@
     {
       "path": "repository/deployment/Interlinked-Desktop-Publication.psm1",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 17231,
-      "sha256": "8427d8244845294894e2aeb59b0f5f0904ba23457a6e438fa2141678df7049e3"
+      "bytes": 17821,
+      "sha256": "73c77a290d7d614609dc57ae4f1c2558ab3de01f0c848266ed3ddad023e6a543"
     },
     {
       "path": "repository/deployment/Publish-Interlinked-Desktop.ps1",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 4570,
-      "sha256": "1100462a5584cb647680cfdae9f8e025d622769249ad300b46761eca2021022b"
+      "bytes": 4658,
+      "sha256": "18cf787cffa2c7b16666330318ed8dd42fe818f3f2b2ae224b63130c6301b29f"
     },
     {
       "path": "repository/deployment/Publish-Interlinked-GUI.ps1",
@@ -325,14 +343,14 @@
     {
       "path": "repository/deployment/README.md",
       "origin": "GUI and source-library audit addition",
-      "bytes": 5343,
-      "sha256": "2e8c8e1349f0eef78a4863730f5f864b8047fc178f1c72e6ece70175a1c9d854"
+      "bytes": 5887,
+      "sha256": "6d351ad39332dce6b067917a15cc947a366541a8245998baa6d868a6dd1c8d6e"
     },
     {
       "path": "repository/deployment/Test-Interlinked-Desktop-Publication.ps1",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 23349,
-      "sha256": "b1021de9eeafe14dd633ae0fb0f162fdfeab5ab61d43adef82a68d3cfe239943"
+      "bytes": 24190,
+      "sha256": "7843402b385115b6e662c91a85dacd2e85e29e032a6f58c2e49238ce041d0b9d"
     },
     {
       "path": "repository/deployment/import_magix_presets.py",
@@ -397,8 +415,8 @@
     {
       "path": "repository/desktop/README.md",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 15053,
-      "sha256": "6dab370b70bdba73491084bc5f539625b3c034676278d78d058842622148d035"
+      "bytes": 15062,
+      "sha256": "65a4bf037a6a1665a15c2d33b3a23936e771c70679d51caa657362e5bcca7c42"
     },
     {
       "path": "repository/desktop/Test-Desktop-Package.ps1",
@@ -417,6 +435,18 @@
       "origin": "Existing pending application source retained during MSI observer integration",
       "bytes": 1132,
       "sha256": "e86b2bd31462a5095e23343b155ae1e876e293788b0dfe59237f18ec25d3c7ef"
+    },
+    {
+      "path": "repository/desktop/Test-Violet-Status.ps1",
+      "origin": "authored Violet status rendering regression fixture",
+      "bytes": 1475,
+      "sha256": "d9db0e7626ab0a8e8cab3fc9e7867a30604fc82cda3b539a5193f03c0e3e2300"
+    },
+    {
+      "path": "repository/desktop/VioletStatusFixture.cs",
+      "origin": "authored Violet status rendering regression fixture",
+      "bytes": 7774,
+      "sha256": "d904fe95deaf35013124716f181b0ddb3b5cb9d874c2bf62ebbf43b9e740b8f1"
     },
     {
       "path": "repository/desktop/master_resource_probe.py",
@@ -1150,24 +1180,12 @@
       "sha256": "8292e73ee50bf82a180e7f70860a55678f6e05b7b4abe6e8ca2884166d204fb0",
       "origin": "exact initial imported source",
       "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\test_preparation.ps1"
-    },
-    {
-      "path": "repository/desktop/VioletStatusFixture.cs",
-      "origin": "authored Violet status rendering regression fixture",
-      "bytes": 7774,
-      "sha256": "d904fe95deaf35013124716f181b0ddb3b5cb9d874c2bf62ebbf43b9e740b8f1"
-    },
-    {
-      "path": "repository/desktop/Test-Violet-Status.ps1",
-      "origin": "authored Violet status rendering regression fixture",
-      "bytes": 1475,
-      "sha256": "d9db0e7626ab0a8e8cab3fc9e7867a30604fc82cda3b539a5193f03c0e3e2300"
     }
   ],
   "summary": {
-    "files": 178,
-    "bytes": 2019698,
-    "pythonSourcesParsed": 67
+    "files": 181,
+    "bytes": 2072381,
+    "pythonSourcesParsed": 70
   },
   "preservedBaseline": "Original SOURCE-MANIFEST, MAGIX-EXTENSION-MANIFEST, frozen workspace base and original launcher source remain exact. Buddy launcher is a separate current source addition.",
   "privacy": "No personal catalog, media audit report, deployment seal, source media, cache, credential or runtime binary is included.",
@@ -1178,5 +1196,13 @@
     "liveManagedMagixAdditiveDelivery": "PASS with generated test asset",
     "explicitSaveBackAndIndependentVerify": "PASS",
     "evidence": "Detailed machine-local receipts, catalogs, project identifiers and media remain outside Git."
+  },
+  "statsValidation": {
+    "lifecycleTests": 8,
+    "hubHttpChecks": 105,
+    "hubUiChecks": 47,
+    "publicationChecks": 95,
+    "nativeDesktopChecks": 39,
+    "scope": "Earlier isolated and installed v6 acceptance; private connection, data, seals and receipts excluded."
   }
 }

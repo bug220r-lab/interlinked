@@ -860,6 +860,9 @@ class MasterService:
                     dict(status='unknown', summary='INTERLINKED controller is unavailable', source='INTERLINKED controller', observedAt=None))
             elif identifier == 'mw5-mod' and (operation.get('activeSession') or {}).get('kind', '').startswith('mw5'):
                 workspace = dict(status='editing', summary='Managed MW5 session active', source='INTERLINKED controller', observedAt=controller_observed)
+            elif identifier == 'the-stats' and controller_observed:
+                status=(operation.get('statsSession') or {}).get('status','unknown')
+                workspace=dict(status=status.lower(),summary='The Stats '+status.lower().replace('_',' '),source='INTERLINKED Stats supervisor',observedAt=controller_observed)
             elif identifier == 'ed-it-buddy':
                 try:
                     buddy_path = self.feed / 'ed-it-buddy.json' if self.runtime.demo else Path(os.environ.get('LOCALAPPDATA', '')) / 'ED-IT Buddy/master-status/status.json'

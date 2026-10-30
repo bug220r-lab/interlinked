@@ -18,7 +18,7 @@ kit/MAGIX-All-Projects-Index.json       # private, pinned snapshot
 kit/Project-Library-Client/Runtime/python.exe
 ```
 
-The current GUI seal uses `format: interlinked-gui-checksums-v5`, a `files` object mapping the four existing Python modules, `interlinked_master.py`, `master_hook.py`, `master_bridge.py`, `interlinked_jobs.py`, `interlinked_buddy.py` and the three web assets to their exact SHA-256 values, and `auditSha256` for the unchanged private sidecar. Before importing companions, the production service checks this seal and the complete original 52-file client/runtime seal. The production kit and full sealed client must already exist. Source-only previews do not install or change system settings.
+The current GUI seal uses `format: interlinked-gui-checksums-v6`, an exact fourteen-member `files` object covering the Python companions (including `interlinked_stats.py` and `interlinked_stats_process.py`) and three web assets, and `auditSha256` for the unchanged private sidecar. Before importing companions, the production service checks this seal and the complete original 52-file client/runtime seal. The production kit and full sealed client must already exist. Source-only previews do not install or change system settings.
 
 Use Prepare/Open, save and close MAGIX, then choose **I saved and closed MAGIX**. That response does not save to MSI. Use **Save to MSI + verify** afterward; Free local space requires the exact selected project ID. In background mode, closing the desktop window hides it in the tray. Explicit Exit interface retains the existing operation/session shutdown guards; with background mode disabled, closing requests that guarded exit. In browser mode, closing a tab does not close stdin, terminate the child, save, or release files. Forced service/process termination cannot preserve a process-held lock: close MAGIX and use the reviewed console Recover workflow before continuing.
 
@@ -125,3 +125,44 @@ For a reviewed one-time observation import, load `MissingMediaLedger(state_path,
 ## Violet data reports
 
 MASTER distinguishes self-reported Dot activity, delegated local-task observations, demos and unverified legacy reports. Reporter labels are not account authentication; an actual Violet roundtrip remains a separate acceptance gate. Reports expire after two minutes. The independently rendered avatar prioritizes evidenced failures, input requests and working activity, otherwise displaying a neutral unknown state with the source visible. MASTER queues up to 100 historical attention items for the next requested Violet check; reading does not acknowledge them, and acknowledgment never changes project health. No automatic Dot wake-up or continuous model polling is configured. See the MASTER plugin README for the four restricted tools and migration behavior.
+
+## The Stats independent workspace
+
+The exact `stats-active` library entry has a separate Stats panel. Its reviewed
+connection is owned metadata under `INTERLINKED-GUI-State/stats/connection.json`;
+HTTP clients cannot supply paths or executable commands. The connection pins the
+project interpreter, managed launcher and dependency lock. The source checkout
+and `.venv` stay outside managed `Files`; the catalog hint resolves the explicit
+local `STATS_DATA_DIR`. Missing data or a changed runtime blocks launch.
+
+`GET /api/stats?project=<UI-ID>` returns readiness, session state and its revision.
+`POST /api/stats/action` accepts `{project,action,expectedRevision,confirmation?}`.
+Actions are `fetch`, `start`, `open-browser`, `stop`, `save`, `verify`, `release`
+and `acknowledge`. Release and recovery require the exact `stats-active` text.
+The original token, Host, Origin and body limits apply. Synthetic demo mode
+refuses native Stats operations.
+
+A Windows Job Object atomically contains the launcher and every ordinary child.
+A hidden console enables graceful CTRL_BREAK shutdown; the private stdin pipe
+carries only the stop message. Only a verified launcher readiness event opens the
+loopback browser. Closing the tab leaves the session running. Its original cache
+lease remains held until the entire process tree exits; uncertain exits retain a
+recovery journal and require an explicit integrity-checked acknowledgement.
+
+Stats can run beside the existing MAGIX/MW5 session without taking its workflow
+lease. Actual library transfers share the controller reservation; same-project
+writers still contend on the unchanged client's cache lock. Stats state does not
+overwrite the main operation or Done controls, but an active or interrupted Stats
+session blocks explicit service exit. Tray hiding remains available.
+
+MSI save uses the original client's save followed by verify and covers managed
+files only. Git commit/push protects the separate source checkout. Neither stop
+nor recovery automatically saves or releases data. MASTER's `the-stats` project
+registration observes its Git root and the supervisor's workspace state, keeping
+activity separate from tested-revision evidence.
+
+Run `test_stats.py --output <absolute-private-fixture-folder>` for lifecycle,
+registry and native process-tree checks. The extended `test_hub_integration.py`
+and `test_hub_ui.js` cover authenticated routes, independent sessions, quit guards,
+readiness and save-scope guidance. These fixtures do not establish live MSI saves
+or actual dashboard acceptance.

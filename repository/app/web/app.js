@@ -5,6 +5,7 @@ if(token){sessionStorage.setItem('interlinked-token',token);history.replaceState
 let projects=[], selected=null, state={busy:false,revision:0}, filter='all', auditLoaded=null, releaseTarget=null, lastCompleted=null, stopped=false;
 let mutation=false,pollSequence=0,appliedPoll=0,entrySequence=0,auditSequence=0;
 let requestedAction=null;
+let statsSnapshot=null,statsSequence=0;
 let missingSequence=0,notePending=false,missingRecords=[];
 let hub={},preferences={favorites:[],recent:[]},mw5Readiness=null,mw5Preview=null,mw5Sequence=0,lastCatalogRefresh=0;
 const chosenEntries=new Map();
@@ -79,7 +80,7 @@ function recentIds(prefs){return (prefs?.recent||[]).map(row=>typeof row==='stri
 function projectMatches(p,kind,search,prefs){
  const text=(p.name+' '+p.id+' '+(p.originalId||'')+' '+(p.description||'')).toLowerCase();
  if(search&&!text.includes(search.toLowerCase().trim()))return false;
- return kind==='all'||kind==='local'&&isLocal(p)||kind==='review'&&needsReview(p)||kind==='favorites'&&((prefs?.favorites||[]).includes(p.id)||p.favorite)||kind==='recent'&&(recentIds(prefs).includes(p.id)||p.recentUtc)||['magix','mw5','coding_data'].includes(kind)&&projectType(p)===kind;
+ return kind==='all'||kind==='local'&&isLocal(p)||kind==='review'&&needsReview(p)||kind==='favorites'&&((prefs?.favorites||[]).includes(p.id)||p.favorite)||kind==='recent'&&(recentIds(prefs).includes(p.id)||p.recentUtc)||['magix','mw5','coding_data'].includes(kind)&&projectType(p)===kind||kind==='coding_data'&&projectType(p)==='stats';
 }
 function hasCapability(p,key){
  if(!p)return false;
@@ -88,7 +89,7 @@ function hasCapability(p,key){
 }
 function canSelectProject(p,snapshot,mutating){
  if(!p||mutating||snapshot.closing)return false;
- if(!snapshot.busy)return true;
+ if(!snapshot.busy||p.originalId==='stats-active')return true;
  const active=snapshot.activeSession;
  return active?.projectId===p.id||active?.kind==='mw5-recovery'&&!active.projectId&&projectType(p)==='mw5';
 }
@@ -103,6 +104,11 @@ function evidenceText(evidence,label){
  return [when||'Time not recorded',version?'version '+version:'',scope,evidence.currentBaseline===false?'Previous baseline; current files are not certified':''].filter(Boolean).join(' · ');
 }
 function transferCanApply(preview){return !!preview&&preview.applicable===true&&!(preview.conflicts||[]).length&&typeof preview.id==='string'&&['stage','collect'].includes(preview.direction);}
+function statsControls(info,snapshot){
+ const changing=!!info?.operation&&['STARTING','RUNNING'].includes(info.operation.status)&&!info.running;
+ const idle=!!info&&!info.running&&info.status!=='RECOVERY_REQUIRED'&&!changing;
+ return {start:idle&&info.ready&&!snapshot.transferring,'open-browser':info?.status==='RUNNING',stop:['STARTING','RUNNING'].includes(info?.status),fetch:idle&&!snapshot.transferring,save:idle&&info.ready&&!snapshot.transferring,verify:idle&&info.ready&&!snapshot.transferring,release:idle&&info.ready&&!snapshot.transferring,acknowledge:info?.status==='RECOVERY_REQUIRED'&&!changing};
+}
 // END HUB MODELS
 function renderList(){
  const search=$('search').value.toLowerCase().trim();
@@ -122,7 +128,7 @@ function renderList(){
 }
 function renderDetail(){
  if(!selected)return;
- const magix=isMagix(selected),mw5=projectType(selected)==='mw5';
+ const magix=isMagix(selected),mw5=projectType(selected)==='mw5',stats=selected.originalId==='stats-active';
  $('project-code').textContent=selected.originalId||selected.id;$('project-name').textContent=selected.name;
  $('project-kind').textContent=human(projectType(selected))+' · LOCAL FIRST · EXPLICIT SAVE';
  $('project-subtitle').textContent=selected.description||(selected.cache.status==='READY'?'Your local working copy is retained. Finish the editing session before save-back.':magix?'Prepare one family at a time. Keep its media local while you work.':'Fetch a managed working copy before opening this project.');
@@ -134,6 +140,7 @@ function renderDetail(){
  $('audit-count').textContent=count!=null?count.toLocaleString()+' strings':'';
  $('audit-tab').hidden=!magix;$('missing-panel').hidden=!magix;$('entry-fields').hidden=!magix;$('mw5-panel').hidden=!mw5;
  if(!magix&&!$('audit-panel').hidden)setTab(false);
+ $('stats-panel').hidden=!stats;
  $('workspace-kind').textContent=mw5?'MW5 MOD PLUGINS':magix?'LOCAL MEDIA':'MANAGED FILES';
  $('open').hidden=!hasCapability(selected,'openApplication')&&!mw5;
  $('open').firstElementChild.textContent=magix?'Prepare & open MAGIX':mw5?'Open MW5 Editor':'Open application';
@@ -150,9 +157,10 @@ function renderDetail(){
  else if($('entry').value)chosenEntries.set(selected.id,$('entry').value);
  $('warnings').replaceChildren();
  for(const warning of [...(selected.warnings||[]),...(selected.notes||[])]){const li=document.createElement('li');li.textContent=String(warning);$('warnings').append(li);}
+ if(stats){$('save-guidance').textContent='Stop Stats before saving the managed library to MSI. Checkout code requires Git commit/push.';$('entry-note').textContent='Use the independent Stats controls below. The dashboard runs in your browser.';for(const id of ['open','fetch','folder','save','verify','release'])$(id).hidden=true;}else{for(const id of ['save','verify','release'])$(id).hidden=false;}
  updateEntry();renderState();
 }
-function select(id,record=false){const previous=selected?.id;selected=projects.find(p=>p.id===id)||projects[0];auditLoaded=null;auditSequence++;if(previous!==selected?.id){mw5Readiness=null;mw5Preview=null;mw5Sequence++;}if(selected)selected.loadingEntries=isMagix(selected);renderList();renderDetail();if(!selected)return;if(isMagix(selected)){loadEntries(selected.id).catch(error=>{if(selected?.id===id){selected.loadingEntries=false;renderState();}showError(error);});if(previous!==selected.id){$('missing-path').value='';$('missing-note').value='';}loadMissing().catch(missingError);if(!$('audit-panel').hidden)loadAudit().catch(showError);}if(projectType(selected)==='mw5')loadMw5().catch(showError);if(record)recordRecent(selected.id).catch(showError);if($('buddy-report-panel'))buddyLoadReport();}
+function select(id,record=false){const previous=selected?.id;selected=projects.find(p=>p.id===id)||projects[0];auditLoaded=null;auditSequence++;if(previous!==selected?.id){mw5Readiness=null;mw5Preview=null;mw5Sequence++;}if(selected)selected.loadingEntries=isMagix(selected);renderList();renderDetail();if(!selected)return;if(isMagix(selected)){loadEntries(selected.id).catch(error=>{if(selected?.id===id){selected.loadingEntries=false;renderState();}showError(error);});if(previous!==selected.id){$('missing-path').value='';$('missing-note').value='';}loadMissing().catch(missingError);if(!$('audit-panel').hidden)loadAudit().catch(showError);}if(selected.originalId==='stats-active')loadStats().catch(showError);if(projectType(selected)==='mw5')loadMw5().catch(showError);if(record)recordRecent(selected.id).catch(showError);if($('buddy-report-panel'))buddyLoadReport();}
 async function loadEntries(id){const sequence=++entrySequence,result=await api('/api/entries?project='+encodeURIComponent(id));if(selected?.id!==id||sequence!==entrySequence)return;selected.entryPoints=result.entries;selected.loadingEntries=false;renderDetail();if(result.warnings.length)$('entry-note').textContent+=' '+result.warnings.join(' ');}
 function updateEntry(){if(!isMagix(selected)){$('entry-note').textContent=projectType(selected)==='mw5'?'Stage the reviewed mod plugins below before opening the editor. Collect changes after the editor closes.':'Open working folder starts a protected editing session. Close your editors and running tools before finishing it.';return;}const item=selected?.entryPoints.find(e=>e.path===$('entry').value);$('entry-note').textContent=item?.kind==='recovery'?'Backup selected: MAGIX opens, then choose File > Load backup project using the exact local path shown in Activity. The backup is not renamed.':'The reviewed launcher uses a short local path to the selected cached project. It does not stream media from MSI.';}
 async function loadCatalog(){
@@ -169,7 +177,7 @@ async function action(name){
 function renderState(){
  const job=state.operation,busy=state.busy,locked=busy||mutation||state.closing;
  for(const id of ['open','save','verify','release','recover','fetch','folder'])$(id).disabled=locked||!selected;
- $('quit').disabled=locked||notePending;$('entry').disabled=locked||selected?.loadingEntries;
+ $('quit').disabled=locked||notePending||state.canQuit===false;$('entry').disabled=locked||selected?.loadingEntries;
  for(const button of document.querySelectorAll('.project-item'))button.disabled=!canSelectProject(projects.find(p=>p.id===button.dataset.project),state,mutation);
  if(selected&&!locked){$('open').disabled=!hasCapability(selected,'openApplication')||(isMagix(selected)&&(selected.loadingEntries||!$('entry').value));$('fetch').disabled=!hasCapability(selected,'fetch');$('folder').disabled=!hasCapability(selected,'openFolder');$('save').disabled=!hasCapability(selected,'save')||!['READY','PENDING_SAVE','DEMO'].includes(selected.cache.status);$('verify').disabled=!hasCapability(selected,'verify');$('release').disabled=!hasCapability(selected,'release')||!['READY','DEMO','RELEASING'].includes(selected.cache.status);}
  if(state.activeSession?.kind==='mw5'&&state.activeSession.projectId===selected?.id)$('open').disabled=mutation||state.transferring||state.closing||mw5Readiness?.busy||mw5Readiness?.session?.canOpen!==true;
@@ -184,7 +192,7 @@ function renderState(){
  $('release-confirm').disabled=mutation||$('release-id').value!==releaseTarget?.confirmation;
  $('done').textContent=job?.awaitingDone?(magixSession?'I saved and closed MAGIX':'I saved and closed my application'):'Waiting for the launcher…';
  $('cancel-startup').hidden=!magixSession;$('session-guidance').textContent=magixSession?'Keep this interface running while editing. Save in MAGIX and close all its windows before confirming.':'Keep this interface running while editing. Save your files and close all editors and running tools before finishing. MW5 changes must then be collected before save-back.';
- renderSessionBanner();renderMw5Controls();
+ renderSessionBanner();renderMw5Controls();renderStatsControls();
  const log=$('operation-log'),atEnd=log.scrollHeight-log.scrollTop-log.clientHeight<35;log.textContent=state.output||'No operation output yet.';if(atEnd)log.scrollTop=log.scrollHeight;
  $('log-warning').hidden=!job?.reportingWarning;$('log-warning').textContent=job?.reportingWarning||'';
  $('recovery-note').hidden=!state.previousIncomplete?.length;
@@ -196,6 +204,7 @@ async function poll(){
  const sequence=++pollSequence,value=await api('/api/state');if(sequence<appliedPoll)return;appliedPoll=sequence;state=value;renderState();
  if(state.operation&&!state.transferring&&!['STARTING','RUNNING','WAITING_FOR_MAGIX'].includes(state.operation.status)&&state.operation.id!==lastCompleted){const completed=state.operation.id;await loadCatalog();lastCompleted=completed;}
  else if(Date.now()-lastCatalogRefresh>8000&&!mutation){await loadCatalog();}
+ if(selected?.originalId==='stats-active')await loadStats();
  if($('buddy-report-panel')&&!document.hidden&&Date.now()-buddyReportRefreshed>5000)await buddyLoadReport();
 }
 async function sendResponse(response){
@@ -366,7 +375,7 @@ $('toggle-log').addEventListener('click',()=>{$('operation-log').hidden=!$('oper
 $('open-feedback-link').addEventListener('click',()=>{$('operation-log').hidden=false;$('toggle-log').textContent='Hide details';document.querySelector('.activity').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});});
 $('release').addEventListener('click',()=>{releaseTarget={id:selected.id,confirmation:releaseConfirmation(selected),name:selected.name,revision:state.revision};$('release-description').textContent=selected.name+' · '+size(selected.bytes)+' selected working set estimate.';$('release-expected').textContent=releaseTarget.confirmation;$('release-id').value='';$('release-confirm').disabled=true;$('release-dialog').showModal();});
 $('release-id').addEventListener('input',()=>{$('release-confirm').disabled=$('release-id').value!==releaseTarget?.confirmation;});
-$('release-confirm').addEventListener('click',safe(()=>mutate(async()=>{if(!releaseTarget)throw new Error('Choose a project again.');await api('/api/action',{action:'release',project:releaseTarget.id,confirmation:$('release-id').value,expectedRevision:releaseTarget.revision});$('release-dialog').close();releaseTarget=null;await poll();})));
+$('release-confirm').addEventListener('click',safe(()=>mutate(async()=>{if(!releaseTarget)throw new Error('Choose a project again.');await api(releaseTarget.stats?'/api/stats/action':'/api/action',{action:'release',project:releaseTarget.id,confirmation:$('release-id').value,expectedRevision:releaseTarget.revision});$('release-dialog').close();releaseTarget=null;await poll();})));
 $('quit').addEventListener('click',safe(()=>mutate(async()=>{await api('/api/quit',{});stopped=true;state.closing=true;$('mode').textContent='SERVICE STOPPED';$('operation-description').textContent='The interface service has stopped. You may close this tab.';document.querySelectorAll('button').forEach(button=>button.disabled=true);})));
 document.addEventListener('keydown',event=>{if(event.key==='/'&&!['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)){event.preventDefault();$('search').focus();}});
 async function initialize(){
@@ -580,7 +589,7 @@ async function masterAddProject(event){
  event.preventDefault();const label=$('master-project-label').value.trim(),root=$('master-project-root').value.trim();if(!label||!root)throw new Error('Enter the project name and its source folder.');
  const id=label.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,48);if(!id)throw new Error('Use at least one letter or number in the project name.');
  const current=masterSnapshot?.settings?.projects||masterSnapshot?.projects||[];
- await masterRequest(async()=>{await api('/api/master/settings',{projects:[...current.map(p=>({id:p.id,label:p.label||p.name||p.id,root:p.root||''})),{id,label,root}]});$('master-project-label').value='';$('master-project-root').value='';await masterPoll();});
+ await masterRequest(async()=>{await api('/api/master/settings',{projects:[...current.map(p=>({id:p.id,label:p.label||p.name||p.id,root:p.root||'',...(p.activityRoot?{activityRoot:p.activityRoot}:{})})),{id,label,root}]});$('master-project-label').value='';$('master-project-root').value='';await masterPoll();});
 }
 async function masterFetchFrame(){
  if(masterFrameBusy||!masterVisible||document.hidden||stopped)return;masterFrameBusy=true;const sequence=++masterFrameSequence;
@@ -672,3 +681,26 @@ async function buddyLoadReport(){
 }
 if($('buddy-report-panel'))$('buddy-report-refresh').addEventListener('click',()=>buddyLoadReport());
 // END BUDDY PROJECT REPORT
+
+async function loadStats(){
+ const id=selected?.id;if(selected?.originalId!=='stats-active')return;
+ const sequence=++statsSequence,info=await api('/api/stats?project='+encodeURIComponent(id));
+ if(selected?.id!==id||sequence!==statsSequence)return;statsSnapshot=info;renderStatsControls();
+}
+function renderStatsControls(){
+ if(!$('stats-panel')||selected?.originalId!=='stats-active')return;
+ const info=statsSnapshot,controls=statsControls(info,state);
+ $('stats-status').textContent=human(info?.status||'Checking');
+ $('stats-detail').textContent=info?.warning||info?.operation?.error||info?.reason||(info?.running?'The local dashboard is protected. Stop Stats before saving its library.':'Ready to launch against the managed local library.');
+ $('stats-paths').textContent=info?.dataRoot?('Library: '+info.dataRoot+' · Code: '+info.sourceRoot):'Fetch the library and configure the reviewed local runtime.';
+ for(const [name,enabled] of Object.entries(controls))$('stats-'+name).disabled=mutation||state.closing||!enabled;
+ $('stats-acknowledge').hidden=info?.status!=='RECOVERY_REQUIRED';
+}
+async function statsAction(name){
+ await loadStats();const id=selected.id;
+ let confirmation;
+ if(name==='acknowledge'){if(!confirm('Close every Stats dashboard, script and terminal using this library. Confirm recovery for stats-active?'))return;confirmation='stats-active';}
+ await mutate(async()=>{await api('/api/stats/action',{project:id,action:name,expectedRevision:statsSnapshot.revision,confirmation});await poll();await loadStats();},'stats-'+name);
+}
+for(const name of ['start','open-browser','stop','fetch','save','verify','acknowledge'])$('stats-'+name).addEventListener('click',safe(()=>statsAction(name)));
+$('stats-release').addEventListener('click',safe(async()=>{await loadStats();releaseTarget={id:selected.id,confirmation:releaseConfirmation(selected),name:selected.name,revision:statsSnapshot.revision,stats:true};$('release-description').textContent='The Stats managed local library. The separate Git checkout is outside release coverage.';$('release-expected').textContent=releaseTarget.confirmation;$('release-id').value='';$('release-confirm').disabled=true;$('release-dialog').showModal();}));

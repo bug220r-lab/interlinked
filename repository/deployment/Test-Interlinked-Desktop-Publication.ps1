@@ -19,6 +19,7 @@ $allowed=@('INTERLINKED.cmd','INTERLINKED-Browser.cmd','INTERLINKED-App/interlin
  'INTERLINKED-App/interlinked_controller.py','INTERLINKED-App/interlinked_hub.py','INTERLINKED-App/interlinked_mw5.py',
  'INTERLINKED-App/interlinked_master.py','INTERLINKED-App/master_hook.py','INTERLINKED-App/master_bridge.py',
  'INTERLINKED-App/interlinked_jobs.py','INTERLINKED-App/interlinked_buddy.py',
+ 'INTERLINKED-App/interlinked_stats.py','INTERLINKED-App/interlinked_stats_process.py',
  'INTERLINKED-App/web/index.html','INTERLINKED-App/web/app.js','INTERLINKED-App/web/style.css',
  'INTERLINKED-Desktop/INTERLINKED.exe','INTERLINKED-Desktop/INTERLINKED.exe.config','INTERLINKED-Desktop/Microsoft.Web.WebView2.Core.dll',
  'INTERLINKED-Desktop/INTERLINKED.Master.Worker.exe','INTERLINKED-Desktop/INTERLINKED.Master.Worker.exe.config','INTERLINKED-Desktop/Violet.png',
@@ -71,10 +72,10 @@ function Fixture {
  foreach($name in $allowed){Put (Join-Path $source $name) ('new fixture '+$name)}
  Put (Join-Path $source 'INTERLINKED-Browser.cmd') '@echo OLD'
  $newFiles=[ordered]@{}
- foreach($name in @('interlinked_gui.py','interlinked_controller.py','interlinked_hub.py','interlinked_mw5.py','interlinked_master.py','master_hook.py','master_bridge.py','interlinked_jobs.py','interlinked_buddy.py','web/index.html','web/app.js','web/style.css')){
+ foreach($name in @('interlinked_gui.py','interlinked_controller.py','interlinked_hub.py','interlinked_mw5.py','interlinked_master.py','master_hook.py','master_bridge.py','interlinked_jobs.py','interlinked_buddy.py','interlinked_stats.py','interlinked_stats_process.py','web/index.html','web/app.js','web/style.css')){
   $newFiles[$name]=Digest (Join-Path $source ('INTERLINKED-App/'+$name))
  }
- Json (Join-Path $source 'INTERLINKED-App/GUI-CHECKSUMS.json') @{format='interlinked-gui-checksums-v5';files=$newFiles;auditSha256=$oldSeal.auditSha256}
+ Json (Join-Path $source 'INTERLINKED-App/GUI-CHECKSUMS.json') @{format='interlinked-gui-checksums-v6';files=$newFiles;auditSha256=$oldSeal.auditSha256}
  $desktopFiles=[ordered]@{};foreach($name in $allowed | Where-Object {$_ -like 'INTERLINKED-Desktop/*' -and $_ -notlike '*/DESKTOP-CHECKSUMS.json'}){$desktopFiles[$name.Substring(20)]=Digest (Join-Path $source $name)}
  Json (Join-Path $source 'INTERLINKED-Desktop/DESKTOP-CHECKSUMS.json') @{format='interlinked-desktop-checksums-v1';files=$desktopFiles}
  if($DesktopInstalled -or $V2Baseline -or $V3Baseline -or $V4Baseline -or $V5Baseline){
@@ -89,6 +90,16 @@ function Refresh-Plan($F){
  Json $F.Plan @{format='interlinked-desktop-publication-v1';files=$F.Rows}
 }
 function Invoke($F,[switch]$Apply){Invoke-DesktopPublication -Context $F.Context -ManifestPath $F.Plan -ManifestSha256 (Digest $F.Plan) -ReceiptDirectory $F.Receipts -Apply:$Apply}
+
+foreach($status in @('STARTING','RUNNING','STOPPING','RECOVERY_REQUIRED')){
+ $f=Fixture;Json (Join-Path $f.Context.Kit 'INTERLINKED-GUI-State/stats/session.json') @{format='interlinked-stats-session-v1';status=$status}
+ Reject {Invoke $f -Apply} ('Unfinished Stats journal blocks publication: '+$status)
+}
+foreach($companion in @('interlinked_stats.py','interlinked_stats_process.py')){
+ $f=Fixture;$sealPath=Join-Path $f.Source 'INTERLINKED-App/GUI-CHECKSUMS.json';$seal=Get-Content $sealPath -Raw|ConvertFrom-Json;$seal.files.PSObject.Properties.Remove($companion);Json $sealPath $seal;Refresh-Plan $f
+ Reject {Invoke $f -Apply} ('Missing prospective Stats companion is refused: '+$companion)
+}
+
 $f=Fixture;$before=Digest (Join-Path $f.Context.Kit 'INTERLINKED.cmd');$result=Invoke $f
 Check ($result.status -ceq 'PREFLIGHT_PASSED') 'Dry-run preflight passes isolated valid package'
 Check ((Digest (Join-Path $f.Context.Kit 'INTERLINKED.cmd')) -ceq $before -and -not(Test-Path (Join-Path $f.Context.Kit 'INTERLINKED-Desktop'))) 'Dry-run writes no installed app bytes'
@@ -112,7 +123,7 @@ $f=Fixture;Reject {Invoke-DesktopPublication -Context $f.Context -ManifestPath $
 $f=Fixture;Reject {Invoke $f -Apply} 'Running MAGIX process blocks publication'
 & $module {function script:Get-Process {param($ErrorAction) @([pscustomobject]@{ProcessName='fixture_editor_closed'})}}
 $f=Fixture;$before=Digest (Join-Path $f.Context.Kit 'INTERLINKED.cmd');$result=Invoke $f -Apply
-Check ($result.status -ceq 'DESKTOP_PUBLISHED_HASH_VERIFIED' -and $result.files -eq 26) 'Complete MASTER, MSI Jobs and Buddy package publishes and readback passes'
+Check ($result.status -ceq 'DESKTOP_PUBLISHED_HASH_VERIFIED' -and $result.files -eq 28) 'Complete MASTER, MSI Jobs and Buddy package publishes and readback passes'
 $receipt=Get-Content $result.receipt -Raw|ConvertFrom-Json
 Check ($receipt.files[-1].path -ceq 'INTERLINKED.cmd') 'New desktop launcher publishes last'
 $wrapperRow=$receipt.files|Where-Object path -ceq 'INTERLINKED.cmd'
@@ -125,15 +136,15 @@ $f=Fixture -DesktopInstalled;$browserBefore=Digest (Join-Path $f.Context.Kit 'IN
 Check ($result.status -ceq 'DESKTOP_PUBLISHED_HASH_VERIFIED') 'Installed desktop v1 GUI upgrades to the v5 Buddy-compatible seal'
 Check ((Digest (Join-Path $f.Context.Kit 'INTERLINKED-Browser.cmd')) -ceq $browserBefore) 'Desktop upgrade preserves existing browser recovery bytes rather than desktop wrapper'
 $f=Fixture -V2Baseline;$result=Invoke $f -Apply
-Check ($result.status -ceq 'DESKTOP_PUBLISHED_HASH_VERIFIED' -and $result.files -eq 26) 'Existing v2 seven-file GUI upgrades with all companion hashes checked'
+Check ($result.status -ceq 'DESKTOP_PUBLISHED_HASH_VERIFIED' -and $result.files -eq 28) 'Existing v2 seven-file GUI upgrades with all companion hashes checked'
 $installed=Get-Content (Join-Path $f.Context.Kit 'INTERLINKED-App/GUI-CHECKSUMS.json') -Raw|ConvertFrom-Json
-Check ($installed.format -ceq 'interlinked-gui-checksums-v5' -and @($installed.files.PSObject.Properties).Count -eq 12) 'Installed MASTER, MSI Jobs and Buddy seal covers exactly twelve app and web files'
+Check ($installed.format -ceq 'interlinked-gui-checksums-v6' -and @($installed.files.PSObject.Properties).Count -eq 14) 'Installed MASTER, MSI Jobs and Buddy seal covers exactly twelve app and web files'
 $f=Fixture -V3Baseline;$result=Invoke $f -Apply
-Check ($result.status -ceq 'DESKTOP_PUBLISHED_HASH_VERIFIED' -and $result.files -eq 26) 'Existing v3 MASTER baseline upgrades with exact companion hashes checked'
+Check ($result.status -ceq 'DESKTOP_PUBLISHED_HASH_VERIFIED' -and $result.files -eq 28) 'Existing v3 MASTER baseline upgrades with exact companion hashes checked'
 $f=Fixture -V4Baseline;$result=Invoke $f -Apply
-Check ($result.status -ceq 'DESKTOP_PUBLISHED_HASH_VERIFIED' -and $result.files -eq 26) 'Existing v4 MSI Jobs baseline upgrades with exact companion hashes checked'
+Check ($result.status -ceq 'DESKTOP_PUBLISHED_HASH_VERIFIED' -and $result.files -eq 28) 'Existing v4 MSI Jobs baseline upgrades with exact companion hashes checked'
 $f=Fixture -V5Baseline;$result=Invoke $f -Apply
-Check ($result.status -ceq 'DESKTOP_PUBLISHED_HASH_VERIFIED' -and $result.files -eq 26) 'Existing v5 Buddy baseline updates with exact companion hashes checked'
+Check ($result.status -ceq 'DESKTOP_PUBLISHED_HASH_VERIFIED' -and $result.files -eq 28) 'Existing v5 Buddy baseline updates with exact companion hashes checked'
 
 foreach($companion in @('interlinked_controller.py','interlinked_hub.py','interlinked_mw5.py','interlinked_master.py','master_hook.py','master_bridge.py','interlinked_jobs.py','interlinked_buddy.py')){
  $f=Fixture;Put (Join-Path $f.Source ('INTERLINKED-App/'+$companion)) 'tampered companion'

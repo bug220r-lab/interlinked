@@ -27,6 +27,7 @@ def controller_class(g):
             self.active=None;self.workflow=None;self.folder_recovery_guard=None;self.mw5_recovery_guard=None;self.session_done=threading.Event()
             self.last_preview=None;self.transferring=False
             self.engine=None if runtime.demo else g.client_engine(runtime)
+            self.stats=g.load_companion('interlinked_stats').StatsService(self,g)
             # An interrupted MW5 session must be reconciled, never forgotten on
             # restart. The adapter's owned receipt is authoritative.
             self.mw5_root=runtime.state/'mw5'
@@ -77,6 +78,11 @@ def controller_class(g):
                     row['cache']=dict(status='CHECK_REQUIRED',warning=str(exc))
                 row['lastVerified']=None
             result['projects']+=self.hub.rows()
+            for row in result['projects']:
+                if row.get('originalId')=='stats-active':
+                    row['projectType']=row['type']='stats'
+                    row['capabilities']['openApplication']=True
+                    row['capabilities']['openFolder']=False
             health=self.hub.status()
             result['hub']=dict(health,connectivity=health.get('libraryStatus','UNKNOWN'),lastRefreshUtc=health.get('catalogRefreshedUtc'))
             result['preferences']=self.hub.preferences()
@@ -86,7 +92,8 @@ def controller_class(g):
             with self.lock:
                 result=super().state()
                 result['activeSession']=dict(self.active) if self.active else None
-                result['busy']=self.busy();result['canQuit']=not self.busy()
+                result['busy']=self.busy();result['canQuit']=not self.busy() and not self.stats.blocks_quit()
+                result['statsSession']=dict(status=self.stats.status,revision=self.stats.revision)
                 result['transferring']=self.transferring
                 return result
 
@@ -160,6 +167,7 @@ def controller_class(g):
                 with self.lock:g.need(not self.active and not self.transferring,'Finish the active managed editor session first.')
                 return super().start(action,project,entry,confirmation,expected_revision)
             row=self._row(project)
+            g.need(row.get('originalId')!='stats-active','Use the independent Stats controls for this project.')
             g.need(action in ('fetch','folder','open','save','verify','release'),'Unsupported project action.')
             if action=='release':g.need(expected_revision==self.revision,'Review the current project and confirm release again.')
             if action=='open':
@@ -386,6 +394,7 @@ def controller_class(g):
 
         def request_quit(self):
             with self.lock:
+                g.need(not self.stats.blocks_quit(),'Stop Stats or reconcile its interrupted session before exiting.')
                 g.need(not self.busy(),'A managed operation or editor session is active. Finish it before exiting.')
                 self.closing=True
 

@@ -71,5 +71,15 @@ function check(ok,label){assert.ok(ok,label);checks.push(label);}
  for(const kind of ['all','magix','mw5','coding_data','local','recent','favorites'])check(html.includes('data-filter="'+kind+'"'),'Required '+kind+' view has an explicit control');
  check(html.indexOf('id="session-banner"')<html.indexOf('id="project-name"'),'Active session guidance appears before project detail');
  check(!ui.includes('innerHTML')&&!ui.includes('eval('),'Hub and transfer rendering never executes or parses supplied text');
+ const stats={id:'stats-ui',originalId:'stats-active',type:'stats',name:'The Stats',cache:{status:'READY'}};
+ check(context.canSelectProject(stats,{busy:true,activeSession:{kind:'mw5',projectId:mw5.id}},false),'Stats remains selectable alongside an MW5 session');
+ check(context.projectMatches(stats,'coding_data','',prefs),'Stats remains in the Coding/Data filter');
+ const running=context.statsControls({status:'RUNNING',running:true,ready:true},{busy:true,transferring:false});
+ check(running.stop&&running['open-browser']&&!running.save&&!running.release,'Running Stats can be stopped alongside another project and cannot be saved or released');
+ const idle=context.statsControls({status:'IDLE',running:false,ready:true},{busy:true,transferring:false});
+ check(idle.start&&idle.save,'An unrelated editor session does not disable idle Stats actions');
+ check(!context.statsControls({status:'IDLE',ready:true},{transferring:true}).save,'Actual transfer contention disables Stats save');
+ check(context.statsControls({status:'RECOVERY_REQUIRED'},{}).acknowledge&&!context.statsControls({status:'RECOVERY_REQUIRED'},{}).start,'Interrupted Stats requires recovery acknowledgement');
+ check(html.includes('Checkout code requires Git commit/push')&&html.includes('Closing a browser tab does not stop Stats'),'Stats explains save scope and browser lifetime');
  console.log(JSON.stringify({status:'PASS',count:checks.length,checks,scope:'Synthetic UI models, DOM and mocked local APIs; no production operations'},null,2));
 })().catch(error=>{console.error(error);process.exitCode=1;});

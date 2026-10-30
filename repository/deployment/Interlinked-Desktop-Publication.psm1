@@ -89,14 +89,15 @@ function Assert-DesktopObjectKeys($Object,[string[]]$Keys) {
 function Assert-DesktopGuiSeal($Context,$Seal,[hashtable]$Prospective) {
     Assert-DesktopObjectKeys $Seal @('format','files','auditSha256')
     $names=@('interlinked_gui.py','web/index.html','web/app.js','web/style.css')
-    if($Prospective -and $Seal.format -cne 'interlinked-gui-checksums-v5'){
-        throw 'The Buddy integration release requires an exact twelve-file v5 GUI seal.'
+    if($Prospective -and $Seal.format -cne 'interlinked-gui-checksums-v6'){
+        throw 'The Stats integration release requires an exact fourteen-file v6 GUI seal.'
     }
-    if($Seal.format -cin @('interlinked-gui-checksums-v2','interlinked-gui-checksums-v3','interlinked-gui-checksums-v4','interlinked-gui-checksums-v5')){
+    if($Seal.format -cin @('interlinked-gui-checksums-v2','interlinked-gui-checksums-v3','interlinked-gui-checksums-v4','interlinked-gui-checksums-v5','interlinked-gui-checksums-v6')){
         $names+=@('interlinked_controller.py','interlinked_hub.py','interlinked_mw5.py')
-        if($Seal.format -cin @('interlinked-gui-checksums-v3','interlinked-gui-checksums-v4','interlinked-gui-checksums-v5')){$names+=@('interlinked_master.py','master_hook.py','master_bridge.py')}
-        if($Seal.format -cin @('interlinked-gui-checksums-v4','interlinked-gui-checksums-v5')){$names+=@('interlinked_jobs.py')}
-        if($Seal.format -ceq 'interlinked-gui-checksums-v5'){$names+=@('interlinked_buddy.py')}
+        if($Seal.format -cin @('interlinked-gui-checksums-v3','interlinked-gui-checksums-v4','interlinked-gui-checksums-v5','interlinked-gui-checksums-v6')){$names+=@('interlinked_master.py','master_hook.py','master_bridge.py')}
+        if($Seal.format -cin @('interlinked-gui-checksums-v4','interlinked-gui-checksums-v5','interlinked-gui-checksums-v6')){$names+=@('interlinked_jobs.py')}
+        if($Seal.format -cin @('interlinked-gui-checksums-v5','interlinked-gui-checksums-v6')){$names+=@('interlinked_buddy.py')}
+        if($Seal.format -ceq 'interlinked-gui-checksums-v6'){$names+=@('interlinked_stats.py','interlinked_stats_process.py')}
     } elseif($Seal.format -ceq 'interlinked-gui-checksums-v1'){
     } else {throw 'Unknown GUI seal format.'}
     Assert-DesktopObjectKeys $Seal.files $names
@@ -136,6 +137,11 @@ function Assert-DesktopBaseline($Context) {
 }
 
 function Assert-DesktopIdle($Context) {
+    $stats=Join-Path $Context.Kit 'INTERLINKED-GUI-State/stats/session.json'
+    if(Test-Path -LiteralPath $stats){
+        $session=Read-DesktopJson $stats -SingleLink
+        if($session.format -cne 'interlinked-stats-session-v1' -or $session.status -cne 'IDLE'){throw 'Stop Stats and reconcile its session before updating.'}
+    }
     foreach($name in @('binding.json','multi-binding.json')){
         $binding=Read-DesktopJson (Join-Path $Context.Kit ('MAGIX-Workspace-State/'+$name))
         if($binding.status -cne 'UNBOUND'){throw ('Finish MAGIX and confirm Done before updating: '+$name)}
