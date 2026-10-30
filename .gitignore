@@ -41,6 +41,10 @@
 **/catalog.json
 **/catalog-source.json
 **/MAGIX-All-Projects-Index.json
+**/MAGIX-Media-Audit.json
+**/MAGIX-Media-Audit.html
+**/GUI-State/
+**/INTERLINKED-GUI-State/
 **/SSH-Verification-Plan.json
 **/RUNTIME-VERIFICATION.json
 

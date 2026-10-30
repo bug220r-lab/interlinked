@@ -1,0 +1,51 @@
+INTERLINKED — MAGIX local workspace
+
+ON THIS-MACHINE
+Open the MSI Project Library folder and double-click INTERLINKED.cmd normally.
+The app opens in your browser. Keep the small service window open while using it.
+Close any older MAGIX console session normally before starting an action here.
+
+1. Search for a project. Check its working-set size and Media review.
+2. Choose the original MVP or a specific recovery entry, then Prepare and open.
+   The existing launcher fetches this project's local working set when needed and
+   maps its supported old paths to the local copies. Existing local edits and
+   deletions are preserved. It does not download the whole library.
+3. Save in MAGIX, close MAGIX, then click I saved and closed MAGIX in INTERLINKED.
+   This finishes the editing session; it does not save a version to MSI.
+4. Click Save + verify to store and check your changes on MSI.
+5. Only when you want to reclaim space, choose Free local space and type the exact
+   project ID. The existing client verifies the committed copy again before release.
+
+Browser tabs can be closed and reopened while the service remains running. Do not
+close the service window during an operation or editing session. If it is forcibly
+closed, keep local files, close MAGIX, reopen INTERLINKED and use Recover session.
+No automatic release is enabled. Exit is refused while this GUI owns an operation.
+
+MEDIA REVIEW
+The October 29 audit checked 43 families, 276 project/recovery entries and 1,742
+selected files. All selected source files and their published library files were
+available, catalog-matching and the same physical NTFS files. No media bytes were
+hashed by this audit; downloads and saves have their own verification.
+
+All 316 available exact user-file reference paths were selected and covered by
+the existing six temporary path mappings (268 of these were audio/video/images).
+There were no additional exact-path omissions or verified new relinks to apply.
+Nine exact installed-content references still depend on compatible MAGIX content
+on THIS-MACHINE. Installed Program Files paths are not remapped by this launcher.
+
+Other reference strings include old iCloud paths, historical import/backup data,
+relative paths and same-name alternatives. These are not a count of active missing
+clips. A same-name candidate is never substituted automatically. The audit covers
+the source-library snapshot, not current unsaved edits or every local cache.
+Playback and export of every family have not been verified.
+
+If MAGIX requests a missing file, compare the exact request with Media review.
+Use a matching local candidate only after confirming it is the intended media.
+Preserve the current project, relink in MAGIX, and save under a new name; do not
+overwrite an original with a crash-recovery copy. An MV_ backup may need MAGIX's
+File > Load backup project workflow. Missing/cloud-only assets remain unresolved
+until their original files are available.
+
+MAGIX-Media-Audit.html beside this guide contains the full per-family report.
+The original MAGIX-Local-Workspace.cmd remains available as a console fallback.
+Source: https://github.com/bug220r-lab/interlinked (private repository).

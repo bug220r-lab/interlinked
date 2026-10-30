@@ -20,6 +20,9 @@ The directory structure intentionally retains the original `outputs/` and `work/
 | `SOURCE-MANIFEST.json` | Exact source paths, copied-byte hashes, pinned dependencies and omissions |
 | `MAGIX-EXTENSION-MANIFEST.json` | Final extension provenance, including the two path-only test adaptations |
 | `docs/MAGIX-WORKSPACE-START-HERE.txt` | Current all-project workflow guide |
+| `app` | Matrix-themed loopback GUI and isolated tests; wraps the unchanged accepted launcher |
+| `audit` | Source-library media audit code; generated personal reports are supplied separately |
+| `deployment/Publish-Interlinked-GUI.ps1` | Hash-guarded additive GUI publication to the existing client kit |
 
 The frozen all-project MAGIX extension is integrated. It lists 43 project families and 276 project/recovery entries, fetches only the selected family, and supports six finite reviewed legacy roots. The baseline, Stage1, Access and sealed client files remain unchanged. `SOURCE-MANIFEST.json` preserves the initial 83-file capture; the extension manifest completes its historical pending integration item, and `DISTRIBUTION-MANIFEST.json` covers the final source distribution. The generated personal picker index is excluded.
 
@@ -50,6 +53,8 @@ kit/
 ```
 
 The source locations differ from that deployment layout. Use the current command wrappers from `work/magix-all-projects/candidate`, and place the exact baseline, Stage1 and Access helpers next to the launcher. Ownership receipts, an unbound legacy Windows profile, the selected cache, private index, host catalog and share configuration must also satisfy the current guards. This repository does not include those live inputs.
+
+The GUI adds `INTERLINKED.cmd`, `INTERLINKED-App/` and a private `MAGIX-Media-Audit.json` snapshot beside that existing installation. It does not replace the accepted launcher or alter workspace ownership. Its checksummed static assets and private report are installed with a generated `GUI-CHECKSUMS.json`; the report and deployment seal are not reusable substitutes for new audits. Run normally on the configured client. `--demo` is an isolated synthetic preview and is safe for source-level UI testing on the host PC. Browser closure does not end a session; the local service must remain running until the operation finishes.
 
 ## Bootstrap order
 
