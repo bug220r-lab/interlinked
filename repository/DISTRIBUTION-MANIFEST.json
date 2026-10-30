@@ -1,8 +1,8 @@
 {
   "format": "interlinked-distribution-manifest-v1",
-  "createdUtc": "2026-10-30T00:14:36.278922+00:00",
-  "scope": "Reviewed source plus Matrix GUI and read-only MAGIX media auditor; private reports and this manifest excluded.",
-  "previousManifestSha256": "c341d877e6fc3688e034eccc1018a3aaa98f6078091d912f773e63710f1911e1",
+  "createdUtc": "2026-10-30T01:01:25.200882+00:00",
+  "scope": "Reviewed source plus Matrix GUI, media/preset/font inventories and guarded preset import; private reports, payloads and this manifest excluded.",
+  "previousManifestSha256": "408c7d1a80e3088b1551b6aa6f29b91a03d254cea34333dd53c809f8f4ae69af",
   "files": [
     {
       "path": ".gitattributes",
@@ -12,14 +12,14 @@
     },
     {
       "path": ".gitignore",
-      "bytes": 1413,
-      "sha256": "e66c5173ab014b5b5fbeb8d6d27d4370daba6c9376ee5a090154be7789b0c311",
+      "bytes": 1485,
+      "sha256": "5e77cc84c1eee8ed49f7a07eef841e0f074a6fb0a3802ffb37b6d3be487245f0",
       "origin": "authored documentation or packaging metadata"
     },
     {
       "path": "README.md",
-      "bytes": 5091,
-      "sha256": "de2ff49abad21106a022be67d09947ae15ecb65535aa6a675ad8799e5f33f53c",
+      "bytes": 6577,
+      "sha256": "d8c3d87cca48e5232f54ea91de6463add8b88c930324692aee380db1745e9901",
       "origin": "authored documentation or packaging metadata"
     },
     {
@@ -43,8 +43,8 @@
     {
       "path": "repository/app/INTERLINKED-START-HERE.txt",
       "origin": "GUI and source-library audit addition",
-      "bytes": 3186,
-      "sha256": "f004255ed8391ad8af76a538c67371721ffb1e06b2b93290e0a8835069922fd8"
+      "bytes": 4306,
+      "sha256": "45b162d627eb0800837e2f2e405938a951c4fec8394a3d2467ff4441d188e4d9"
     },
     {
       "path": "repository/app/INTERLINKED.cmd",
@@ -55,20 +55,32 @@
     {
       "path": "repository/app/README.md",
       "origin": "GUI and source-library audit addition",
-      "bytes": 4085,
-      "sha256": "958dd38ecb452bdf1a7ef42e62143852b91a9db3d68d4ae753f09928f6032c91"
+      "bytes": 5911,
+      "sha256": "99c93b44f69c00f4c0890aed33acaaeecdaab99d688efc3fc08c94936377b20d"
     },
     {
       "path": "repository/app/interlinked_gui.py",
       "origin": "GUI and source-library audit addition",
-      "bytes": 30795,
-      "sha256": "bae00f11d38aa209437ece310ac5013ab68fd19478ce1d8bc3a834ed114b4595"
+      "bytes": 46709,
+      "sha256": "8a7760edc1f2f22749fe078ea91e243cb53db573208151536d39cad3a0ef8dc7"
     },
     {
       "path": "repository/app/test_gui.py",
       "origin": "GUI and source-library audit addition",
-      "bytes": 11114,
-      "sha256": "70c4eaea2235176aac7d7d80e41a8afcc833afaca0dbfa4c54c455006292d4c7"
+      "bytes": 12493,
+      "sha256": "f26ce937ccd939c3cd7e00c2651f09d9248c0da6a335ef2e2bed1a2a4f377513"
+    },
+    {
+      "path": "repository/app/test_missing_media.py",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 8987,
+      "sha256": "73f4d5d3226a0278f27c215aef9474c9b4a3109ddd42ba9b6ccf8902036cd68d"
+    },
+    {
+      "path": "repository/app/test_missing_panel.js",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 4995,
+      "sha256": "6d9eb4fd33199c3198873ea13e72eea4a084f8c352de3ef805a459ecf0c5b572"
     },
     {
       "path": "repository/app/test_open_feedback.js",
@@ -79,20 +91,20 @@
     {
       "path": "repository/app/web/app.js",
       "origin": "GUI and source-library audit addition",
-      "bytes": 20918,
-      "sha256": "5c6491f142d2a1a675a9e4506382b630e125afac3daaf1e2b58fee5a7e80dc26"
+      "bytes": 26283,
+      "sha256": "9edb2f01a25a435871fcf8fe3e4bf9ec4784a65a524734742a0b70ed5c4430b8"
     },
     {
       "path": "repository/app/web/index.html",
       "origin": "GUI and source-library audit addition",
-      "bytes": 7174,
-      "sha256": "01fa17b24f1c4f0038afcf2437faa9c72eff10aae03ba20dcb00510e5e920fee"
+      "bytes": 8741,
+      "sha256": "74e8f5b6f3f8658577026c6323808fc2098b21bd80fffb3ce9c177be705e2aa4"
     },
     {
       "path": "repository/app/web/style.css",
       "origin": "GUI and source-library audit addition",
-      "bytes": 13949,
-      "sha256": "e460642a29cebc5bbef73c732f495d3d446b0a43b47a0b98da6c65c5632a3b0e"
+      "bytes": 15174,
+      "sha256": "332237ce6c02dd056c3442bdd2edd6cbff46ced534ac57c62947bed9f6e0da16"
     },
     {
       "path": "repository/assemble_source_snapshot.py",
@@ -119,10 +131,52 @@
       "sha256": "9f7ac308bd0cc24270fff13ce74cd7a612b9e5dc208cbc3adbb718d16bb00ba9"
     },
     {
+      "path": "repository/deployment/Build-MAGIX-Preset-Definition-Index.py",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 9957,
+      "sha256": "6299f87f65a100f018001ff44f1c39c9bde2769801d79f0845865190e85d516a"
+    },
+    {
+      "path": "repository/deployment/Check-MAGIX-Presets-and-Fonts.cmd",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 276,
+      "sha256": "f0245bc91cf60cbd47d2a7eb7f7522da3cd0a534b9bdb959aeb3eb7a064902c7"
+    },
+    {
+      "path": "repository/deployment/Collect-MAGIX-Inventory.ps1",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 4587,
+      "sha256": "12e20c55e00a0b96f7fdbafe72ad3a0dfd0cd146353f6465885ecdb820134bdc"
+    },
+    {
+      "path": "repository/deployment/Compare-MAGIX-Preset-Definitions.ps1",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 11645,
+      "sha256": "6b5d16a740947624317b685926159ec3b04970bab5439a31cba0343424da6c8a"
+    },
+    {
+      "path": "repository/deployment/Import-MAGIX-Presets.ps1",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 9548,
+      "sha256": "c0508360dc92063500ef25b0d300ac6c1b2b4c64f3345fd75dbcc808c47c25e0"
+    },
+    {
       "path": "repository/deployment/Publish-Interlinked-GUI.ps1",
       "origin": "GUI and source-library audit addition",
       "bytes": 6130,
       "sha256": "d20962d9982bbac54b0e869b4911b6c0f49f653eff48707cf8549386b8bc0128"
+    },
+    {
+      "path": "repository/deployment/README.md",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 2651,
+      "sha256": "d995ab89a589e7a0608eab8797610a02308b3b7e16b4d8729c82779568d3291e"
+    },
+    {
+      "path": "repository/deployment/import_magix_presets.py",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 16482,
+      "sha256": "d1714a746432d560c9732633fa8ba042fc94f9634210e98b896872ec8085ef44"
     },
     {
       "path": "repository/docs/MAGIX-WORKSPACE-START-HERE.txt",
@@ -775,9 +829,9 @@
     }
   ],
   "summary": {
-    "files": 113,
-    "bytes": 1048425,
-    "pythonSourcesParsed": 39
+    "files": 122,
+    "bytes": 1147507,
+    "pythonSourcesParsed": 42
   },
   "preservedBaseline": "Original SOURCE-MANIFEST and MAGIX-EXTENSION-MANIFEST remain exact; accepted launcher and client bytes unchanged.",
   "privacy": "No personal catalog, media audit report, deployment seal, source media, cache, credential or runtime binary is included.",

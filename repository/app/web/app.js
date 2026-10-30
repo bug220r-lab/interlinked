@@ -5,6 +5,7 @@ if(token){sessionStorage.setItem('interlinked-token',token);history.replaceState
 let projects=[], selected=null, state={busy:false,revision:0}, filter='all', auditLoaded=null, releaseTarget=null, lastCompleted=null, stopped=false;
 let mutation=false,pollSequence=0,appliedPoll=0,entrySequence=0,auditSequence=0;
 let requestedAction=null;
+let missingSequence=0,notePending=false,missingRecords=[];
 const chosenEntries=new Map();
 const initialProject=new URLSearchParams(location.search).get('project');
 const human=value=>String(value||'Not audited').replaceAll('_',' ').toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
@@ -104,7 +105,7 @@ function renderDetail(){
  for(const warning of [...selected.warnings,...selected.notes]){const li=document.createElement('li');li.textContent=String(warning);$('warnings').append(li);}
  updateEntry();renderState();
 }
-function select(id){selected=projects.find(p=>p.id===id)||projects[0];auditLoaded=null;auditSequence++;if(selected)selected.loadingEntries=true;renderList();renderDetail();if(selected)loadEntries(selected.id).catch(error=>{if(selected?.id===id){selected.loadingEntries=false;renderState();}showError(error);});if(!$('audit-panel').hidden)loadAudit().catch(showError);}
+function select(id){const previous=selected?.id;selected=projects.find(p=>p.id===id)||projects[0];auditLoaded=null;auditSequence++;if(selected)selected.loadingEntries=true;renderList();renderDetail();if(selected)loadEntries(selected.id).catch(error=>{if(selected?.id===id){selected.loadingEntries=false;renderState();}showError(error);});if(previous!==selected?.id){$('missing-path').value='';$('missing-note').value='';}loadMissing().catch(missingError);if(!$('audit-panel').hidden)loadAudit().catch(showError);}
 async function loadEntries(id){const sequence=++entrySequence,result=await api('/api/entries?project='+encodeURIComponent(id));if(selected?.id!==id||sequence!==entrySequence)return;selected.entryPoints=result.entries;selected.loadingEntries=false;renderDetail();if(result.warnings.length)$('entry-note').textContent+=' '+result.warnings.join(' ');}
 function updateEntry(){const item=selected?.entryPoints.find(e=>e.path===$('entry').value);$('entry-note').textContent=item?.kind==='recovery'?'Backup selected: MAGIX opens, then choose File > Load backup project using the exact local path shown in Activity. The backup is not renamed.':'The reviewed launcher uses a short local path to the selected cached project. It does not stream media from MSI.';}
 async function loadCatalog(){
@@ -121,7 +122,7 @@ async function action(name){
 function renderState(){
  const job=state.operation,busy=state.busy,locked=busy||mutation||state.closing;
  for(const id of ['open','save','verify','release','recover'])$(id).disabled=locked||!selected;
- $('quit').disabled=locked;$('entry').disabled=locked||selected?.loadingEntries;
+ $('quit').disabled=locked||notePending;$('entry').disabled=locked||selected?.loadingEntries;
  for(const button of document.querySelectorAll('.project-item'))button.disabled=locked;
  if(selected&&!locked){$('open').disabled=selected.loadingEntries||!$('entry').value;$('save').disabled=!['READY','PENDING_SAVE','DEMO'].includes(selected.cache.status);$('release').disabled=!['READY','DEMO','RELEASING'].includes(selected.cache.status);}
  document.querySelector('.activity').classList.toggle('busy',busy);
@@ -170,6 +171,7 @@ async function loadAudit(){
   const reason=document.createElement('p');reason.textContent=ref.reason||ref.explanation||'Review the preserved path and candidate evidence before changing a project.';
   const expected=document.createElement('p');expected.textContent='Expected path: '+(ref.path||ref.value||'Not recorded');
   details.append(summary,expected,reason);
+  const flag=document.createElement('button');flag.type='button';flag.className='quiet small';flag.textContent='Flag missing';flag.dataset.missingAction='true';flag.addEventListener('click',()=>flagAudit(id,ref.id).catch(missingError));details.append(flag);
   for(const candidate of ref.candidatePaths||[]){const p=document.createElement('p');p.textContent='Unverified candidate: '+(candidate.cacheRelativePath||candidate.sourcePath||'Path unavailable')+' — same name only; no substitution applied. Local presence must be checked.';details.append(p);}
   const evidence=document.createElement('details'),label=document.createElement('summary'),pre=document.createElement('pre');label.textContent='Technical evidence';pre.textContent=JSON.stringify(ref,null,2);evidence.append(label,pre);details.append(evidence);$('audit-references').append(details);
  }
@@ -180,6 +182,43 @@ async function loadAudit(){
  filterReferences();
 }
 function filterReferences(){const query=$('reference-search').value.trim().toLowerCase();for(const row of document.querySelectorAll('.reference'))row.hidden=query&&!row.dataset.search.includes(query);}
+// BEGIN MISSING MEDIA PANEL
+function missingError(error){$('missing-feedback').textContent=String(error.message||error);$('missing-feedback').className='warning';}
+function missingControls(){for(const id of ['missing-report','missing-json','missing-csv','missing-path','missing-note','missing-source'])$(id).disabled=notePending||!selected||state.closing;for(const button of document.querySelectorAll('[data-missing-action]'))button.disabled=notePending||state.closing;$('quit').disabled=notePending||state.busy||mutation||state.closing;}
+async function noteRequest(fn){if(notePending)throw new Error('Please wait for the report to be recorded.');notePending=true;missingControls();try{return await fn();}finally{notePending=false;missingControls();}}
+async function loadMissing(){
+ const id=selected?.id,sequence=++missingSequence;if(!id)return;
+ $('missing-project').textContent='Reports for '+selected.name;$('missing-feedback').className='muted';$('missing-feedback').textContent='Loading your reports…';$('missing-records').replaceChildren();$('missing-count').textContent='…';
+ const result=await api('/api/missing?project='+encodeURIComponent(id));if(selected?.id!==id||sequence!==missingSequence)return;
+ missingRecords=result.records;renderMissing();$('missing-feedback').textContent=missingRecords.length?'Reports are saved separately from project files.':'No user reports recorded for this family.';missingControls();
+}
+function renderMissing(){
+ $('missing-records').replaceChildren();$('missing-count').textContent=missingRecords.length;
+ const labels={reported_missing:'Reported missing — unresolved',user_marked_unavailable:'Unavailable — you marked',resolved:'Resolved — you marked'};
+ for(const row of missingRecords){
+  const box=document.createElement('div');box.className='missing-record';const name=document.createElement('strong'),status=document.createElement('span'),note=document.createElement('p'),actions=document.createElement('div');
+  name.textContent=row.path;status.className='classification';status.textContent=labels[row.status]||row.status;note.textContent='First report: '+human(row.firstSource)+(row.firstNote?' — '+row.firstNote:'')+(row.note&&row.note!==row.firstNote?'\nLatest note: '+row.note:'');actions.className='missing-actions';
+  for(const [value,label] of [['resolved','Mark resolved'],['user_marked_unavailable','Mark unavailable'],['reported_missing','Reopen report']]){
+   if(value===row.status)continue;const button=document.createElement('button');button.type='button';button.className='quiet small';button.dataset.missingAction='true';button.textContent=label;
+   button.addEventListener('click',()=>noteRequest(async()=>{const text=prompt('Optional note. This is your status, not a verified repair.','');if(text===null)return;await api('/api/missing/status',{project:row.projectId,recordId:row.recordId,status:value,note:text,requestId:crypto.randomUUID()});if(selected?.id===row.projectId)await loadMissing();}).catch(missingError));actions.append(button);
+  }
+  box.append(name,status,note,actions);$('missing-records').append(box);
+ }
+}
+async function reportManual(){
+ const project=selected?.id,path=$('missing-path').value,note=$('missing-note').value,source=$('missing-source').value;if(!project)throw new Error('Select a project.');
+ await noteRequest(async()=>{await api('/api/missing/report',{project,path,note,source,requestId:crypto.randomUUID()});if(selected?.id===project){$('missing-path').value='';$('missing-note').value='';await loadMissing();$('missing-feedback').textContent='Report recorded. No media or project files were changed.';}});
+}
+async function flagAudit(project,reference){
+ await noteRequest(async()=>{await api('/api/missing/report',{project,source:'audit_flag',auditReferenceId:reference,note:'Manually flagged from the reference scan; no automatic dialog capture or repair.',requestId:crypto.randomUUID()});if(selected?.id===project){await loadMissing();$('missing-feedback').textContent='Audit reference flagged for your review. This does not prove the file is permanently unavailable.';}});
+}
+async function exportMissing(format){
+ const project=selected?.id;if(!project)return;
+ await noteRequest(async()=>{const result=await api('/api/missing/export?project='+encodeURIComponent(project)+'&format='+format);const blob=new Blob([result.text],{type:result.mime+';charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=result.filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+}
+// END MISSING MEDIA PANEL
+$('missing-report').addEventListener('click',()=>reportManual().catch(missingError));
+$('missing-json').addEventListener('click',()=>exportMissing('json').catch(missingError));$('missing-csv').addEventListener('click',()=>exportMissing('csv').catch(missingError));
 $('search').addEventListener('input',renderList);
 for(const button of document.querySelectorAll('[data-filter]'))button.addEventListener('click',()=>{filter=button.dataset.filter;for(const other of document.querySelectorAll('[data-filter]'))other.classList.toggle('active',other===button);renderList();});
 $('entry').addEventListener('change',()=>{if(selected)chosenEntries.set(selected.id,$('entry').value);updateEntry();renderState();});

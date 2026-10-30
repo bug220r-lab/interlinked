@@ -41,3 +41,13 @@ python -B repository/app/test_gui.py --output C:\your-private-test-folder
 ```
 
 A network-restricted sandbox may block even loopback fixture connections. Do not substitute production operations for these tests. Test receipts contain fixture paths and belong outside tracked source.
+
+### User-reported missing media
+
+The compact **Reported missing media** panel accepts a filename/path and an optional multiline note during a MAGIX session. It never reads that path, watches dialogs, changes media, or retries a fetch. Audit-row flags derive their text from the selected project's reviewed reference. Reported missing, user-marked unavailable, and user-marked resolved are observations, not verified repairs.
+
+Reports are stored outside all project caches in the owned `INTERLINKED-GUI-State/missing-media.events.jsonl`, with a separate ownership marker and lock. Each append is hash-chained, flushed, fsynced, and read back. Missing, torn, corrupt, or hardlinked ledger data fails closed and remains preserved. Exact case-normalized paths dedupe within one project; a filename-only report stays separate from a full path. JSON exports include original text and full project event history; CSV prefixes display cells with `Text: ` for spreadsheet use.
+
+For a reviewed one-time observation import, load `MissingMediaLedger(state_path, exact_gui_owner_object, indexed_project_ids)` from `interlinked_gui.py` and call `.report(project_id, literal_path, request_id=<stable UUID>, source='user_dialog', note=<evidence/uncertainty>)`. This independent ledger lock does not acquire the GUI-instance, project or MAGIX workflow locks. Import only actual observations; do not propagate one popup to other projects, similar Unicode spellings, or sidecars.
+
+`test_missing_media.py --output <fixture-folder>` uses synthetic local files only, including corrupt/torn history, hardlink rejection, UUID retries, active-session and shutdown ordering checks. `test_missing_panel.js <receipt.json>` uses a synthetic DOM. Existing `test_gui.py` covers authenticated report/export routes with fake children and a loopback fixture.

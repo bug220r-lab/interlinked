@@ -14,6 +14,8 @@ This is a source snapshot of an existing installation. Several helpers deliberat
 - **MAGIX workspace:** selects from 43 reviewed project families and 276 project/recovery entries, fetches one working set, and temporarily maps six reviewed legacy roots to its local cache. The user closes MAGIX and confirms DONE before saving or releasing the cache.
 - **Matrix-themed GUI:** a local browser interface for project search, entry selection, prepare/open, session completion, save/verify, explicit release and recovery. It wraps the accepted launcher and retains its locks and checks. The interface is served only on the local PC.
 - **Media review:** a per-family audit distinguishes exact covered paths, unverified filename alternatives, deferred media and references with no located candidate. It does not rewrite proprietary project files or substitute media automatically.
+- **Missing-media reports:** record actual MAGIX dialog filenames and review notes in an append-only journal outside project caches. JSON preserves the event history; CSV provides a spreadsheet-safe display export. The GUI does not observe remote screens automatically.
+- **Preset migration:** read-only content/font inventories and definition comparisons, plus a guarded add-only importer for the reviewed custom MAGIX presets and matching title fonts. See [deployment notes](repository/deployment/README.md); private payloads are excluded.
 
 The library shares are storage and versioning services, not an automatic pool of CPU or RAM. Jobs execute only when requested. Saved versions can reference original library content, so keep the host library and independent backups.
 
@@ -30,6 +32,10 @@ python -B repository\app\interlinked_gui.py --demo
 The preview never runs MAGIX or accesses personal caches. See [GUI notes](repository/app/README.md) for service lifetime, testing and deployment details.
 
 The GUI passed 38 isolated implementation checks and 35 independent review checks, followed by synthetic browser workflow checks. Its nine-file client installation was hash-verified, and the production startup receipt and user confirmation established that the reviewed GUI and all 43 families load on THIS-MACHINE. The media auditor passed 13 logic tests and 15 independent report-consistency checks. These checks do not establish playback of every family or a complete editing workflow through the new GUI.
+
+The missing-media extension passed 51 ledger checks, 46 backend/API checks, 13 panel checks and 21 independent checks, with the 18 progress-feedback checks retained. Its installed update was hash-verified and the user confirmed that both supplied missing-file observations appear on the new PC. Private report text stays outside this repository.
+
+The subsequent preset comparison matched 6,804 existing definitions on the new PC to MSI by hash, with zero read errors. A separate add-only import installed 24 missing custom presets and four matching League Gothic styles. The new-PC receipt verified every addition and Windows font registration/loading, with no overwrite. The user confirmed both custom title presets appear and the font renders correctly. Existing Music Editor configuration differences and generated performance state were retained. These checks do not certify every preset's rendering or large media/template payload.
 
 ## Source integrity
 

@@ -46,6 +46,24 @@ overwrite an original with a crash-recovery copy. An MV_ backup may need MAGIX's
 File > Load backup project workflow. Missing/cloud-only assets remain unresolved
 until their original files are available.
 
+REPORT A MISSING FILE WHILE YOU WORK
+In Reported missing media, enter the filename or path shown by MAGIX, choose
+"I saw a missing-file dialog", add any spelling/Unicode uncertainty in the note,
+and click Flag missing. You can do this while MAGIX is open. An audit-row Flag
+missing records your own review of that reference, not a captured dialog.
+
+The interface does not automatically watch your screen or collect MAGIX dialogs.
+Reports stay with the selected family and do not retry a download, change project
+files, or establish permanent loss. A full path and a filename-only observation
+remain separate. Mark resolved, mark unavailable, or reopen a report as needed;
+these are your assessments, not verified repairs.
+
+Export JSON keeps original text and the full report history. Export CSV produces
+a spreadsheet display copy with a visible "Text: " prefix in text cells. Reports
+are saved outside the working copy in INTERLINKED-GUI-State, so freeing a verified
+project does not remove the report list. Keep the service running until a report
+finishes recording; Exit waits for an in-progress report to complete.
+
 MAGIX-Media-Audit.html beside this guide contains the full per-family report.
 The original MAGIX-Local-Workspace.cmd remains available as a console fallback.
 Source: https://github.com/bug220r-lab/interlinked (private repository).
