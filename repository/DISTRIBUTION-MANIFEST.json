@@ -1,8 +1,8 @@
 {
   "format": "interlinked-distribution-manifest-v1",
-  "createdUtc": "2026-10-30T05:30:09.017169+00:00",
+  "createdUtc": "2026-10-30T14:00:26.389954+00:00",
   "scope": "Reviewed project hub, MW5, read-only MSI Jobs, MASTER observatory and restricted local Violet bridge, Windows rendering/capture/sensor worker, desktop host and guarded publication; private telemetry, payloads, credentials and binaries excluded.",
-  "previousManifestSha256": "bdf1b0c55e9aa7efd00f617106cf3f9cd96f85aab26c3b4cf3ff09b17c2b7821",
+  "previousManifestSha256": "12b8e5f9173c12fcc450dad194bb315c896d51df24aa5c3f62295337f4a12a64",
   "files": [
     {
       "path": ".gitattributes",
@@ -489,7 +489,7 @@
       "path": "repository/master-plugin/test_master_plugin.py",
       "origin": "restricted local bridge packaging and read-only live MCP validation",
       "bytes": 10241,
-      "sha256": "ac827a26e880a249f412bd0ad10567cd81b16289270b4f5206234cbdbda9ad24"
+      "sha256": "fee2d7d5c96ab1debbde812357acb86f8cb57ea12eae4f7eeed77438537cfef2"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Check-MSI-Connection.cmd",

@@ -54,7 +54,7 @@ def read_json(path):
 
 
 def validate(manifest, mcp):
-    if manifest.get('name') != 'interlinked-master' or manifest.get('version') != '1.0.0':
+    if manifest.get('name') != 'interlinked-master' or manifest.get('version') != '1.1.0':
         raise ValueError('Unexpected plugin identity.')
     if manifest.get('requires_local_executor') is not True:
         raise ValueError('The plugin must require local execution.')
