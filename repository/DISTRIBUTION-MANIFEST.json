@@ -1,20 +1,20 @@
 {
   "format": "interlinked-distribution-manifest-v1",
-  "createdUtc": "2026-10-30T20:20:42.155118+00:00",
-  "scope": "Reviewed project hub, MW5, read-only MSI Jobs, MASTER observatory and restricted local Violet bridge, Windows rendering/capture/sensor worker, desktop host and guarded publication; private telemetry, payloads, credentials and binaries excluded. Additive Buddy companion, lock-owner media ingestion and authenticated project work report. Independent Stats workspace, contained native process lifecycle and guarded v6 application publication. Revision-checked settings, separate local recovery histories, MASTER review inbox and lifecycle validity guards.",
-  "previousManifestSha256": "6ad55dcaa6dc856f6512c5ecafde7d2526cba2d077db33ed457358b98a389a4d",
+  "createdUtc": "2026-10-30T20:45:25.705360+00:00",
+  "scope": "Reviewed project hub, MW5, read-only MSI Jobs, MASTER observatory and restricted local Violet bridge, Windows rendering/capture/sensor worker, desktop host and guarded publication; private telemetry, payloads, credentials and binaries excluded. Additive Buddy companion, lock-owner media ingestion and authenticated project work report. Independent Stats workspace, contained native process lifecycle and guarded v6 application publication. Revision-checked settings, separate local recovery histories, MASTER review inbox and lifecycle validity guards. Reviewed cooler rendering and scheduling, observed subagent summaries, exact cooler-only publication and optional fixed-function startup setup.",
+  "previousManifestSha256": "904d61489563f31da8c5b86ddaeff4d52a843ad6d5f968bf7cb85c447d132ac6",
   "files": [
     {
       "path": ".gitattributes",
+      "origin": "authored documentation or packaging metadata",
       "bytes": 71,
-      "sha256": "65bd529a44ff585d108c1baf0ea5a98aa56b308000356202ef6aa86019b1c83c",
-      "origin": "authored documentation or packaging metadata"
+      "sha256": "65bd529a44ff585d108c1baf0ea5a98aa56b308000356202ef6aa86019b1c83c"
     },
     {
       "path": ".gitignore",
+      "origin": "authored documentation or packaging metadata",
       "bytes": 1510,
-      "sha256": "c31cecb07a7948087924b3529851156cada23fb71c9e1c7f7a7cbce85c8c84d6",
-      "origin": "authored documentation or packaging metadata"
+      "sha256": "c31cecb07a7948087924b3529851156cada23fb71c9e1c7f7a7cbce85c8c84d6"
     },
     {
       "path": "AGENTS.md",
@@ -24,27 +24,9 @@
     },
     {
       "path": "README.md",
+      "origin": "authored documentation or packaging metadata",
       "bytes": 8394,
-      "sha256": "6104da42aa4998f04ad694c7dafb019735915ccbd11f981eb4b32902e793605f",
-      "origin": "authored documentation or packaging metadata"
-    },
-    {
-      "path": "repository/MAGIX-EXTENSION-MANIFEST.json",
-      "bytes": 5680,
-      "sha256": "cbf3fa3c011d815ff620ed34741d9658fd5d917ce3c73f1c112a714fc335c301",
-      "origin": "authored documentation or packaging metadata"
-    },
-    {
-      "path": "repository/README.md",
-      "bytes": 13920,
-      "sha256": "6fb42c70af44d1b93011f269d56d3a566158acdee2239132baa8d956b4af2b4f",
-      "origin": "authored documentation or packaging metadata"
-    },
-    {
-      "path": "repository/SOURCE-MANIFEST.json",
-      "bytes": 53300,
-      "sha256": "0204d94dac4baba841606750859909376832478a627a3ea9e11a31ac805da631",
-      "origin": "authored documentation or packaging metadata"
+      "sha256": "6104da42aa4998f04ad694c7dafb019735915ccbd11f981eb4b32902e793605f"
     },
     {
       "path": "repository/app/INTERLINKED-Browser.cmd",
@@ -65,16 +47,10 @@
       "sha256": "308e68aaaaecd8c6d008bf8a15e304fa3f4429eca5602d94e2bf04b7087a5ef3"
     },
     {
-      "path": "repository/app/README.md",
-      "origin": "GUI and source-library audit addition",
-      "bytes": 25406,
-      "sha256": "ff384b670d5b84a913a3b2508a6b731b4ffa6f126bb2a496cc92c980a2a62595"
-    },
-    {
       "path": "repository/app/interlinked_buddy.py",
+      "origin": "Buddy companion integration reviewed source",
       "bytes": 39815,
-      "sha256": "001d5f04fb69c7e12ec7538f1843ad572cd497447d09c381e237c1c757dfba4d",
-      "origin": "Buddy companion integration reviewed source"
+      "sha256": "001d5f04fb69c7e12ec7538f1843ad572cd497447d09c381e237c1c757dfba4d"
     },
     {
       "path": "repository/app/interlinked_configuration.py",
@@ -109,8 +85,8 @@
     {
       "path": "repository/app/interlinked_master.py",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 67855,
-      "sha256": "8cef411c3f8e01a2f6565506cb449d18d1bd27a6eb1675d4366daa0faf326443"
+      "bytes": 84122,
+      "sha256": "80a56c81372baf6c4fd01413ef8aba80b4bb611eafe9ff5a2737fd0e4e7f396a"
     },
     {
       "path": "repository/app/interlinked_mw5.py",
@@ -141,6 +117,12 @@
       "origin": "Existing pending application source retained during MSI observer integration",
       "bytes": 5082,
       "sha256": "b4b97f179dd0b2a87502216b47a0244d6423eb41c6cefb835c4cdca8167781fe"
+    },
+    {
+      "path": "repository/app/README.md",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 27481,
+      "sha256": "ebe8dc5d7b61809bb89af8e743d8e81b9575555f1ced0521499613ad4c9ec60e"
     },
     {
       "path": "repository/app/test_configuration.py",
@@ -205,8 +187,8 @@
     {
       "path": "repository/app/test_master.py",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 38731,
-      "sha256": "8f2a06800c9d48bfec507dae8858785a9042bd788cc7a57aa2f125c487cd695d"
+      "bytes": 55927,
+      "sha256": "1caa8356b80d8daa12f68503963f5b63ed52b4b6fd605d3f2a5e8f42fca4e371"
     },
     {
       "path": "repository/app/test_master_hook_launch.py",
@@ -217,14 +199,20 @@
     {
       "path": "repository/app/test_master_http.py",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 14604,
-      "sha256": "a0314230e6db9bd08f5a1ce0247723526308073ae34b04d19a6148708ca138f8"
+      "bytes": 16444,
+      "sha256": "f34086b0a13e5a9e0febda4662a9be95fc1f676bc46ebaad26494cbf053f677d"
+    },
+    {
+      "path": "repository/app/test_master_subagents.py",
+      "origin": "Authored metadata-only subagent count regression checks",
+      "bytes": 16657,
+      "sha256": "4114ab045db69c2f191eeb19db198705ccf5628dd20756c0836657fc0461a04d"
     },
     {
       "path": "repository/app/test_master_ui.js",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 14119,
-      "sha256": "d7374d9022b82915af10612c8925ca08995271b68bdd771649d8e72a270f5503"
+      "bytes": 18255,
+      "sha256": "e6fd5a8b9a01662a1e57ebfa3405e7b030543a6e84c060705a72a9676151dc40"
     },
     {
       "path": "repository/app/test_missing_media.py",
@@ -265,14 +253,14 @@
     {
       "path": "repository/app/web/app.js",
       "origin": "Buddy companion integration reviewed source",
-      "bytes": 94853,
-      "sha256": "ba8ebeeef6b6587207c2cbd07eecf353edd5778f34835149173b8f839f842787"
+      "bytes": 96775,
+      "sha256": "d3340d03cd6c41849437411041b47d9dcbe48498492548f583e98ec3d87b9641"
     },
     {
       "path": "repository/app/web/index.html",
       "origin": "Buddy companion integration reviewed source",
-      "bytes": 29233,
-      "sha256": "8a97e1cc6fecf61e36a1dede98f3993ef8ea1c015b73f73f109bcf431fa9e6e4"
+      "bytes": 29482,
+      "sha256": "e3c95b50452296462fab1b202f3f0263905e59834468cb32b59916b895373141"
     },
     {
       "path": "repository/app/web/style.css",
@@ -282,21 +270,21 @@
     },
     {
       "path": "repository/assemble_source_snapshot.py",
+      "origin": "authored documentation or packaging metadata",
       "bytes": 9071,
-      "sha256": "6a3617a1a245beb743783bbe3f7feac0da99deb3323173be3984416786fe628c",
-      "origin": "authored documentation or packaging metadata"
-    },
-    {
-      "path": "repository/audit/README.md",
-      "origin": "GUI and source-library audit addition",
-      "bytes": 4006,
-      "sha256": "74c2efa8642e00b8e7013145e6762e84fbc29bf6321321aeb3c05fdce453e97d"
+      "sha256": "6a3617a1a245beb743783bbe3f7feac0da99deb3323173be3984416786fe628c"
     },
     {
       "path": "repository/audit/audit_media.py",
       "origin": "GUI and source-library audit addition",
       "bytes": 28632,
       "sha256": "b4f43a9d3345922cd78a8809bca198bb79cc0e625f280478e32fd5643777a420"
+    },
+    {
+      "path": "repository/audit/README.md",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 4006,
+      "sha256": "74c2efa8642e00b8e7013145e6762e84fbc29bf6321321aeb3c05fdce453e97d"
     },
     {
       "path": "repository/audit/test_audit_logic.py",
@@ -335,10 +323,28 @@
       "sha256": "c0508360dc92063500ef25b0d300ac6c1b2b4c64f3345fd75dbcc808c47c25e0"
     },
     {
+      "path": "repository/deployment/import_magix_presets.py",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 16482,
+      "sha256": "d1714a746432d560c9732633fa8ba042fc94f9634210e98b896872ec8085ef44"
+    },
+    {
+      "path": "repository/deployment/Interlinked-Cooler-Publication.psm1",
+      "origin": "Reviewed guarded cooler-only publisher and synthetic tests",
+      "bytes": 14244,
+      "sha256": "286353afe4c09397834202bb1438efcbdb0241f40360b3ea056efd9129cfc255"
+    },
+    {
       "path": "repository/deployment/Interlinked-Desktop-Publication.psm1",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
       "bytes": 18129,
       "sha256": "bd81d9028718568140ae606ecd65c9aa823d542ed97cbb709f974821b61e87da"
+    },
+    {
+      "path": "repository/deployment/Publish-Interlinked-Cooler.ps1",
+      "origin": "Reviewed guarded cooler-only publisher and synthetic tests",
+      "bytes": 3497,
+      "sha256": "34c33e013bf9f0100ef0c29608bb4e9167add66ba626084b2c024b64dcd25509"
     },
     {
       "path": "repository/deployment/Publish-Interlinked-Desktop.ps1",
@@ -365,16 +371,22 @@
       "sha256": "3809c4b182f16eb0b47625c67cc433893e53c69c53193bb6935892ec1752df66"
     },
     {
+      "path": "repository/deployment/Test-Interlinked-Cooler-Publication.ps1",
+      "origin": "Reviewed guarded cooler-only publisher and synthetic tests",
+      "bytes": 15709,
+      "sha256": "2bf47bbe5b482d6d48f5139909d009b81124d9dcb3f6629ce35ae70d31773334"
+    },
+    {
       "path": "repository/deployment/Test-Interlinked-Desktop-Publication.ps1",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
       "bytes": 25355,
       "sha256": "9c5c91a371ad5a91adae8f5cb19981dba68b45e3446d841abf58e33e038ac4f4"
     },
     {
-      "path": "repository/deployment/import_magix_presets.py",
-      "origin": "GUI and source-library audit addition",
-      "bytes": 16482,
-      "sha256": "d1714a746432d560c9732633fa8ba042fc94f9634210e98b896872ec8085ef44"
+      "path": "repository/desktop/Build-CoolerStartup.ps1",
+      "origin": "Reviewed cooler startup source and isolated fixtures",
+      "bytes": 6099,
+      "sha256": "96ed5b8dc2c666f5ad25aa5e1bd68f1fa8f22595e5d8e29f794e675bc08c26b2"
     },
     {
       "path": "repository/desktop/Build-Desktop.ps1",
@@ -389,16 +401,28 @@
       "sha256": "9138132adc7a8ddc035fcc59ad94f77f7524b3d5d6ec2673bc0d79c30ab3d64f"
     },
     {
-      "path": "repository/desktop/INTERLINKED.exe.config",
-      "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 212,
-      "sha256": "5d4cd327e430b0139d55bb5204d25e3944214cbeaa75a3790bb6771ed04dc26d"
+      "path": "repository/desktop/CoolerStartupSetup.cs",
+      "origin": "Reviewed cooler startup source and isolated fixtures",
+      "bytes": 19245,
+      "sha256": "7432e832b0b4eac5a8944e489a44de52e7efbb73379bded40671a390ebe51a65"
     },
     {
       "path": "repository/desktop/Interlinked.cs",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
       "bytes": 48954,
       "sha256": "8487ffdc0f416d910111b450220018b1ecbf8801882d06fb55f10b9b9ddc9aff"
+    },
+    {
+      "path": "repository/desktop/INTERLINKED.exe.config",
+      "origin": "reviewed WebView2 desktop host, tests and guarded publication",
+      "bytes": 212,
+      "sha256": "5d4cd327e430b0139d55bb5204d25e3944214cbeaa75a3790bb6771ed04dc26d"
+    },
+    {
+      "path": "repository/desktop/master_resource_probe.py",
+      "origin": "read-only owned-process resource metadata sampler",
+      "bytes": 10371,
+      "sha256": "f0e1354511524d5e2ff38ac196dffa5a2f485aa692578f8ab693522486581dd0"
     },
     {
       "path": "repository/desktop/MasterCaptureFixture.cs",
@@ -411,6 +435,18 @@
       "origin": "owned Unicode-caption encoding regression fixture",
       "bytes": 1598,
       "sha256": "5300c3a5d01c2d94359dfc6907c7763a2462e2a0abce6a7ff3b0d11248faa3e6"
+    },
+    {
+      "path": "repository/desktop/MasterRenderFixture.cs",
+      "origin": "Authored native cooler rendering regression fixture",
+      "bytes": 16312,
+      "sha256": "1d1100718cf17c3f854ae015985406b7e3a52de8f0af638c091e471b551bf9cc"
+    },
+    {
+      "path": "repository/desktop/MasterSchedulingTests.cs",
+      "origin": "authored MASTER deadline and sender-notification regression fixture",
+      "bytes": 13734,
+      "sha256": "61f9ecb10b19ff26f7f715a6e7047d0d632d13e4be7faf5e8387e70e232fe3a2"
     },
     {
       "path": "repository/desktop/MasterTray.cs",
@@ -427,14 +463,32 @@
     {
       "path": "repository/desktop/MasterWorker.cs",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 67897,
-      "sha256": "48bc6750542aee028b49cc528f677396331dac32e3f1efa2ce5b49f9685fd78d"
+      "bytes": 72454,
+      "sha256": "151da0f637ae56087e77785634d0261e902fd68d5b9a1761bbdd019b3b02a88a"
     },
     {
       "path": "repository/desktop/README.md",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 15478,
-      "sha256": "f3b1ee9f7f4b22566836d4f408287f5cb2658f2321fd05395040c54919054e46"
+      "bytes": 24791,
+      "sha256": "ed17e9ef914e99a71abb0595c292f2c22dc97be641d40e6d5841420814cbf4f1"
+    },
+    {
+      "path": "repository/desktop/SensorStartup.cs",
+      "origin": "Reviewed cooler startup source and isolated fixtures",
+      "bytes": 2776,
+      "sha256": "fd6842591326552aa0af9bdbc1e7aa728b59fd7daa95bb85aa2dcdb562de159a"
+    },
+    {
+      "path": "repository/desktop/SensorStartupNative.cs",
+      "origin": "Reviewed cooler startup source and isolated fixtures",
+      "bytes": 4187,
+      "sha256": "62feed7dd26064519c49b16fb66990bb5c4855e9b4ab07e71ae4a1afb582ad5e"
+    },
+    {
+      "path": "repository/desktop/Test-CoolerStartup.ps1",
+      "origin": "Reviewed cooler startup source and isolated fixtures",
+      "bytes": 13444,
+      "sha256": "fe98e6b298fb6a95470e94f80b7d99264b37107ecc527a32997d2e4cb597fbcc"
     },
     {
       "path": "repository/desktop/Test-Desktop-Package.ps1",
@@ -449,6 +503,18 @@
       "sha256": "37fb9c7bf99b5b818063d465d2689949b3cc203cf5f5a841bd47a425404078cc"
     },
     {
+      "path": "repository/desktop/Test-Master-Render.ps1",
+      "origin": "Authored native cooler rendering regression fixture",
+      "bytes": 1885,
+      "sha256": "2c4e1a72e0ad99293010273d6b96546c4c91fd879fb38a485e4db9922505afa6"
+    },
+    {
+      "path": "repository/desktop/Test-Master-Scheduling.ps1",
+      "origin": "authored MASTER deadline and sender-notification regression fixture",
+      "bytes": 3890,
+      "sha256": "7a9043667ec790abf6f92b8687f81c779f201e05c86e1af2abe9b05e7556de37"
+    },
+    {
       "path": "repository/desktop/Test-MasterTray.ps1",
       "origin": "Existing pending application source retained during MSI observer integration",
       "bytes": 1132,
@@ -459,18 +525,6 @@
       "origin": "authored Violet status rendering regression fixture",
       "bytes": 1475,
       "sha256": "d9db0e7626ab0a8e8cab3fc9e7867a30604fc82cda3b539a5193f03c0e3e2300"
-    },
-    {
-      "path": "repository/desktop/VioletStatusFixture.cs",
-      "origin": "authored Violet status rendering regression fixture",
-      "bytes": 7774,
-      "sha256": "d904fe95deaf35013124716f181b0ddb3b5cb9d874c2bf62ebbf43b9e740b8f1"
-    },
-    {
-      "path": "repository/desktop/master_resource_probe.py",
-      "origin": "read-only owned-process resource metadata sampler",
-      "bytes": 10371,
-      "sha256": "f0e1354511524d5e2ff38ac196dffa5a2f485aa692578f8ab693522486581dd0"
     },
     {
       "path": "repository/desktop/test_master_capture.py",
@@ -493,15 +547,20 @@
     {
       "path": "repository/desktop/test_master_worker.py",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 6825,
-      "sha256": "ed77dd49a591590b26018ae7c4292ca4728c3743ccc3538214519ec86090d89d"
+      "bytes": 9145,
+      "sha256": "f3ceaa583b75017b556847baa84772bddf593557a5a84fde1bc091468dcfce47"
+    },
+    {
+      "path": "repository/desktop/VioletStatusFixture.cs",
+      "origin": "authored Violet status rendering regression fixture",
+      "bytes": 7774,
+      "sha256": "d904fe95deaf35013124716f181b0ddb3b5cb9d874c2bf62ebbf43b9e740b8f1"
     },
     {
       "path": "repository/docs/MAGIX-WORKSPACE-START-HERE.txt",
-      "bytes": 4659,
-      "sha256": "fbc0ffba188af90d250da5b21f84bc57b7ca4c6c9d550bff42e60b86b5bbaf96",
       "origin": "documented extension adaptation",
-      "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-all-projects\\deployment\\MAGIX-WORKSPACE-START-HERE.txt"
+      "bytes": 4659,
+      "sha256": "fbc0ffba188af90d250da5b21f84bc57b7ca4c6c9d550bff42e60b86b5bbaf96"
     },
     {
       "path": "repository/handoff/Pull-INTERLINKED-Context.ps1",
@@ -520,6 +579,12 @@
       "origin": "GUI and source-library audit addition",
       "bytes": 6029,
       "sha256": "957a143ca9af92c3ba2cf6cad6142979b2664b7d17ec8b5d5ddacd1dad1e622c"
+    },
+    {
+      "path": "repository/MAGIX-EXTENSION-MANIFEST.json",
+      "origin": "authored documentation or packaging metadata",
+      "bytes": 5680,
+      "sha256": "cbf3fa3c011d815ff620ed34741d9658fd5d917ce3c73f1c112a714fc335c301"
     },
     {
       "path": "repository/master-plugin/.codex-plugin/plugin.json",
@@ -553,661 +618,583 @@
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Check-MSI-Connection.cmd",
-      "bytes": 498,
-      "sha256": "e9c2c7d724694a519f0134dcd8ee4c116cee2f14b7245eb889c18cc8ac577df7",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Check-MSI-Connection.cmd"
+      "bytes": 498,
+      "sha256": "e9c2c7d724694a519f0134dcd8ee4c116cee2f14b7245eb889c18cc8ac577df7"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Check-MSI-Connection.ps1",
-      "bytes": 10721,
-      "sha256": "6d7f766c052c3fb195af5444950fce12367f6a96b51796ec2800e57a87672441",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Check-MSI-Connection.ps1"
+      "bytes": 10721,
+      "sha256": "6d7f766c052c3fb195af5444950fce12367f6a96b51796ec2800e57a87672441"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Client/HELPER-CHECKSUMS.json",
-      "bytes": 9165,
-      "sha256": "362517385124df2ad6d55363fc0b39d072b4378c11e3f468b1bfebf8bc21f3fc",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Client\\HELPER-CHECKSUMS.json"
+      "bytes": 9165,
+      "sha256": "362517385124df2ad6d55363fc0b39d072b4378c11e3f468b1bfebf8bc21f3fc"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Client/Open-ProjectConsole.ps1",
-      "bytes": 899,
-      "sha256": "206cdd2caf97bb4f86a0435b07d0e09faedb8beac528bf97c9a3777dfdc373b5",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Client\\Open-ProjectConsole.ps1"
+      "bytes": 899,
+      "sha256": "206cdd2caf97bb4f86a0435b07d0e09faedb8beac528bf97c9a3777dfdc373b5"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Client/Project-Library.cmd",
-      "bytes": 273,
-      "sha256": "8cad8e162f33ac4ffe5d57a2049f1b9e030d3d4b2842264e08d507868e224b99",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Client\\Project-Library.cmd"
+      "bytes": 273,
+      "sha256": "8cad8e162f33ac4ffe5d57a2049f1b9e030d3d4b2842264e08d507868e224b99"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Client/Project-Library.ps1",
+      "origin": "exact initial imported source",
       "bytes": 14534,
-      "sha256": "a74e3303f03b67d072e64988874272c3343b818b66d81dd868f96a455f4b8e79",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Client\\Project-Library.ps1"
-    },
-    {
-      "path": "repository/outputs/Project-Library-2026-10-29/Client/README.txt",
-      "bytes": 7841,
-      "sha256": "60001f9c04ed8402cc98b9c96dddbcb9871edd3fe023309289102e67bc62b282",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Client\\README.txt"
-    },
-    {
-      "path": "repository/outputs/Project-Library-2026-10-29/Client/Runtime/LICENSE.txt",
-      "bytes": 25066,
-      "sha256": "886a0ead2d89030ee62dbff52b04e47ab91998341295bb9c56fb952b4e081c7a",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Client\\Runtime\\LICENSE.txt"
-    },
-    {
-      "path": "repository/outputs/Project-Library-2026-10-29/Client/Runtime/python312._pth",
-      "bytes": 28,
-      "sha256": "8e4ac3e5a2b8f58484e4135c66323717ac7fd2fc3b74b44a96a1a74992a66c89",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Client\\Runtime\\python312._pth"
-    },
-    {
-      "path": "repository/outputs/Project-Library-2026-10-29/Client/START-HERE.txt",
-      "bytes": 2496,
-      "sha256": "abd06d1c18b8033b477763a9b458fc7c822d23638b07756fe58256cde7535067",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Client\\START-HERE.txt"
-    },
-    {
-      "path": "repository/outputs/Project-Library-2026-10-29/Client/Settings.example.json",
-      "bytes": 41,
-      "sha256": "b21840d562668f55aac384a4d6e1637f1cd955c7e9ea5daada67670898d5e650",
-      "origin": "authored documentation or packaging metadata"
+      "sha256": "a74e3303f03b67d072e64988874272c3343b818b66d81dd868f96a455f4b8e79"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Client/project_library.py",
+      "origin": "exact initial imported source",
       "bytes": 42875,
-      "sha256": "3d66f560abee179b861867d9ebea6c64bff21ae240c88712db957496f5d1109d",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Client\\project_library.py"
+      "sha256": "3d66f560abee179b861867d9ebea6c64bff21ae240c88712db957496f5d1109d"
     },
     {
-      "path": "repository/outputs/Project-Library-2026-10-29/Helper/Set-Up-MSI-Sharing.cmd",
-      "bytes": 814,
-      "sha256": "6f2ff9b7c1b3fa39b1dd46806da89634f8185e92953125dd7e3b3074a2e85a98",
+      "path": "repository/outputs/Project-Library-2026-10-29/Client/README.txt",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Helper\\Set-Up-MSI-Sharing.cmd"
+      "bytes": 7841,
+      "sha256": "60001f9c04ed8402cc98b9c96dddbcb9871edd3fe023309289102e67bc62b282"
     },
     {
-      "path": "repository/outputs/Project-Library-2026-10-29/Helper/Set-Up-MSI-Sharing.ps1",
-      "bytes": 18466,
-      "sha256": "968ac3be37448b0929dd5cce6c4eae3af0a35a9a9e5ac928fbc04dbc43345581",
+      "path": "repository/outputs/Project-Library-2026-10-29/Client/Runtime/LICENSE.txt",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Helper\\Set-Up-MSI-Sharing.ps1"
+      "bytes": 25066,
+      "sha256": "886a0ead2d89030ee62dbff52b04e47ab91998341295bb9c56fb952b4e081c7a"
+    },
+    {
+      "path": "repository/outputs/Project-Library-2026-10-29/Client/Runtime/python312._pth",
+      "origin": "exact initial imported source",
+      "bytes": 28,
+      "sha256": "8e4ac3e5a2b8f58484e4135c66323717ac7fd2fc3b74b44a96a1a74992a66c89"
+    },
+    {
+      "path": "repository/outputs/Project-Library-2026-10-29/Client/Settings.example.json",
+      "origin": "authored documentation or packaging metadata",
+      "bytes": 41,
+      "sha256": "b21840d562668f55aac384a4d6e1637f1cd955c7e9ea5daada67670898d5e650"
+    },
+    {
+      "path": "repository/outputs/Project-Library-2026-10-29/Client/START-HERE.txt",
+      "origin": "exact initial imported source",
+      "bytes": 2496,
+      "sha256": "abd06d1c18b8033b477763a9b458fc7c822d23638b07756fe58256cde7535067"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Helper/project_library.py",
-      "bytes": 42875,
-      "sha256": "3d66f560abee179b861867d9ebea6c64bff21ae240c88712db957496f5d1109d",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Helper\\project_library.py"
+      "bytes": 42875,
+      "sha256": "3d66f560abee179b861867d9ebea6c64bff21ae240c88712db957496f5d1109d"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Helper/publish_library.py",
-      "bytes": 22615,
-      "sha256": "056d206fa35f5a0603cd9ab6703daf1b8775d73b123ced8d9d69f88041f1c660",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Helper\\publish_library.py"
+      "bytes": 22615,
+      "sha256": "056d206fa35f5a0603cd9ab6703daf1b8775d73b123ced8d9d69f88041f1c660"
+    },
+    {
+      "path": "repository/outputs/Project-Library-2026-10-29/Helper/Set-Up-MSI-Sharing.cmd",
+      "origin": "exact initial imported source",
+      "bytes": 814,
+      "sha256": "6f2ff9b7c1b3fa39b1dd46806da89634f8185e92953125dd7e3b3074a2e85a98"
+    },
+    {
+      "path": "repository/outputs/Project-Library-2026-10-29/Helper/Set-Up-MSI-Sharing.ps1",
+      "origin": "exact initial imported source",
+      "bytes": 18466,
+      "sha256": "968ac3be37448b0929dd5cce6c4eae3af0a35a9a9e5ac928fbc04dbc43345581"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Open-MSI-Terminal.cmd",
-      "bytes": 465,
-      "sha256": "990652e19b22d30b16017d40db46638921fee2668540ad8a9962e6713b47ab49",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Open-MSI-Terminal.cmd"
+      "bytes": 465,
+      "sha256": "990652e19b22d30b16017d40db46638921fee2668540ad8a9962e6713b47ab49"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Repair-Direct-PC-Names.cmd",
-      "bytes": 714,
-      "sha256": "9ece06f89c1aed61f0914b446843f9a8636dd3452a710c5f1e6e67d737517873",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Repair-Direct-PC-Names.cmd"
+      "bytes": 714,
+      "sha256": "9ece06f89c1aed61f0914b446843f9a8636dd3452a710c5f1e6e67d737517873"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Repair-Direct-PC-Names.ps1",
-      "bytes": 12989,
-      "sha256": "7b50e266d1269b4e1bb9d97bfc1e760a0effb5e9b8c7453e83d58a55bab1a4a7",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Repair-Direct-PC-Names.ps1"
+      "bytes": 12989,
+      "sha256": "7b50e266d1269b4e1bb9d97bfc1e760a0effb5e9b8c7453e83d58a55bab1a4a7"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/Enable-Trusted-Direct-Ethernet.ps1",
-      "bytes": 2032,
-      "sha256": "5f6bbb83ff4bb8590f8dfcdab9e59746eb1dc502718374064928cee54af879dc",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Enable-Trusted-Direct-Ethernet.ps1"
+      "bytes": 2032,
+      "sha256": "5f6bbb83ff4bb8590f8dfcdab9e59746eb1dc502718374064928cee54af879dc"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/Invoke-MSIJob.ps1",
-      "bytes": 586,
-      "sha256": "a22f70985cb38b8dabe4859134d4efc9705b766d54b5bad639feaa7150a3fd2c",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Invoke-MSIJob.ps1"
+      "bytes": 586,
+      "sha256": "a22f70985cb38b8dabe4859134d4efc9705b766d54b5bad639feaa7150a3fd2c"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/JOB-SPEC-EXAMPLE.json",
-      "bytes": 283,
-      "sha256": "26c2c2d53e5a2c4d696f927718f4ba165c64259173311634c055e311f5b1468e",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\JOB-SPEC-EXAMPLE.json"
+      "bytes": 283,
+      "sha256": "26c2c2d53e5a2c4d696f927718f4ba165c64259173311634c055e311f5b1468e"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/Launch-Coding-Server-Setup.ps1",
+      "origin": "exact initial imported source",
       "bytes": 2025,
-      "sha256": "857637ee66e01f712222a57e1edc32ca14930f58f38b6c9f7a7adccfd06ea98b",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Launch-Coding-Server-Setup.ps1"
-    },
-    {
-      "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/Repair-Coding-Server-Firewall.ps1",
-      "bytes": 10337,
-      "sha256": "26fb66f88497eaf2b8e6c8fbd1b50b39bc24279d6a0d5b00571f302dc36f2677",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Repair-Coding-Server-Firewall.ps1"
-    },
-    {
-      "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/Repair-Trusted-Direct-Ethernet.ps1",
-      "bytes": 6177,
-      "sha256": "0a5167837a462ba53db9ba869c7b1eaeab4a24e5201087206856249c037b94d0",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Repair-Trusted-Direct-Ethernet.ps1"
-    },
-    {
-      "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/Restore-Trusted-Direct-Ethernet-Now.ps1",
-      "bytes": 3968,
-      "sha256": "cfd417656815a788835ccfaa72bcc38b0a541daf9cbec56b4a75403ffde52304",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Restore-Trusted-Direct-Ethernet-Now.ps1"
-    },
-    {
-      "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/Set-Up-Coding-Server.ps1",
-      "bytes": 38003,
-      "sha256": "a20002f27f21bc03cc5754374d3a070d7a8b0e9bce9b79b3b6261312e4064e19",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Set-Up-Coding-Server.ps1"
-    },
-    {
-      "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/Set-Up-Direct-Ethernet-Repair.ps1",
-      "bytes": 13747,
-      "sha256": "abade4a3b7126b8398bfbc2d5900c1de6bf81289c7659635d944fdd2280a3918",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Set-Up-Direct-Ethernet-Repair.ps1"
-    },
-    {
-      "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/Start-MSIJob.ps1",
-      "bytes": 3968,
-      "sha256": "eaec6e1a4287e44d05426e474f714bb4b58d8624936035df494d1a05d42e8bcb",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Start-MSIJob.ps1"
-    },
-    {
-      "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/Verify-Coding-Server.ps1",
-      "bytes": 6450,
-      "sha256": "f495e963bbce27297ea23e972a2e1ff7bf094b71e7488a4351887205116857a9",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\Verify-Coding-Server.ps1"
+      "sha256": "857637ee66e01f712222a57e1edc32ca14930f58f38b6c9f7a7adccfd06ea98b"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/msi_job_process.py",
-      "bytes": 11439,
-      "sha256": "004b041547291241d2d4674fd08234e68ba26f43b69b77aeaf6d03d38264a60b",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\msi_job_process.py"
+      "bytes": 11439,
+      "sha256": "004b041547291241d2d4674fd08234e68ba26f43b69b77aeaf6d03d38264a60b"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/msi_job_runner.py",
-      "bytes": 10577,
-      "sha256": "e6052a9fc82fd970c95435ea31f8d65d6e9bc87160c921685b981252dab0cf8f",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Server-Setup\\msi_job_runner.py"
+      "bytes": 10577,
+      "sha256": "e6052a9fc82fd970c95435ea31f8d65d6e9bc87160c921685b981252dab0cf8f"
+    },
+    {
+      "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/Repair-Coding-Server-Firewall.ps1",
+      "origin": "exact initial imported source",
+      "bytes": 10337,
+      "sha256": "26fb66f88497eaf2b8e6c8fbd1b50b39bc24279d6a0d5b00571f302dc36f2677"
+    },
+    {
+      "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/Repair-Trusted-Direct-Ethernet.ps1",
+      "origin": "exact initial imported source",
+      "bytes": 6177,
+      "sha256": "0a5167837a462ba53db9ba869c7b1eaeab4a24e5201087206856249c037b94d0"
+    },
+    {
+      "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/Restore-Trusted-Direct-Ethernet-Now.ps1",
+      "origin": "exact initial imported source",
+      "bytes": 3968,
+      "sha256": "cfd417656815a788835ccfaa72bcc38b0a541daf9cbec56b4a75403ffde52304"
+    },
+    {
+      "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/Set-Up-Coding-Server.ps1",
+      "origin": "exact initial imported source",
+      "bytes": 38003,
+      "sha256": "a20002f27f21bc03cc5754374d3a070d7a8b0e9bce9b79b3b6261312e4064e19"
+    },
+    {
+      "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/Set-Up-Direct-Ethernet-Repair.ps1",
+      "origin": "exact initial imported source",
+      "bytes": 13747,
+      "sha256": "abade4a3b7126b8398bfbc2d5900c1de6bf81289c7659635d944fdd2280a3918"
+    },
+    {
+      "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/Start-MSIJob.ps1",
+      "origin": "exact initial imported source",
+      "bytes": 3968,
+      "sha256": "eaec6e1a4287e44d05426e474f714bb4b58d8624936035df494d1a05d42e8bcb"
+    },
+    {
+      "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/Verify-Coding-Server.ps1",
+      "origin": "exact initial imported source",
+      "bytes": 6450,
+      "sha256": "f495e963bbce27297ea23e972a2e1ff7bf094b71e7488a4351887205116857a9"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Sign-In-To-MSI.cmd",
-      "bytes": 866,
-      "sha256": "7d7d1d26a0ba5902cf79b0296ed7b52a9eb3d2ebae7e71e32c34713991fe8d69",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\outputs\\Project-Library-2026-10-29\\Sign-In-To-MSI.cmd"
+      "bytes": 866,
+      "sha256": "7d7d1d26a0ba5902cf79b0296ed7b52a9eb3d2ebae7e71e32c34713991fe8d69"
+    },
+    {
+      "path": "repository/README.md",
+      "origin": "authored documentation or packaging metadata",
+      "bytes": 13920,
+      "sha256": "6fb42c70af44d1b93011f269d56d3a566158acdee2239132baa8d956b4af2b4f"
+    },
+    {
+      "path": "repository/SOURCE-MANIFEST.json",
+      "origin": "authored documentation or packaging metadata",
+      "bytes": 53300,
+      "sha256": "0204d94dac4baba841606750859909376832478a627a3ea9e11a31ac805da631"
     },
     {
       "path": "repository/verify_source_snapshot.py",
+      "origin": "authored documentation or packaging metadata",
       "bytes": 3246,
-      "sha256": "6db38f9d39b1556532df94b468ea8752c73789a4050c14574d73348d12c41b21",
-      "origin": "authored documentation or packaging metadata"
+      "sha256": "6db38f9d39b1556532df94b468ea8752c73789a4050c14574d73348d12c41b21"
     },
     {
       "path": "repository/work/build_ethernet_manifest.py",
-      "bytes": 15273,
-      "sha256": "b78c4a8620ef816d9f23a360edfec5da87d486c24115dada8fb8bee09654e916",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\build_ethernet_manifest.py"
+      "bytes": 15273,
+      "sha256": "b78c4a8620ef816d9f23a360edfec5da87d486c24115dada8fb8bee09654e916"
     },
     {
       "path": "repository/work/full-export-tools/capture_export.py",
-      "bytes": 22635,
-      "sha256": "b4daf4fa43268718d86ab4c4eec18aa89bf091ac4a5c4d41fdfccc9163f687f4",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\full-export-tools\\capture_export.py"
+      "bytes": 22635,
+      "sha256": "b4daf4fa43268718d86ab4c4eec18aa89bf091ac4a5c4d41fdfccc9163f687f4"
     },
     {
       "path": "repository/work/full-export-tools/restore_export.py",
-      "bytes": 14964,
-      "sha256": "77ccbaf66c0c65600f74ec4d54be676df7742dc2518b2c1d7e40ccd041e4e927",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\full-export-tools\\restore_export.py"
-    },
-    {
-      "path": "repository/work/magix-all-projects/candidate/MAGIX-Local-Workspace.cmd",
-      "bytes": 171,
-      "sha256": "f4f31ea31b13cf1ec947bc9652083036d2a94a2e2be76fa7611033cb6b34898c",
-      "origin": "exact extension source",
-      "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-all-projects\\candidate\\MAGIX-Local-Workspace.cmd"
-    },
-    {
-      "path": "repository/work/magix-all-projects/candidate/Set-Up-MAGIX-Workspace.cmd",
-      "bytes": 172,
-      "sha256": "67d7876e4515c23614af37439c087ad4bf377353ef2617b782ff1f8a2e5dd0ec",
-      "origin": "exact extension source",
-      "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-all-projects\\candidate\\Set-Up-MAGIX-Workspace.cmd"
+      "bytes": 14964,
+      "sha256": "77ccbaf66c0c65600f74ec4d54be676df7742dc2518b2c1d7e40ccd041e4e927"
     },
     {
       "path": "repository/work/magix-all-projects/candidate/build_index.py",
-      "bytes": 3021,
-      "sha256": "76ddf2b505be85acbde65895bff4d58d25b12f647e5b5db7002cca7c8bf06fb5",
       "origin": "exact extension source",
-      "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-all-projects\\candidate\\build_index.py"
+      "bytes": 3021,
+      "sha256": "76ddf2b505be85acbde65895bff4d58d25b12f647e5b5db7002cca7c8bf06fb5"
+    },
+    {
+      "path": "repository/work/magix-all-projects/candidate/MAGIX-Local-Workspace.cmd",
+      "origin": "exact extension source",
+      "bytes": 171,
+      "sha256": "f4f31ea31b13cf1ec947bc9652083036d2a94a2e2be76fa7611033cb6b34898c"
     },
     {
       "path": "repository/work/magix-all-projects/candidate/magix_projects.py",
-      "bytes": 29710,
-      "sha256": "6c2ea58d9ac89a20c4b2bb42347b79f5802b049b2c81812314e09412578de1bf",
       "origin": "exact extension source",
-      "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-all-projects\\candidate\\magix_projects.py"
+      "bytes": 29710,
+      "sha256": "6c2ea58d9ac89a20c4b2bb42347b79f5802b049b2c81812314e09412578de1bf"
+    },
+    {
+      "path": "repository/work/magix-all-projects/candidate/Set-Up-MAGIX-Workspace.cmd",
+      "origin": "exact extension source",
+      "bytes": 172,
+      "sha256": "67d7876e4515c23614af37439c087ad4bf377353ef2617b782ff1f8a2e5dd0ec"
     },
     {
       "path": "repository/work/magix-all-projects/candidate/test_launch_paths.py",
-      "bytes": 3682,
-      "sha256": "7ca1b083ed9d60dc7b0d1790661884a32e279f02c0f6510cfa83903d88cc24e1",
       "origin": "documented extension adaptation",
-      "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-all-projects\\candidate\\test_launch_paths.py"
+      "bytes": 3682,
+      "sha256": "7ca1b083ed9d60dc7b0d1790661884a32e279f02c0f6510cfa83903d88cc24e1"
     },
     {
       "path": "repository/work/magix-all-projects/candidate/test_projects.py",
-      "bytes": 13694,
-      "sha256": "e125b41507940f62671a0b895982c1c95bd5b965d816da68e946c3eacacdceea",
       "origin": "documented extension adaptation",
-      "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-all-projects\\candidate\\test_projects.py"
+      "bytes": 13694,
+      "sha256": "e125b41507940f62671a0b895982c1c95bd5b965d816da68e946c3eacacdceea"
     },
     {
       "path": "repository/work/magix-bootstrap-fix-2026-10-29/magix_workspace.py",
-      "bytes": 36460,
-      "sha256": "c60fb2559a90a2301aa3d741c1d2e676e5ed90559fb40a63e27ef83d75f697aa",
       "origin": "exact extension source",
-      "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-bootstrap-fix-2026-10-29\\magix_workspace.py"
+      "bytes": 36460,
+      "sha256": "c60fb2559a90a2301aa3d741c1d2e676e5ed90559fb40a63e27ef83d75f697aa"
     },
     {
       "path": "repository/work/magix-buddy/candidate/magix_projects.py",
+      "origin": "Buddy companion integration reviewed source",
       "bytes": 31015,
-      "sha256": "29434d26caa8c656ea6fd181d2a0d79e3eaad2a56b77e6b8bfae5751e22205b9",
-      "origin": "Buddy companion integration reviewed source"
+      "sha256": "29434d26caa8c656ea6fd181d2a0d79e3eaad2a56b77e6b8bfae5751e22205b9"
     },
     {
       "path": "repository/work/magix-legacy-path-option/MAGIX-Legacy-Path.ps1",
-      "bytes": 25970,
-      "sha256": "3a7332607a9fd59d460ca7eb0db8c5e46e892c67b9c9c63a68b03d076120f880",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-legacy-path-option\\MAGIX-Legacy-Path.ps1"
+      "bytes": 25970,
+      "sha256": "3a7332607a9fd59d460ca7eb0db8c5e46e892c67b9c9c63a68b03d076120f880"
     },
     {
       "path": "repository/work/magix-legacy-path-option/test_local_option.ps1",
+      "origin": "exact initial imported source",
       "bytes": 6181,
-      "sha256": "9bbf1405f2dfc8dae28e7040c147e81dd3bf6d49c12331d47329be7183012f6c",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-legacy-path-option\\test_local_option.ps1"
-    },
-    {
-      "path": "repository/work/magix-workspace-launcher/MAGIX-Local-Workspace.cmd",
-      "bytes": 172,
-      "sha256": "1b063d9ccebfbbe9cb0a56a55f61ee16e23cba45e8c9d78d213e777a44135725",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-workspace-launcher\\MAGIX-Local-Workspace.cmd"
-    },
-    {
-      "path": "repository/work/magix-workspace-launcher/MAGIX-Workspace-Access.ps1",
-      "bytes": 13544,
-      "sha256": "f123d1ca489841f415bf8b21cfe799c2edc093a55b96c08d2287e0aee65aa741",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-workspace-launcher\\MAGIX-Workspace-Access.ps1"
-    },
-    {
-      "path": "repository/work/magix-workspace-launcher/Set-Up-MAGIX-Workspace.cmd",
-      "bytes": 355,
-      "sha256": "27cd0f4a55c4ad6adf606182b06bcd00604aeacf199ae430da8dd4f3dedfd685",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-workspace-launcher\\Set-Up-MAGIX-Workspace.cmd"
+      "sha256": "9bbf1405f2dfc8dae28e7040c147e81dd3bf6d49c12331d47329be7183012f6c"
     },
     {
       "path": "repository/work/magix-workspace-launcher/independent_process_guard_check.py",
-      "bytes": 3514,
-      "sha256": "f07c4daeb2a51037d93cfb1ac33d0bcf4b92c3792968f58d6df595cbaf42a687",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-workspace-launcher\\independent_process_guard_check.py"
+      "bytes": 3514,
+      "sha256": "f07c4daeb2a51037d93cfb1ac33d0bcf4b92c3792968f58d6df595cbaf42a687"
+    },
+    {
+      "path": "repository/work/magix-workspace-launcher/MAGIX-Local-Workspace.cmd",
+      "origin": "exact initial imported source",
+      "bytes": 172,
+      "sha256": "1b063d9ccebfbbe9cb0a56a55f61ee16e23cba45e8c9d78d213e777a44135725"
+    },
+    {
+      "path": "repository/work/magix-workspace-launcher/MAGIX-Workspace-Access.ps1",
+      "origin": "exact initial imported source",
+      "bytes": 13544,
+      "sha256": "f123d1ca489841f415bf8b21cfe799c2edc093a55b96c08d2287e0aee65aa741"
     },
     {
       "path": "repository/work/magix-workspace-launcher/magix_workspace.py",
-      "bytes": 36460,
-      "sha256": "c60fb2559a90a2301aa3d741c1d2e676e5ed90559fb40a63e27ef83d75f697aa",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\OneDrive\\Documents\\ChatGPT\\INTERLINKED\\work\\magix-bootstrap-fix-2026-10-29\\magix_workspace.py"
+      "bytes": 36460,
+      "sha256": "c60fb2559a90a2301aa3d741c1d2e676e5ed90559fb40a63e27ef83d75f697aa"
+    },
+    {
+      "path": "repository/work/magix-workspace-launcher/Set-Up-MAGIX-Workspace.cmd",
+      "origin": "exact initial imported source",
+      "bytes": 355,
+      "sha256": "27cd0f4a55c4ad6adf606182b06bcd00604aeacf199ae430da8dd4f3dedfd685"
     },
     {
       "path": "repository/work/magix-workspace-launcher/test_access_native.ps1",
-      "bytes": 5286,
-      "sha256": "f26192b03052d67fac9d609e1d92d2626b06d5b87447592e088d6b685a4fd189",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-workspace-launcher\\test_access_native.ps1"
+      "bytes": 5286,
+      "sha256": "f26192b03052d67fac9d609e1d92d2626b06d5b87447592e088d6b685a4fd189"
     },
     {
       "path": "repository/work/magix-workspace-launcher/test_access_plan.ps1",
-      "bytes": 2474,
-      "sha256": "72c6047ac96a187d710b27be110979c161f18d11216c7925f6a8dc17e511b982",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-workspace-launcher\\test_access_plan.ps1"
+      "bytes": 2474,
+      "sha256": "72c6047ac96a187d710b27be110979c161f18d11216c7925f6a8dc17e511b982"
     },
     {
       "path": "repository/work/magix-workspace-launcher/test_new_junction_leaf.py",
-      "bytes": 1319,
-      "sha256": "f43ffd353a40b62b65d5e5fc2ec5fbb6c83a3bb01524828ec5797926c9122374",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-workspace-launcher\\test_new_junction_leaf.py"
+      "bytes": 1319,
+      "sha256": "f43ffd353a40b62b65d5e5fc2ec5fbb6c83a3bb01524828ec5797926c9122374"
     },
     {
       "path": "repository/work/magix-workspace-launcher/test_workspace.py",
-      "bytes": 10011,
-      "sha256": "5a8ec85f1ff9d87f39145538d0c99ba7d2490c2546d5f94c717f49aeaf837bd4",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\magix-workspace-launcher\\test_workspace.py"
+      "bytes": 10011,
+      "sha256": "5a8ec85f1ff9d87f39145538d0c99ba7d2490c2546d5f94c717f49aeaf837bd4"
     },
     {
       "path": "repository/work/msi-server-conversion/Prepare-SSH-Job-Fixture.ps1",
+      "origin": "exact initial imported source",
       "bytes": 5314,
-      "sha256": "dfa817c3334dd7286b7c821b825ad5f37babcf1f7a6ffee9a8c0f426b992776a",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\Prepare-SSH-Job-Fixture.ps1"
-    },
-    {
-      "path": "repository/work/msi-server-conversion/Read-Verified-SSH-Public-Key.ps1",
-      "bytes": 5548,
-      "sha256": "5ea7952417ebe708ce11116cc9d0d1b74014c14a6d24e849f1444bff05109ac7",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\Read-Verified-SSH-Public-Key.ps1"
+      "sha256": "dfa817c3334dd7286b7c821b825ad5f37babcf1f7a6ffee9a8c0f426b992776a"
     },
     {
       "path": "repository/work/msi-server-conversion/probe_job_cache_lock.py",
-      "bytes": 1099,
-      "sha256": "be7176ec44b202d07d7241801e0c2a09d0f6f439482783a45e420ad58c96bc53",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\probe_job_cache_lock.py"
+      "bytes": 1099,
+      "sha256": "be7176ec44b202d07d7241801e0c2a09d0f6f439482783a45e420ad58c96bc53"
+    },
+    {
+      "path": "repository/work/msi-server-conversion/Read-Verified-SSH-Public-Key.ps1",
+      "origin": "exact initial imported source",
+      "bytes": 5548,
+      "sha256": "5ea7952417ebe708ce11116cc9d0d1b74014c14a6d24e849f1444bff05109ac7"
     },
     {
       "path": "repository/work/msi-server-conversion/test-ssh-firewall-repair.ps1",
-      "bytes": 2908,
-      "sha256": "87662c996e9317d77b317d75aa0a724d2ee20f488eff35d12fc26a4fee6eac97",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\test-ssh-firewall-repair.ps1"
+      "bytes": 2908,
+      "sha256": "87662c996e9317d77b317d75aa0a724d2ee20f488eff35d12fc26a4fee6eac97"
     },
     {
       "path": "repository/work/msi-server-conversion/test-ssh-resume-guards.ps1",
-      "bytes": 6688,
-      "sha256": "75dd28f8ee9161fbfcd87771848a633bf6db2d90642d5b69a5db2e77968cdb50",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\test-ssh-resume-guards.ps1"
+      "bytes": 6688,
+      "sha256": "75dd28f8ee9161fbfcd87771848a633bf6db2d90642d5b69a5db2e77968cdb50"
     },
     {
       "path": "repository/work/msi-server-conversion/test-ssh-retry-native-guards.ps1",
-      "bytes": 6194,
-      "sha256": "bc6466774ad9973b3aa9d8a451e7315e277f71da98b1b3d32e6556dc0af9033e",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\test-ssh-retry-native-guards.ps1"
+      "bytes": 6194,
+      "sha256": "bc6466774ad9973b3aa9d8a451e7315e277f71da98b1b3d32e6556dc0af9033e"
     },
     {
       "path": "repository/work/msi-server-conversion/test_direct_ethernet_repair.ps1",
-      "bytes": 8847,
-      "sha256": "b48fc3ee6ecc54849e635dcfffa79b219932d8e0c73cdb5d02ec673548aaacdc",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\test_direct_ethernet_repair.ps1"
+      "bytes": 8847,
+      "sha256": "b48fc3ee6ecc54849e635dcfffa79b219932d8e0c73cdb5d02ec673548aaacdc"
     },
     {
       "path": "repository/work/msi-server-conversion/test_installed_direct_ethernet_task.ps1",
-      "bytes": 3378,
-      "sha256": "e5d76168bb3885101dfbb8efcc82b1fcc09604492db14c53c316fdcf9f014296",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\test_installed_direct_ethernet_task.ps1"
+      "bytes": 3378,
+      "sha256": "e5d76168bb3885101dfbb8efcc82b1fcc09604492db14c53c316fdcf9f014296"
     },
     {
       "path": "repository/work/msi-server-conversion/test_job_process.py",
-      "bytes": 6349,
-      "sha256": "989e5038282b847a314870919173afe095a51afea9a4f5fffe3ed8e1aa1357db",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\test_job_process.py"
+      "bytes": 6349,
+      "sha256": "989e5038282b847a314870919173afe095a51afea9a4f5fffe3ed8e1aa1357db"
     },
     {
       "path": "repository/work/msi-server-conversion/test_job_unc_identity.py",
-      "bytes": 7031,
-      "sha256": "78026bbf375bbc275a2cc0ad3e7670c17406da83f4fc861252638f72adbece5f",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\test_job_unc_identity.py"
+      "bytes": 7031,
+      "sha256": "78026bbf375bbc275a2cc0ad3e7670c17406da83f4fc861252638f72adbece5f"
     },
     {
       "path": "repository/work/msi-server-conversion/test_scheduled_job.ps1",
+      "origin": "exact initial imported source",
       "bytes": 9351,
-      "sha256": "7cff21d5faec0d132d53e7d53ace76982ff7ecd566bdb5c1f08d9ae1be4589ee",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\msi-server-conversion\\test_scheduled_job.ps1"
-    },
-    {
-      "path": "repository/work/new-pc-workflow/Publish-Reviewed-Fixture.ps1",
-      "bytes": 5980,
-      "sha256": "2c37fcbe8cf34bff7ba7e4b0294eefa6094b4d9d40bdd3a0c5530d7567d4607f",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\new-pc-workflow\\Publish-Reviewed-Fixture.ps1"
-    },
-    {
-      "path": "repository/work/new-pc-workflow/Verify-New-PC-Workflow.cmd",
-      "bytes": 780,
-      "sha256": "471d5883908f2b7875693c61de39e40fc5ba294635a37a70a45331ca70b1e148",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\new-pc-workflow\\Verify-New-PC-Workflow.cmd"
+      "sha256": "7cff21d5faec0d132d53e7d53ace76982ff7ecd566bdb5c1f08d9ae1be4589ee"
     },
     {
       "path": "repository/work/new-pc-workflow/prepare_fixture.py",
-      "bytes": 3639,
-      "sha256": "7a777a9199d039ad08c7e2339c3e429b7382c19f866765fa97ed2a37836873b1",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\new-pc-workflow\\prepare_fixture.py"
+      "bytes": 3639,
+      "sha256": "7a777a9199d039ad08c7e2339c3e429b7382c19f866765fa97ed2a37836873b1"
+    },
+    {
+      "path": "repository/work/new-pc-workflow/Publish-Reviewed-Fixture.ps1",
+      "origin": "exact initial imported source",
+      "bytes": 5980,
+      "sha256": "2c37fcbe8cf34bff7ba7e4b0294eefa6094b4d9d40bdd3a0c5530d7567d4607f"
     },
     {
       "path": "repository/work/new-pc-workflow/test_workflow.py",
-      "bytes": 4376,
-      "sha256": "20866f05abcdce06a460f61d30ef6e687b514b3378f045c02c51928ee3596c0e",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\new-pc-workflow\\test_workflow.py"
+      "bytes": 4376,
+      "sha256": "20866f05abcdce06a460f61d30ef6e687b514b3378f045c02c51928ee3596c0e"
+    },
+    {
+      "path": "repository/work/new-pc-workflow/Verify-New-PC-Workflow.cmd",
+      "origin": "exact initial imported source",
+      "bytes": 780,
+      "sha256": "471d5883908f2b7875693c61de39e40fc5ba294635a37a70a45331ca70b1e148"
     },
     {
       "path": "repository/work/new-pc-workflow/verify_new_pc_workflow.py",
-      "bytes": 17229,
-      "sha256": "4e699908efe5e03495924a0a93630b782a2dff8e6503eb1d366c5102c7559bf0",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\new-pc-workflow\\verify_new_pc_workflow.py"
+      "bytes": 17229,
+      "sha256": "4e699908efe5e03495924a0a93630b782a2dff8e6503eb1d366c5102c7559bf0"
     },
     {
       "path": "repository/work/prepare_magix_capture_selection.py",
-      "bytes": 4569,
-      "sha256": "74dc36895632a91a842956c4a7e69643a90c78f2cb6f19dda5de111c84e80042",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\prepare_magix_capture_selection.py"
+      "bytes": 4569,
+      "sha256": "74dc36895632a91a842956c4a7e69643a90c78f2cb6f19dda5de111c84e80042"
     },
     {
       "path": "repository/work/prepare_magix_selection.py",
-      "bytes": 17261,
-      "sha256": "08830442161b18b9250bb6f5fcdb792eff07d9f8f06b1dfe49bc86069e31a8d9",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\prepare_magix_selection.py"
+      "bytes": 17261,
+      "sha256": "08830442161b18b9250bb6f5fcdb792eff07d9f8f06b1dfe49bc86069e31a8d9"
     },
     {
       "path": "repository/work/project-library-catalog/build_catalog.py",
-      "bytes": 16890,
-      "sha256": "2bcdc43c6a48683b1cd996f3b0c775447a9a598da34a68d6bb6338c61bb1338c",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-catalog\\build_catalog.py"
+      "bytes": 16890,
+      "sha256": "2bcdc43c6a48683b1cd996f3b0c775447a9a598da34a68d6bb6338c61bb1338c"
     },
     {
       "path": "repository/work/project-library-sharing/test_client_independent.py",
-      "bytes": 10988,
-      "sha256": "b106fdfc5538edfb17cae8b30048c8d0ba1acecd799f98155b6efb12fb91ca5a",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-sharing\\test_client_independent.py"
+      "bytes": 10988,
+      "sha256": "b106fdfc5538edfb17cae8b30048c8d0ba1acecd799f98155b6efb12fb91ca5a"
     },
     {
       "path": "repository/work/project-library-sharing/test_publisher.py",
-      "bytes": 6019,
-      "sha256": "179ef4396f41525eadcb6070c6ff0ba68c5a36641a1f26d1b398e2285bfb51fe",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-sharing\\test_publisher.py"
+      "bytes": 6019,
+      "sha256": "179ef4396f41525eadcb6070c6ff0ba68c5a36641a1f26d1b398e2285bfb51fe"
     },
     {
       "path": "repository/work/project-library-sharing/test_sharing_helper.ps1",
-      "bytes": 8292,
-      "sha256": "e19ccae5b206ed83f2d83575af462562f542d60189ad2cee04a30f409f8f3910",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-sharing\\test_sharing_helper.ps1"
+      "bytes": 8292,
+      "sha256": "e19ccae5b206ed83f2d83575af462562f542d60189ad2cee04a30f409f8f3910"
     },
     {
       "path": "repository/work/project-library-tests/build_project_index.py",
-      "bytes": 12271,
-      "sha256": "1ba0f2684f103e7c266c1b06246942712c976a340d8831dc7b761516f3189d34",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-tests\\build_project_index.py"
+      "bytes": 12271,
+      "sha256": "1ba0f2684f103e7c266c1b06246942712c976a340d8831dc7b761516f3189d34"
     },
     {
       "path": "repository/work/project-library-tests/check_client_package.ps1",
-      "bytes": 938,
-      "sha256": "2b0e860c858924e1792eb2aa1f417d923c61373e9391ade30177b9724ca0c109",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-tests\\check_client_package.ps1"
+      "bytes": 938,
+      "sha256": "2b0e860c858924e1792eb2aa1f417d923c61373e9391ade30177b9724ca0c109"
     },
     {
       "path": "repository/work/project-library-tests/check_connection_checker.ps1",
-      "bytes": 2914,
-      "sha256": "b8decd268a53b5c1e44f591cf42a7c6d55fb7805ab10d714fcf75ed6403366a2",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-tests\\check_connection_checker.ps1"
+      "bytes": 2914,
+      "sha256": "b8decd268a53b5c1e44f591cf42a7c6d55fb7805ab10d714fcf75ed6403366a2"
     },
     {
       "path": "repository/work/project-library-tests/client_runtime_smoke.py",
-      "bytes": 2213,
-      "sha256": "030bf7970b962738fc5df3f3c267a94eb47910ced1b6e5c2b7278563d34a6d2d",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-tests\\client_runtime_smoke.py"
+      "bytes": 2213,
+      "sha256": "030bf7970b962738fc5df3f3c267a94eb47910ced1b6e5c2b7278563d34a6d2d"
     },
     {
       "path": "repository/work/project-library-tests/test_name_repair.ps1",
-      "bytes": 3985,
-      "sha256": "50ed53d681cff0bbbdf9864d8c9ab943ece9f85f3ffcf2348ed75c6f40f1a3a3",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-tests\\test_name_repair.ps1"
+      "bytes": 3985,
+      "sha256": "50ed53d681cff0bbbdf9864d8c9ab943ece9f85f3ffcf2348ed75c6f40f1a3a3"
     },
     {
       "path": "repository/work/project-library-tests/test_project_library.py",
-      "bytes": 15015,
-      "sha256": "4fd1dda03cb2c593806200e7326ccc01c4e8057710dad512ff992d2be7a2f433",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\project-library-tests\\test_project_library.py"
+      "bytes": 15015,
+      "sha256": "4fd1dda03cb2c593806200e7326ccc01c4e8057710dad512ff992d2be7a2f433"
     },
     {
       "path": "repository/work/ssh-job-verification/Connect-To-MSI.ps1",
-      "bytes": 11347,
-      "sha256": "675bd77841f2665fe89b86805d690cbd4fbd1aa60aaf6ce898382916f0cf223f",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\Connect-To-MSI.ps1"
+      "bytes": 11347,
+      "sha256": "675bd77841f2665fe89b86805d690cbd4fbd1aa60aaf6ce898382916f0cf223f"
     },
     {
       "path": "repository/work/ssh-job-verification/Invoke-SSH-Job-Verification.ps1",
-      "bytes": 11084,
-      "sha256": "b6eb8e979a853d66de62c404120ea03ede5de162799ff21155e090ffd5b3353c",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\Invoke-SSH-Job-Verification.ps1"
+      "bytes": 11084,
+      "sha256": "b6eb8e979a853d66de62c404120ea03ede5de162799ff21155e090ffd5b3353c"
     },
     {
       "path": "repository/work/ssh-job-verification/Open-MSI-Terminal.cmd",
+      "origin": "exact initial imported source",
       "bytes": 295,
-      "sha256": "8a251646ed9c0e437ae6e777192289e68810ef0766968eeb59688fe12a26778d",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\Open-MSI-Terminal.cmd"
-    },
-    {
-      "path": "repository/work/ssh-job-verification/SSH-Verification-Common.ps1",
-      "bytes": 3463,
-      "sha256": "983c000df2bc1958a74dc9986cdacdceab9bb30f18572b40ddeefe773ec28833",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\SSH-Verification-Common.ps1"
-    },
-    {
-      "path": "repository/work/ssh-job-verification/Verify-MSI-SSH-Job.cmd",
-      "bytes": 327,
-      "sha256": "2a16d742ce56ec29b381b3d036663d5a948d1097e6c1355923ea73bafab29be5",
-      "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\Verify-MSI-SSH-Job.cmd"
+      "sha256": "8a251646ed9c0e437ae6e777192289e68810ef0766968eeb59688fe12a26778d"
     },
     {
       "path": "repository/work/ssh-job-verification/prepare_null_trigger_retest.py",
-      "bytes": 8267,
-      "sha256": "25630101e0c60b257dbc3ac190baa88a42cda91df4fad7e76795b88888fc6e9a",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\prepare_null_trigger_retest.py"
+      "bytes": 8267,
+      "sha256": "25630101e0c60b257dbc3ac190baa88a42cda91df4fad7e76795b88888fc6e9a"
     },
     {
       "path": "repository/work/ssh-job-verification/prepare_plan.py",
-      "bytes": 4172,
-      "sha256": "bacb56735ec4f1d5da6d61ffdabde2e3aa002d54845f7375614383dabe0f35a1",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\prepare_plan.py"
+      "bytes": 4172,
+      "sha256": "bacb56735ec4f1d5da6d61ffdabde2e3aa002d54845f7375614383dabe0f35a1"
+    },
+    {
+      "path": "repository/work/ssh-job-verification/SSH-Verification-Common.ps1",
+      "origin": "exact initial imported source",
+      "bytes": 3463,
+      "sha256": "983c000df2bc1958a74dc9986cdacdceab9bb30f18572b40ddeefe773ec28833"
     },
     {
       "path": "repository/work/ssh-job-verification/test-null-trigger-repair.ps1",
-      "bytes": 3364,
-      "sha256": "75fe8ff71e6c42d3c697a0726eb9804b8ee24ccec34bfe171c98576ec771ecee",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\test-null-trigger-repair.ps1"
+      "bytes": 3364,
+      "sha256": "75fe8ff71e6c42d3c697a0726eb9804b8ee24ccec34bfe171c98576ec771ecee"
     },
     {
       "path": "repository/work/ssh-job-verification/test_preparation.ps1",
-      "bytes": 5675,
-      "sha256": "8292e73ee50bf82a180e7f70860a55678f6e05b7b4abe6e8ca2884166d204fb0",
       "origin": "exact initial imported source",
-      "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\test_preparation.ps1"
+      "bytes": 5675,
+      "sha256": "8292e73ee50bf82a180e7f70860a55678f6e05b7b4abe6e8ca2884166d204fb0"
+    },
+    {
+      "path": "repository/work/ssh-job-verification/Verify-MSI-SSH-Job.cmd",
+      "origin": "exact initial imported source",
+      "bytes": 327,
+      "sha256": "2a16d742ce56ec29b381b3d036663d5a948d1097e6c1355923ea73bafab29be5"
     }
   ],
   "summary": {
-    "files": 184,
-    "bytes": 2191507,
-    "pythonSourcesParsed": 72
+    "files": 197,
+    "bytes": 2383061,
+    "pythonSourcesParsed": 73
   },
   "preservedBaseline": "Original SOURCE-MANIFEST, MAGIX-EXTENSION-MANIFEST, frozen workspace base and original launcher source remain exact. Buddy launcher is a separate current source addition.",
   "privacy": "No personal catalog, media audit report, deployment seal, source media, cache, credential or runtime binary is included.",
-  "validationScope": "Sourced Violet v2 reports and legacy migration, four restricted MCP tools, bounded persistent attention queue and acknowledgments, native expression/source display and pending-count UI. Synthetic MASTER backend/API/UI, native changing frames/UTF-8, hub/MW5/Jobs/tray and guarded publisher regressions; source integrity verified separately. Prepared 25-file guarded update, not installed. Current production dashboard and sensors preserved. Actual Violet read/publish acceptance and plugin activation remain unverified; live-mini capture optional, long stability/boot/reconnect deferred. Private reports and payloads excluded. Windows observer launch generation passes 35 real PowerShell/CMD fixture checks plus three existing hook regressions; corrected active definitions require normal user re-review before live acceptance.",
+  "validationScope": "Current source hashes/Python syntax and isolated application/lifecycle, renderer/scheduling, native preview/worker and publisher checks. Private runtime state, packages and acceptance receipts remain excluded. This review performs no deployment, USB/sensor operation, startup task registration or reboot.",
   "buddyValidation": {
     "syntheticCompanionCases": 45,
     "syntheticReportRendererChecks": 18,
@@ -1239,5 +1226,61 @@
     "hubIntegrationChecks": 105,
     "trayChecks": 16,
     "publicationChecks": 97
+  },
+  "historicalCoolerEvidence": {
+    "scope": "Earlier separately built packages and physical observations; retained as historical evidence, not rerun or attributed to this source review.",
+    "design": {
+      "design": "Approved Matrix binary-stream layout with original approved Violet atlas; one aggregate figure per project.",
+      "nativeRendererChecks": 44,
+      "encodedWorkerFrames": 20,
+      "desktopWorkflowChecks": 39,
+      "scope": "Frozen approved design package installed through the guarded two-target publisher; live LCD connection and delivered frames verified. Current concurrent source additions have separate validation and release evidence.",
+      "coolerPublicationChecks": 96,
+      "installedWorkerSha256": "65f1043d0776fb168743cccdc73f61ab7cb628ccede73d63280e7f70bcd04b39",
+      "approvedVioletUnchanged": true
+    },
+    "mergedHardware": {
+      "sourceSha256": "8a04de825dfc8308320c2e45bf1c1758e3dc89dcce9f2ddc213e52b7254fa2b4",
+      "workerSha256": "77b67f351c280a877276db0b54632f49125df85293f0d5c37c4b7b39381559e8",
+      "jpegQuality": 100,
+      "targetFps": 30,
+      "fiveMinutePreviewSensorSoakCompleted": true,
+      "measuredSeconds": 300.5176531,
+      "helperConsumedFps": 29.292788324387455,
+      "skippedProducedFrames": 1,
+      "userConfirmedLcdArtworkLabelsMotionAndUpdatingTemperatures": true,
+      "normalHelperInputsIsolated": true,
+      "freshCpuGpuObservations": true,
+      "sensorDisableUnavailableAndContinuedDisplay": true,
+      "boundedOwnedCleanupPassed": true,
+      "optimizationPackagePublished": false,
+      "limits": "Sparse production counters, not optical refresh or per-frame timing; actual HTTP preview excludes WebView2 decoding; no independent sensor accuracy or longer-term stability claim."
+    }
+  },
+  "coolerReview": {
+    "masterTests": 81,
+    "masterSkipped": 0,
+    "nativeHttpChecks": 92,
+    "subagentLifecycleTests": 37,
+    "masterUiChecks": 69,
+    "configurationUiChecks": 35,
+    "nativeRenderChecks": 67,
+    "schedulingChecks": 57,
+    "distinctEncodedWorkerFrames": 20,
+    "coolerPublisherChecks": 114,
+    "startupChecks": 59,
+    "fixes": [
+      "Exact v5/v6/v7 baseline coverage for cooler-only publication",
+      "Recovery cancels pending automatic connection and saturated queues retain cancellation",
+      "Strict task ownership/readback, protected ACLs and private build-path guards",
+      "Disable archives automatic-startup opt-in before stopping the task",
+      "Original TRCC task identity/hash, protected backup and unchanged-only restoration",
+      "Atomic opt-in commit and rollback/disable recovery despite individual failures",
+      "Delayed child-role ties and ambiguous resumed work retain honest uncertainty"
+    ],
+    "productionMutated": false,
+    "hardwareTested": false,
+    "rebootTested": false,
+    "scope": "Isolated source and native fixtures; hardware delivery, installed bytes and real reboot acceptance remain separate."
   }
 }

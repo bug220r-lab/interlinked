@@ -58,6 +58,164 @@ class MasterTests(unittest.TestCase):
         for secret in ('TOP SECRET', 'SECRET COMMAND', 'PRIVATE RESULT', 'private-transcript', 'tool_input'):
             self.assertNotIn(secret, text)
 
+    def test_demo_never_authorizes_automatic_startup(self):
+        self.assertFalse(self.service._automatic_startup_allowed())
+        self.assertEqual(self.service._auto_start_until, 0)
+
+    def test_automatic_startup_requires_exact_opt_in_and_installed_bytes(self):
+        self.service.runtime.demo = False
+        self.service.runtime.kit = m.Path(r'C:\Users\Jude\Documents\MSI-Project-Library')
+        self.service.lifecycle_preferences_known = True
+        self.service._settings['startAtLogin'] = True
+        pin = m.hashlib.sha256(b'fixture').hexdigest()
+        valid = dict(format='interlinked-cooler-startup-v1', enabled=True, machine='THIS-MACHINE',
+                     user='Jude', appSha256=pin, workerSha256=pin)
+        original_read = m.read_json
+        original_bytes = m.Path.read_bytes
+        startup_path = m.Path(r'C:\Program Files\INTERLINKED Cooler Startup\startup.json')
+        def startup_read(record):
+            return lambda path, *args: record if path == startup_path else original_read(path, *args)
+        def pinned_bytes(path):
+            return b'fixture' if path in (m.Path(m.__file__), self.service.worker_path) else original_bytes(path)
+        with patch.object(m.Path, 'read_bytes', pinned_bytes), patch.object(m, 'read_json', side_effect=startup_read(valid)):
+            self.assertTrue(self.service._automatic_startup_allowed())
+            for field, value in [('enabled', False), ('machine', 'MSI'), ('user', 'different'),
+                                 ('format', 'unknown'), ('appSha256', '0'*64), ('workerSha256', '0'*64)]:
+                with patch.object(m, 'read_json', side_effect=startup_read(dict(valid, **{field: value}))):
+                    self.assertFalse(self.service._automatic_startup_allowed(), field)
+            self.service._settings['startAtLogin'] = False
+            self.assertFalse(self.service._automatic_startup_allowed())
+            self.service._settings['startAtLogin'] = True
+            with patch.object(self.service.configuration, 'status', return_value={'available': False}):
+                self.assertFalse(self.service._automatic_startup_allowed())
+            self.service.lifecycle_preferences_known = False
+            self.assertFalse(self.service._automatic_startup_allowed())
+
+    def test_automatic_startup_waits_for_sensor_initialization(self):
+        self.service._auto_start_until = 100
+        self.service._auto_sensor_until = 80
+        with patch.object(self.service, '_automatic_startup_allowed', return_value=True), patch.object(self.service, '_ensure_worker') as ensure, patch.object(self.service, '_send') as send:
+            self.service._automatic_startup_tick(20)
+            ensure.assert_not_called(); send.assert_not_called()
+            self.service._automatic_startup_tick(96)
+            send.assert_called_once_with(dict(op='display', connect=True))
+
+    def test_automatic_startup_connects_once_when_sensors_ready(self):
+        self.service._auto_start_until = 100
+        self.service._state['temperatures']['status'] = 'available'
+        with patch.object(self.service, '_automatic_startup_allowed', return_value=True), patch.object(self.service, '_ensure_worker'), patch.object(self.service, '_send') as send:
+            self.service._automatic_startup_tick(20)
+            self.service._automatic_startup_tick(21)
+            send.assert_called_once_with(dict(op='display', connect=True))
+            self.service._state['display']['connected'] = True
+            self.service._automatic_startup_tick(22)
+            self.assertEqual(self.service._auto_start_until, 0)
+
+    def test_manual_disconnect_cancels_automatic_startup(self):
+        self.service._auto_start_until = 100
+        with patch.object(self.service, '_ensure_worker'), patch.object(self.service, '_send'):
+            self.service.display(dict(connect=False))
+            self.assertEqual(self.service._auto_start_until, 0)
+
+    def test_automatic_startup_retry_is_bounded_and_rate_limited(self):
+        self.service._auto_start_until = 100
+        self.service._state['temperatures']['status'] = 'available'
+        with patch.object(self.service, '_automatic_startup_allowed', return_value=True), patch.object(self.service, '_ensure_worker'), patch.object(self.service, '_send') as send:
+            self.service._automatic_startup_tick(20)
+            self.service._state['display']['status'] = 'unavailable'
+            self.service._automatic_startup_tick(21)
+            self.service._automatic_startup_tick(26)
+            self.assertEqual(send.call_count, 2)
+            self.service._automatic_startup_tick(101)
+            self.assertEqual(self.service._auto_start_until, 0)
+            self.assertEqual(send.call_count, 3)
+            self.assertEqual(send.call_args.args[0], dict(op='display', connect=False))
+
+    def test_delayed_sensors_leave_a_full_usb_retry_window(self):
+        self.service._auto_start_until = 200
+        self.service._auto_sensor_until = 80
+        with patch.object(self.service, '_automatic_startup_allowed', return_value=True), patch.object(self.service, '_ensure_worker'), patch.object(self.service, '_send') as send:
+            self.service._automatic_startup_tick(79)
+            send.assert_not_called()
+            self.service._automatic_startup_tick(80)
+            self.service._state['display']['status'] = 'unavailable'
+            self.service._automatic_startup_tick(93)
+            self.assertEqual(send.call_count, 2)
+            self.assertEqual(self.service._auto_connect_until, 140)
+            self.service._automatic_startup_tick(141)
+            self.assertEqual(self.service._auto_start_until, 0)
+
+    def test_startup_opt_out_or_invalid_configuration_cancels_pending_connect(self):
+        self.service._auto_start_until = 100
+        with patch.object(self.service, '_automatic_startup_allowed', return_value=False), patch.object(self.service, '_send') as send:
+            self.service._automatic_startup_tick(20)
+            send.assert_not_called()
+            self.assertEqual(self.service._auto_start_until, 0)
+
+    def test_saving_startup_opt_out_immediately_cancels_pending_connect(self):
+        self.service._auto_start_until = 100
+        self.settings(dict(background=True, startAtLogin=False))
+        self.assertEqual(self.service._auto_start_until, 0)
+
+    def test_startup_opt_out_during_worker_start_cancels_command(self):
+        self.service._auto_start_until = 100
+        self.service._state['temperatures']['status'] = 'available'
+        with patch.object(self.service, '_automatic_startup_allowed', side_effect=[True, False]), patch.object(self.service, '_ensure_worker'), patch.object(self.service, '_send') as send:
+            self.service._automatic_startup_tick(20)
+            send.assert_not_called()
+            self.assertEqual(self.service._auto_start_until, 0)
+
+    def test_saving_opt_out_cancels_in_flight_automatic_usb_request(self):
+        self.service._auto_start_until = 100
+        self.service._state['temperatures']['status'] = 'available'
+        with patch.object(self.service, '_automatic_startup_allowed', return_value=True), patch.object(self.service, '_ensure_worker'), patch.object(self.service, '_send') as send:
+            self.service._automatic_startup_tick(20)
+            self.settings(dict(background=True, startAtLogin=False))
+            commands = [call.args[0] for call in send.call_args_list if call.args[0].get('op') == 'display']
+            self.assertEqual(commands, [dict(op='display', connect=True), dict(op='display', connect=False)])
+
+    def test_invalidated_configuration_cancels_in_flight_automatic_usb_request(self):
+        self.service._auto_start_until = 100
+        self.service._state['temperatures']['status'] = 'available'
+        with patch.object(self.service, '_automatic_startup_allowed', side_effect=[True, True, False]), patch.object(self.service, '_ensure_worker'), patch.object(self.service, '_send') as send:
+            self.service._automatic_startup_tick(20)
+            self.service._automatic_startup_tick(21)
+            self.assertEqual([call.args[0] for call in send.call_args_list], [dict(op='display', connect=True), dict(op='display', connect=False)])
+
+    def test_saturated_queue_retains_automatic_disconnect_until_it_can_be_sent(self):
+        self.service._auto_start_until = 100
+        self.service._auto_connect_sent = True
+        self.service.commands.clear()
+        for _ in range(self.service.commands.maxlen):
+            self.service.commands.append(dict(op='capture_sources'))
+        before = list(self.service.commands)
+        self.service._cancel_automatic_startup()
+        self.assertEqual(list(self.service.commands), before)
+        self.assertTrue(self.service._auto_cancel_pending)
+        self.assertEqual(self.service._auto_start_until, 0)
+        # The pending auto-connect may report success while its cancellation
+        # waits for space; it still needs the already requested disconnect.
+        self.service._state['display']['connected'] = True
+        self.service.commands.clear()
+        with patch.object(self.service, '_automatic_startup_allowed', return_value=True), patch.object(self.service, '_ensure_worker') as ensure:
+            self.service._automatic_startup_tick(20)
+            self.service._automatic_startup_tick(21)
+            ensure.assert_not_called()
+        self.assertEqual(list(self.service.commands), [dict(op='display', connect=False)])
+        self.assertFalse(self.service._auto_cancel_pending)
+        self.assertFalse(self.service._auto_connect_sent)
+
+    def test_manual_connection_supersedes_pending_automatic_cancellation(self):
+        self.service._auto_start_until = 0
+        self.service._auto_connect_sent = True
+        self.service._auto_cancel_pending = True
+        with patch.object(self.service, '_ensure_worker'), patch.object(self.service, '_send') as send:
+            self.service.display(dict(connect=True))
+            self.service._automatic_startup_tick(20)
+            send.assert_called_once_with(dict(op='display', connect=True))
+        self.assertFalse(self.service._auto_cancel_pending)
+        self.assertFalse(self.service._auto_connect_sent)
+
     def test_duplicate_event_does_not_change_state(self):
         event = self.event()
         self.assertTrue(self.service.events.accept(event))
@@ -104,8 +262,39 @@ class MasterTests(unittest.TestCase):
         self.assertEqual(self.service.event_errors, 1)
         self.assertEqual(len(self.service.state()['projects']), 3)
 
+    def test_subagent_summary_reaches_service_and_reduced_bridge(self):
+        self.register()
+        m.publish_event(self.service.feed, self.event())
+        m.publish_event(self.service.feed, self.event('SubagentStart', agent_id='child'))
+        self.service.refresh(collect_git=False)
+        state = self.service.state()
+        self.assertEqual(state['subagents']['workingCount'], 1)
+        self.assertEqual(state['projects'][0]['subagents']['workingCount'], 1)
+        exported = m.bridge_snapshot(self.service.feed)
+        self.assertEqual(exported['subagents'], state['subagents'])
+        self.assertEqual(exported['projects'][0]['subagents'], state['projects'][0]['subagents'])
+        reduced = json.dumps(exported['subagents'])
+        for private in ('cwd', 'sessionId', 'agentId', str(self.path)):
+            self.assertNotIn(private, reduced)
 
+    def test_corrupt_feed_degrades_observed_subagent_coverage(self):
+        self.register()
+        self.service.events.accept(self.event('SubagentStart', agent_id='child'))
+        (self.service.feed / 'events' / 'broken.json').write_text('{', encoding='utf-8')
+        self.service.refresh(collect_git=False)
+        self.assertEqual(self.service.state()['subagents']['workingCount'], 1)
+        self.assertEqual(self.service.state()['subagents']['status'], 'partial')
+        self.assertEqual(self.service.state()['projects'][0]['subagents']['status'], 'partial')
 
+    def test_collector_restart_does_not_restore_a_fabricated_zero(self):
+        self.register()
+        self.service.events.accept(self.event('SubagentStart', agent_id='child'))
+        self.service.refresh(collect_git=False)
+        self.assertEqual(self.service.state()['subagents']['workingCount'], 1)
+        self.service.close()
+        self.service = m.MasterService(self.runtime, self.controller, start=False)
+        self.assertIsNone(self.service.state()['subagents']['workingCount'])
+        self.assertEqual(self.service.state()['subagents']['status'], 'unavailable')
 
     def test_controller_output_is_not_exported_to_dot(self):
         exported = m.bridge_snapshot(self.service.feed)
@@ -141,7 +330,7 @@ class MasterTests(unittest.TestCase):
         self.assertEqual(self.service._worker_settings()['helperPins']['USBLCDNEW.dll'],'a'*64)
 
     def test_settings_reject_unknown_capabilities_and_network_roots(self):
-        for payload in ({'executable': 'bad.exe'}, {'fps': 30}, {'mode': 'arbitrary'},
+        for payload in ({'executable': 'bad.exe'}, {'fps': 20}, {'mode': 'arbitrary'},
                         {'projects': [dict(id='x', label='Bad', root=r'\\MSI\ProjectLibrary')]}):
             with self.assertRaises(ValueError): self.settings(payload)
 
@@ -153,8 +342,36 @@ class MasterTests(unittest.TestCase):
         try: self.assertEqual(reopened.state()['settings']['projects'][0]['id'], 'project')
         finally: reopened.close()
 
+    def test_thirty_fps_default_and_supported_rate_persistence(self):
+        self.assertEqual(self.service.state()['settings']['fps'], 30)
+        self.assertEqual(self.service._worker_settings()['fps'], 30)
+        for fps in (5, 10, 15, 30):
+            with self.subTest(fps=fps):
+                self.settings(dict(fps=fps))
+                reopened = m.MasterService(self.runtime, self.controller, start=False)
+                try:
+                    self.assertEqual(reopened.state()['settings']['fps'], fps)
+                    self.assertEqual(reopened._worker_settings()['fps'], fps)
+                finally:
+                    reopened.close()
 
+    def test_existing_lower_rate_preferences_are_not_upgraded_on_read(self):
+        for fps in (5, 10, 15):
+            with self.subTest(fps=fps):
+                m.write_json(self.service.root / 'settings.json',
+                             dict(format='interlinked-master-settings-v1', settings=dict(fps=fps)))
+                before = (self.service.root / 'settings.json').read_bytes()
+                reopened = m.MasterService(self.runtime, self.controller, start=False)
+                try:
+                    self.assertEqual(reopened.state()['settings']['fps'], fps)
+                    self.assertEqual((self.service.root / 'settings.json').read_bytes(), before)
+                finally:
+                    reopened.close()
 
+    def test_diagnostic_and_noninteger_rates_are_not_normal_preferences(self):
+        for fps in (20, 45, 60, 30.0, True, '30'):
+            with self.subTest(fps=fps), self.assertRaises(ValueError):
+                self.settings(dict(fps=fps))
 
     def test_capture_cannot_claim_live_without_window_calibration(self):
         with self.assertRaises(ValueError): self.settings({'mode': 'live_mini', 'captureEnabled': True})
@@ -219,6 +436,20 @@ class MasterTests(unittest.TestCase):
         self.assertIsNone(settings['captureWindowId'])
         self.assertIsNone(settings['captureWindowBounds'])
         self.assertFalse(self.controller.state()['busy'])
+
+    def test_restore_cancels_pending_automatic_display_connection(self):
+        self.settings(dict(fps=5))
+        self.settings(dict(fps=15))
+        preview = self.service.preview_restore(dict(snapshotId=self.service.history()['items'][0]['id']))
+        self.service._auto_start_until = 100
+        self.service._state['temperatures']['status'] = 'available'
+        self.service.restore(dict(previewId=preview['previewId']))
+        with patch.object(self.service, '_automatic_startup_allowed', return_value=True), patch.object(self.service, '_ensure_worker') as ensure, patch.object(self.service, '_send') as send:
+            self.service._automatic_startup_tick(20)
+            ensure.assert_not_called()
+            send.assert_not_called()
+        self.assertEqual(self.service._auto_start_until, 0)
+
 
     def test_corrupt_settings_restore_requires_restart_and_preserves_bad_bytes(self):
         self.settings(dict(fps=5))
@@ -329,9 +560,45 @@ class MasterTests(unittest.TestCase):
     def test_violet_cannot_request_project_operations(self):
         with self.assertRaises(ValueError): m.publish_violet(self.service.feed,dict(status='working', command='release'))
 
+    def test_display_failure_replaces_pending_message_with_worker_error(self):
+        with patch.object(self.service, '_ensure_worker'), patch.object(self.service, '_send'):
+            self.service.display(dict(connect=True))
+        self.assertEqual(self.service.state()['display']['message'], 'Waiting for display worker')
+        self.service.accept_worker_status(dict(type='status', connected=False,
+            displayStatus='unavailable', error='Vendor LCD helper exited.'))
+        display = self.service.state()['display']
+        self.assertEqual(display['status'], 'unavailable')
+        self.assertFalse(display['connected'])
+        self.assertIsNone(display['message'])
+        self.assertEqual(display.get('message') or display.get('error'), 'Vendor LCD helper exited.')
 
+    def test_connected_display_clears_pending_message(self):
+        with patch.object(self.service, '_ensure_worker'), patch.object(self.service, '_send'):
+            self.service.display(dict(connect=True))
+        self.service.accept_worker_status(dict(type='status', connected=True,
+            displayStatus='connected', error=None))
+        display = self.service.state()['display']
+        self.assertEqual(display['status'], 'connected')
+        self.assertTrue(display['connected'])
+        self.assertIsNone(display['message'])
+        self.assertIsNone(display['error'])
 
+    def test_display_status_preserves_explicit_worker_message(self):
+        with patch.object(self.service, '_ensure_worker'), patch.object(self.service, '_send'):
+            self.service.display(dict(connect=True))
+        self.service.accept_worker_status(dict(type='status', connected=False,
+            displayStatus='unavailable', message='Close the other LCD writer.', error='Writer conflict'))
+        self.assertEqual(self.service.state()['display']['message'], 'Close the other LCD writer.')
 
+    def test_display_fast_worker_response_is_not_overwritten_by_pending_state(self):
+        def reply(_command):
+            self.service.accept_worker_status(dict(type='status', connected=False,
+                displayStatus='unavailable', error='Vendor LCD helper exited.'))
+        with patch.object(self.service, '_ensure_worker'), patch.object(self.service, '_send', side_effect=reply):
+            display = self.service.display(dict(connect=True))['display']
+        self.assertEqual(display['status'], 'unavailable')
+        self.assertIsNone(display['message'])
+        self.assertEqual(display['error'], 'Vendor LCD helper exited.')
 
     def test_sensor_validation_requires_fresh_verified_value(self):
         self.service.accept_worker_status(dict(type='sensors',temperatures=dict(cpu=dict(value=55,status='available',observedAt=m.utc()),gpu=dict(value=900,status='available',observedAt=m.utc()))))

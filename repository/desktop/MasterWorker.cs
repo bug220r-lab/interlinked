@@ -31,6 +31,22 @@ namespace InterlinkedMaster
         internal static List<Dictionary<string,object>> Rows(object source) { var result=new List<Dictionary<string,object>>();var list=source as IEnumerable;if(list!=null)foreach(var v in list){var row=v as Dictionary<string,object>;if(row!=null)result.Add(row);}return result; }
     }
 
+    internal sealed class FramePacer
+    {
+        private readonly long frequency;
+        private double deadline;
+        private int previousFps;
+        internal FramePacer(long frequency){if(frequency<=0)throw new ArgumentOutOfRangeException("frequency");this.frequency=frequency;}
+        internal long Next(long frameStart,long now,int fps)
+        {
+            if(fps<=0)throw new ArgumentOutOfRangeException("fps");
+            double period=frequency/(double)fps;
+            if(previousFps!=fps||deadline==0){deadline=frameStart+period;previousFps=fps;}else deadline+=period;
+            if(now>=deadline)deadline+=(Math.Floor((now-deadline)/period)+1)*period;
+            return (long)Math.Ceiling(deadline);
+        }
+    }
+
     internal sealed class Worker : IDisposable
     {
         private const int Slot=691200, MaxJpeg=691136;
@@ -53,9 +69,12 @@ namespace InterlinkedMaster
         private readonly Stopwatch clock=Stopwatch.StartNew();
         private readonly Stream output=Console.OpenStandardOutput();
         private readonly AutoResetEvent frameReady=new AutoResetEvent(false);
+        private readonly AutoResetEvent usbFrameReady=new AutoResetEvent(false);
         private readonly ImageCodecInfo jpegCodec=Array.Find(ImageCodecInfo.GetImageEncoders(),x=>x.MimeType=="image/jpeg");
         private static readonly Color Purple=Color.FromArgb(192,58,255), Lilac=Color.FromArgb(206,87,255), White=Color.FromArgb(245,240,255), Dim=Color.FromArgb(162,154,174);
-        private static readonly Color Green=Color.FromArgb(112,235,177), Amber=Color.FromArgb(255,191,89), Red=Color.FromArgb(255,100,126);
+        private static readonly Color Green=Color.FromArgb(82,255,183), Amber=Color.FromArgb(255,193,75), Red=Color.FromArgb(255,70,111);
+        private static readonly Color ActivityHeading=Color.FromArgb(227,115,255), Alert=Color.FromArgb(255,204,99), RoomText=Color.FromArgb(250,245,255), SummaryText=Color.FromArgb(233,222,239), TemperatureTextColor=Color.FromArgb(240,232,250);
+        private static readonly Color BinaryHead=Color.FromArgb(255,244,255), WireParticle=Color.FromArgb(255,243,255), AgentParticle=Color.FromArgb(252,236,255);
         private readonly Font title=new Font("Consolas",17,FontStyle.Bold,GraphicsUnit.Pixel), roomFont=new Font("Segoe UI",14,FontStyle.Bold,GraphicsUnit.Pixel), mono=new Font("Consolas",12,FontStyle.Regular,GraphicsUnit.Pixel), small=new Font("Segoe UI",11,FontStyle.Regular,GraphicsUnit.Pixel), detail=new Font("Segoe UI",16,FontStyle.Bold,GraphicsUnit.Pixel);
         private readonly Font binaryFont=new Font("Consolas",10,FontStyle.Regular,GraphicsUnit.Pixel), temperatureLabel=new Font("Segoe UI",22,FontStyle.Bold,GraphicsUnit.Pixel), temperatureValue=new Font("Segoe UI",25,FontStyle.Bold,GraphicsUnit.Pixel);
 
@@ -80,7 +99,7 @@ namespace InterlinkedMaster
                         var command=Values.Obj(Decode(line));string op=Values.Text(command,"op");
                         if(op=="snapshot"){lock(gate)snapshot=Values.Obj(Values.Get(command,"snapshot"));}
                         else if(op=="settings"){lock(gate)settings=Values.Obj(Values.Get(command,"settings"));}
-                        else if(op=="display"){connectRequested=Values.Bool(command,"connect");if(!connectRequested)Status("disconnecting");}
+                        else if(op=="display"){connectRequested=Values.Bool(command,"connect");if(!connectRequested)Status("disconnecting");usbFrameReady.Set();}
                         else if(op=="capture_sources")CaptureSources();
                         else if(op=="sensors")RequestSensorPermission(Values.Bool(command,"enable"));
                         else if(op=="quit"){running=false;break;}
@@ -88,7 +107,7 @@ namespace InterlinkedMaster
                     }catch(Exception ex){Emit("status","error","Worker command failed; monitoring remains active.","command",CommandHint(line),"inputLength",line.Length,"exceptionType",ex.GetType().FullName,"methods",ExceptionMethods(ex));}
                 }
             } catch(Exception ex){Emit("status","error","Worker input ended unexpectedly","exceptionType",ex.GetType().FullName,"methods",ExceptionMethods(ex));}
-            finally{running=false;frameReady.Set();}
+            finally{running=false;frameReady.Set();usbFrameReady.Set();}
         }
         private void WriteFrames()
         {
@@ -97,7 +116,17 @@ namespace InterlinkedMaster
                 while(running){frameReady.WaitOne(1000);byte[] frame;long number;lock(gate){frame=latest;number=sequence;}if(frame==null||number==last)continue;
                     byte[] length=BitConverter.GetBytes(frame.Length);output.Write(length,0,4);output.Write(frame,0,frame.Length);output.Flush();last=number;
                 }
-            }catch(IOException){running=false;}catch(ObjectDisposedException){running=false;}
+            }catch(IOException){running=false;usbFrameReady.Set();}catch(ObjectDisposedException){running=false;usbFrameReady.Set();}
+        }
+        private void PublishFrame(byte[] frame)
+        {
+            lock(gate){latest=frame;sequence++;encodedBytes=frame.Length;}
+            frameReady.Set();usbFrameReady.Set();
+        }
+        internal static int FrameRate(Dictionary<string,object> config)
+        {
+            int fps=Values.Int(config,"fps",30);
+            return fps==5||fps==10||fps==15||fps==30||(Values.Bool(config,"diagnostic")&&fps==20)?fps:30;
         }
         internal int Run()
         {
@@ -105,25 +134,26 @@ namespace InterlinkedMaster
             new Thread(WriteFrames){IsBackground=true,Name="MASTER preview pipe"}.Start();
             usbThread=new Thread(UsbLoop){IsBackground=true,Name="MASTER LCD"};usbThread.Start();
             Emit("status","connected",false,"displayStatus","disconnected","protocolVersion",1);
-            double nextReport=0;long previousSequence=0;double previousTime=0;
+            double nextReport=0;long previousSequence=0;double previousTime=0;var pacer=new FramePacer(Stopwatch.Frequency);
             while(running){
-                var watch=Stopwatch.StartNew();var config=Settings();int fps=Values.Int(config,"fps",10);if(fps!=5&&fps!=10&&fps!=15&&!(Values.Bool(config,"diagnostic")&&(fps==20||fps==30)))fps=10;
+                long frameStart=Stopwatch.GetTimestamp();var watch=Stopwatch.StartNew();var config=Settings();int fps=FrameRate(config);
                 Dictionary<string,object> state;lock(gate)state=new Dictionary<string,object>(snapshot);
                 if(watch.ElapsedMilliseconds<1000&&clock.Elapsed.TotalSeconds>=nextSensorRead){ReadSensors();nextSensorRead=clock.Elapsed.TotalSeconds+1;}
                 if(lastSensors.Count>0)state["temperatures"]=lastSensors;
                 try {
                     using(var bitmap=DrawFrame(state,config,clock.Elapsed.TotalSeconds))using(var stream=new MemoryStream())using(var parameters=new EncoderParameters(1)){
-                        parameters.Param[0]=new EncoderParameter(System.Drawing.Imaging.Encoder.Quality,85L);bitmap.Save(stream,jpegCodec,parameters);
+                        parameters.Param[0]=new EncoderParameter(System.Drawing.Imaging.Encoder.Quality,100L);bitmap.Save(stream,jpegCodec,parameters);
                         byte[] frame=stream.ToArray();if(frame.Length>MaxJpeg)throw new InvalidDataException("Encoded image exceeds slot");
-                        lock(gate){latest=frame;sequence++;encodedBytes=frame.Length;}frameReady.Set();
+                        PublishFrame(frame);
                     }
                 } catch(Exception ex){Emit("status","error","Render failed: "+ex.GetType().Name);}
                 encodeMs=watch.Elapsed.TotalMilliseconds;
                 double now=clock.Elapsed.TotalSeconds;
                 if(now>=nextReport){long current;lock(gate)current=sequence;using(var process=Process.GetCurrentProcess())Emit("stats","renderFps",(current-previousSequence)/Math.Max(.001,now-previousTime),"fps",fps,"encodedBytes",encodedBytes,"encodeMs",encodeMs,"ackMs",ackMs,"acknowledgedFrames",acknowledged,"droppedFrames",dropped,"frameSequence",current,"workingSetBytes",process.WorkingSet64,"cpuTotalMs",process.TotalProcessorTime.TotalMilliseconds);previousSequence=current;previousTime=now;nextReport=now+2;}
-                int wait=(int)Math.Max(1,1000.0/fps-watch.Elapsed.TotalMilliseconds);Thread.Sleep(wait);
+                long deadline=pacer.Next(frameStart,Stopwatch.GetTimestamp(),fps);
+                while(running){long current=Stopwatch.GetTimestamp();if(current>=deadline)break;int wait=(int)Math.Max(1,Math.Ceiling((deadline-current)*1000.0/Stopwatch.Frequency));Thread.Sleep(wait);}
             }
-            connectRequested=false;StopSensorBroker();if(usbThread!=null)usbThread.Join(3500);if(sensorBrokerThread!=null)sensorBrokerThread.Join(1500);return 0;
+            connectRequested=false;usbFrameReady.Set();StopSensorBroker();if(usbThread!=null)usbThread.Join(3500);if(sensorBrokerThread!=null)sensorBrokerThread.Join(1500);return 0;
         }
         private static bool OtherWriter(int ownPid=0)
         {
@@ -141,7 +171,7 @@ namespace InterlinkedMaster
             ValidateHelperPins(false);
             StartSensors();
             map=MemoryMappedFile.CreateNew("shareMemory_ImageRGB",34560000);view=map.CreateViewAccessor(0,0,MemoryMappedFileAccess.ReadWrite);
-            var start=new ProcessStartInfo(exe){WorkingDirectory=directory,UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden,RedirectStandardError=true,RedirectStandardOutput=true};
+            var start=new ProcessStartInfo(exe){WorkingDirectory=directory,UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden,RedirectStandardError=true,RedirectStandardOutput=true,RedirectStandardInput=true};
             helperJob=NewHelperJob();
             helper=Process.Start(start);if(!AssignProcessToJobObject(helperJob,helper.Handle))throw new IOException("Cannot contain LCD helper; connection refused.");helper.OutputDataReceived+=delegate{};helper.ErrorDataReceived+=delegate{};helper.BeginOutputReadLine();helper.BeginErrorReadLine();
             var wait=Stopwatch.StartNew();bool discovered=false;
@@ -157,6 +187,18 @@ namespace InterlinkedMaster
             foreach(var field in new[]{new[]{4,2},new[]{8,480},new[]{12,480},new[]{56,2},new[]{60,jpeg.Length}})Array.Copy(BitConverter.GetBytes(field[1]),0,result,field[0],4);
             Array.Copy(jpeg,0,result,64,jpeg.Length);return result;
         }
+        internal static bool FrameStale(double now,double lastChanged){return now-lastChanged>3;}
+        internal static bool RepeatDue(double now,double lastSend){return now-lastSend>=1;}
+        internal static int UsbFrameWait(double now,double lastSend,double lastChanged,double conflictCheck,bool haveFrame)
+        {
+            double next=Math.Min(now+.250,Math.Min(lastChanged+3,conflictCheck));
+            if(haveFrame)next=Math.Min(next,lastSend+1);
+            return (int)Math.Max(1,Math.Ceiling((next-now)*1000.0));
+        }
+        private void WaitForUsbFrame(double lastSend,double lastChanged,double conflictCheck,bool haveFrame)
+        {
+            usbFrameReady.WaitOne(UsbFrameWait(clock.Elapsed.TotalSeconds,lastSend,lastChanged,conflictCheck,haveFrame));
+        }
         private void UsbLoop()
         {
             long last=0;double conflictCheck=0,lastSend=0,lastChanged=0;
@@ -167,11 +209,11 @@ namespace InterlinkedMaster
                     if(helper==null||helper.HasExited)throw new IOException("LCD helper exited; reconnect explicitly.");
                     if(clock.Elapsed.TotalSeconds>=conflictCheck){if(OtherWriter(helper.Id))throw new IOException("Another LCD writer started; custom display stopped.");conflictCheck=clock.Elapsed.TotalSeconds+1;}
                     byte[] jpeg;long number;lock(gate){jpeg=latest;number=sequence;}
-                    if(jpeg==null){Thread.Sleep(20);continue;}
+                    if(jpeg==null){if(FrameStale(clock.Elapsed.TotalSeconds,lastChanged))throw new IOException("Renderer stopped producing fresh frames; LCD stream stopped.");WaitForUsbFrame(lastSend,lastChanged,conflictCheck,false);continue;}
                     if(number!=last)lastChanged=clock.Elapsed.TotalSeconds;
                     else {
-                        if(clock.Elapsed.TotalSeconds-lastChanged>3)throw new IOException("Renderer stopped producing fresh frames; LCD stream stopped.");
-                        if(clock.Elapsed.TotalSeconds-lastSend<1){Thread.Sleep(25);continue;}
+                        if(FrameStale(clock.Elapsed.TotalSeconds,lastChanged))throw new IOException("Renderer stopped producing fresh frames; LCD stream stopped.");
+                        if(!RepeatDue(clock.Elapsed.TotalSeconds,lastSend)){WaitForUsbFrame(lastSend,lastChanged,conflictCheck,true);continue;}
                         Emit("status","connected",true,"displayStatus","render_stale","error","Repeating the last picture while awaiting a fresh frame.");
                     }
                     var ack=Stopwatch.StartNew();if(!WaitIdle(1500))throw new IOException("LCD helper acknowledgment timed out.");
@@ -194,11 +236,23 @@ namespace InterlinkedMaster
         }
 
         private static bool Waiting(string state){return state=="waiting"||state=="needs_input"||state=="waiting_for_input"||state=="waiting_on_approval";}
-        private static Color StateColor(string state){if(state=="failed"||state=="error"||state=="test_failed")return Red;if(Waiting(state))return Amber;if(state=="passed"||state=="verified_success")return Green;if(state=="working"||state=="running")return Lilac;return Dim;}
+        private static Color StateColor(string state){if(state=="failed"||state=="error"||state=="test_failed")return Red;if(Waiting(state))return Amber;if(state=="passed"||state=="verified_success")return Green;if(state=="working"||state=="running")return Purple;return Dim;}
         private static string Activity(Dictionary<string,object> project){var activity=Values.Get(project,"activity");if(activity is string)return(string)activity;var info=Values.Obj(activity);return Values.Bool(info,"stale")?"stale":Values.Text(info,"status","unknown");}
         private static string Human(string value){return value.Replace('_',' ').Replace('-',' ');}
         private static bool Fresh(string value,double seconds){DateTime when;return DateTime.TryParse(value,CultureInfo.InvariantCulture,DateTimeStyles.RoundtripKind,out when)&&(DateTime.UtcNow-when.ToUniversalTime()).TotalSeconds>=0&&(DateTime.UtcNow-when.ToUniversalTime()).TotalSeconds<=seconds;}
         internal static bool SnapshotFresh(Dictionary<string,object> state){return Fresh(Values.Text(state,"utc"),15);}
+        internal static string SubagentText(Dictionary<string,object> summary,bool snapshotFresh=true)
+        {
+            string status=Values.Text(summary,"status");object count=Values.Get(summary,"workingCount");
+            bool integer=count is byte||count is sbyte||count is short||count is ushort||count is int||count is uint||count is long||count is ulong;
+            if(!snapshotFresh||!integer||(status!="observed"&&status!="partial")||!Fresh(Values.Text(summary,"observedAt"),180))return "\u2014";
+            decimal value=Convert.ToDecimal(count,CultureInfo.InvariantCulture);if(value<0||value>256)return "\u2014";
+            return value.ToString(CultureInfo.InvariantCulture)+(status=="partial"?"?":"");
+        }
+        private static Color SubagentColor(Dictionary<string,object> summary,bool fresh)
+        {
+            return SubagentText(summary,fresh)=="\u2014"?Dim:Values.Text(summary,"status")=="partial"?Amber:Lilac;
+        }
         internal static string ProjectState(Dictionary<string,object> project)
         {
             var health=Values.Obj(Values.Get(project,"health"));if(Values.Text(health,"status")=="failed")return "test_failed";
@@ -273,11 +327,11 @@ namespace InterlinkedMaster
             using(var pen=new Pen(color,1))g.DrawLines(pen,points);if(!active)return;
             double length=0;for(int i=1;i<points.Length;i++)length+=Math.Abs(points[i].X-points[i-1].X)+Math.Abs(points[i].Y-points[i-1].Y);
             double rate=status=="waiting"?.38:status=="test_failed"?.9:.7;
-            for(int n=0;n<2;n++){double head=((time*rate+index*.23+n*.5)%1)*length;for(int j=4;j>=0;j--){double d=head-j*9;if(d<0)continue;var p=PathPoint(points,d);Binary(g,p.X,p.Y,j==0?White:color,(1-j/6.0)*.95,n+j+(int)(time*2));}}
+            for(int n=0;n<2;n++){double head=((time*rate+index*.23+n*.5)%1)*length;for(int j=4;j>=0;j--){double d=head-j*9;if(d<0)continue;var p=PathPoint(points,d);Binary(g,p.X,p.Y,j==0?BinaryHead:color,(1-j/6.0)*.95,n+j+(int)(time*2));}}
             for(int n=0;n<16;n++){
                 double life=(time*(status=="waiting"?.55:1.1)+n*.618+index*.17)%1,d=((n*.38197+time*.18)%1)*length;
                 var p=PathPoint(points,d);var before=PathPoint(points,Math.Max(0,d-.5));var after=PathPoint(points,Math.Min(length,d+.5));bool horizontal=Math.Abs(after.X-before.X)>Math.Abs(after.Y-before.Y);
-                float drift=(float)((3+life*13)*(n%2==1?1:-1));Binary(g,p.X+(horizontal?(float)Math.Sin(n*3+life*4)*2:drift),p.Y+(horizontal?drift:(float)Math.Sin(n*3+life*4)*2),n%6==0?White:color,Math.Sin(life*Math.PI)*.7,n+index+(int)(time*2));
+                float drift=(float)((3+life*13)*(n%2==1?1:-1));Binary(g,p.X+(horizontal?(float)Math.Sin(n*3+life*4)*2:drift),p.Y+(horizontal?drift:(float)Math.Sin(n*3+life*4)*2),n%6==0?WireParticle:color,Math.Sin(life*Math.PI)*.7,n+index+(int)(time*2));
             }
         }
         internal Bitmap DrawFrame(Dictionary<string,object> state,Dictionary<string,object> config,double time)
@@ -293,15 +347,16 @@ namespace InterlinkedMaster
                     var violet=Values.Obj(Values.Get(state,"violet"));bool reported=Values.Bool(violet,"connected")&&!Values.Bool(violet,"stale");
                     source=overall=="test_failed"?"CHECK RESULT":overall!="unknown"?"PROJECT ACTIVITY":reported?Values.Text(violet,"source","UNVERIFIED").ToUpperInvariant():"NO LIVE STATUS";
                 }
-                Text(g,source,detail,Lilac,new RectangleF(310,60,158,26));var attention=Values.Obj(Values.Get(state,"attention"));int pending=Values.Int(attention,"pendingCount");
+                Text(g,source,detail,ActivityHeading,new RectangleF(310,60,158,26));var attention=Values.Obj(Values.Get(state,"attention"));int pending=Values.Int(attention,"pendingCount");
                 string alerts=fresh&&Values.Bool(attention,"available")?(pending==0?"No pending alerts":pending+" alert"+(pending==1?"":"s")+" to review"):"Alerts unavailable";
-                Text(g,alerts,detail,pending>0&&fresh?Amber:Color.FromArgb(226,177,255),new RectangleF(310,89,158,25));
+                Text(g,alerts,detail,pending>0&&fresh?Alert:Color.FromArgb(226,177,255),new RectangleF(310,89,158,25));
+                var subagents=Values.Obj(Values.Get(state,"subagents"));Text(g,"SUBAGENTS "+SubagentText(subagents,fresh),detail,SubagentColor(subagents,fresh),new RectangleF(310,118,158,25));
                 for(int slot=0;slot<3&&page+slot<projects.Count;slot++)DrawWire(g,87+slot*153,fresh?ProjectState(projects[page+slot]):"stale",slot,time);
                 for(int slot=0;slot<3&&page+slot<projects.Count;slot++)DrawRoom(g,projects[page+slot],new Rectangle(18+slot*153,177,138,155),page+slot==focus,time,slot,fresh);
                 var selected=projects[focus];string status=fresh?ProjectState(selected):"stale";Border(g,new Rectangle(18,349,444,42),StateColor(status));
                 string summary=status=="stale"?"Activity update stale":status=="unknown"?"Status unavailable":status=="test_failed"?"Build/test check failed":status=="waiting"?"Waiting for your input":status=="turn_finished"?"Chat turn finished":Human(StatusLabel(status));
                 string paging=projects.Count>3?" ["+(page/3+1)+"/"+((projects.Count+2)/3)+"]":"";
-                Text(g,Values.Text(selected,"label",Values.Text(selected,"id"))+" · "+summary+paging,roomFont,White,new RectangleF(31,358,418,24));
+                Text(g,Values.Text(selected,"label",Values.Text(selected,"id"))+" · "+summary+paging,roomFont,SummaryText,new RectangleF(31,358,418,24));
                 var temperatures=Values.Obj(Values.Get(state,"temperatures"));DrawTemperature(g,"CPU",fresh?Values.Obj(Values.Get(temperatures,"cpu")):new Dictionary<string,object>(),new Rectangle(18,410,214,49));DrawTemperature(g,"GPU",fresh?Values.Obj(Values.Get(temperatures,"gpu")):new Dictionary<string,object>(),new Rectangle(248,410,214,49));
                 DrawVioletStatus(g,state);
                 if(Values.Bool(config,"diagnostic")){int x=20+(int)(time*65)%400;using(var brush=new SolidBrush(Lilac))g.FillRectangle(brush,x,466,32,3);Text(g,"TEST FRAME "+sequence,small,White,new RectangleF(16,16,145,20));}
@@ -311,12 +366,15 @@ namespace InterlinkedMaster
         private void DrawRoom(Graphics g,Dictionary<string,object> project,Rectangle rect,bool focus,double time,int index,bool fresh)
         {
             string status=fresh?ProjectState(project):"stale";Color color=StateColor(status);bool active=status=="working",motion=active||status=="waiting"||status=="test_failed";
-            Border(g,rect,motion?color:Color.FromArgb(105,87,127));Text(g,Values.Text(project,"label",Values.Text(project,"id")),roomFont,White,new RectangleF(rect.Left+10,rect.Top+8,rect.Width-20,24));
+            Border(g,rect,motion?color:Color.FromArgb(105,87,127));Text(g,Values.Text(project,"label",Values.Text(project,"id")),roomFont,RoomText,new RectangleF(rect.Left+10,rect.Top+8,rect.Width-20,24));
             using(var pen=new Pen(Color.FromArgb(80,54,95),1)){g.DrawLine(pen,rect.Left+9,rect.Top+38,rect.Right-9,rect.Top+38);g.DrawLine(pen,rect.Left+9,rect.Bottom-36,rect.Right-9,rect.Bottom-36);}
             if(motion){var saved=g.Save();g.SetClip(new Rectangle(rect.Left+8,rect.Top+44,rect.Width-16,rect.Height-82));int count=active?24:18;
-                for(int n=0;n<count;n++){double life=(time*(active?.65:.4)+n*.618+index*.29)%1,angle=n*2.39996+time*(n%2==1?-.4:.4),radius=17+life*34;Binary(g,rect.Left+rect.Width/2+(float)(Math.Cos(angle)*radius),rect.Top+85+(float)(Math.Sin(angle)*radius*.58-life*6),n%8==0?White:color,Math.Sin(life*Math.PI)*.8,n+index+(int)(time*1.5));}
+                for(int n=0;n<count;n++){double life=(time*(active?.65:.4)+n*.618+index*.29)%1,angle=n*2.39996+time*(n%2==1?-.4:.4),radius=17+life*34;Binary(g,rect.Left+rect.Width/2+(float)(Math.Cos(angle)*radius),rect.Top+85+(float)(Math.Sin(angle)*radius*.58-life*6),n%8==0?AgentParticle:color,Math.Sin(life*Math.PI)*.8,n+index+(int)(time*1.5));}
                 if(active)for(int n=0;n<6;n++){float yy=rect.Top+45+(float)((time*30+n*19+index*27)%(rect.Height-82));Binary(g,rect.Left+13+n*20,yy,color,.32,n+(int)time);Binary(g,rect.Left+13+n*20,yy-11,color,.16,n+1+(int)time);}g.Restore(saved);
             }
+            var subagents=Values.Obj(Values.Get(project,"subagents"));
+            using(var brush=new SolidBrush(Color.Black))g.FillRectangle(brush,rect.Left+9,rect.Top+40,rect.Width-18,17);
+            Text(g,"SUBS "+SubagentText(subagents,fresh),small,SubagentColor(subagents,fresh),new RectangleF(rect.Left+9,rect.Top+40,rect.Width-18,17),StringAlignment.Center);
             // A single aggregate activity figure, independent of the number of observed agents.
             int cx=rect.Left+rect.Width/2,y=rect.Top+59;float bob=active?(float)Math.Sin(time*7+index)*1.2f:0;
             using(var brush=new SolidBrush(Color.FromArgb(39,26,55)))g.FillRectangle(brush,cx-25,y+25,50,6);
@@ -331,7 +389,7 @@ namespace InterlinkedMaster
         {
             Border(g,rect,Color.FromArgb(163,65,223));string value=TemperatureText(sensor);float a=g.MeasureString(label,temperatureLabel,1000,StringFormat.GenericTypographic).Width,b=g.MeasureString(value,temperatureValue,1000,StringFormat.GenericTypographic).Width;
             float left=rect.Left+(rect.Width-a-b-10)/2;
-            using(var brush=new SolidBrush(White))g.DrawString(label,temperatureLabel,brush,new PointF(left,rect.Top+10),StringFormat.GenericTypographic);
+            using(var brush=new SolidBrush(TemperatureTextColor))g.DrawString(label,temperatureLabel,brush,new PointF(left,rect.Top+10),StringFormat.GenericTypographic);
             using(var brush=new SolidBrush(value=="—"?Dim:Lilac))g.DrawString(value,temperatureValue,brush,new PointF(left+a+10,rect.Top+7),StringFormat.GenericTypographic);
         }
         private void DrawViolet(Graphics g,Dictionary<string,object> state,Dictionary<string,object> config,double time,Rectangle target)
@@ -414,7 +472,7 @@ namespace InterlinkedMaster
                 if(sensorElevationRequested||sensorBrokerActive||ProcessExists("HWINFO"))return;
                 try {
                     ValidateHelperPins(true);if(ownedSensorMap==null)ownedSensorMap=MemoryMappedFile.CreateNew("shareMemory_SysInfo",2097152);sensorJob=NewHelperJob();
-                    ownedSensor=Process.Start(new ProcessStartInfo(@"C:\Program Files\TRCCCAP\HWINFO.exe"){WorkingDirectory=@"C:\Program Files\TRCCCAP",UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden,RedirectStandardOutput=true,RedirectStandardError=true});
+                    ownedSensor=Process.Start(new ProcessStartInfo(@"C:\Program Files\TRCCCAP\HWINFO.exe"){WorkingDirectory=@"C:\Program Files\TRCCCAP",UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden,RedirectStandardOutput=true,RedirectStandardError=true,RedirectStandardInput=true});
                     ownedSensorStarted=DateTime.UtcNow;ownedSensor.OutputDataReceived+=delegate{};ownedSensor.ErrorDataReceived+=delegate{};ownedSensor.BeginOutputReadLine();ownedSensor.BeginErrorReadLine();
                     if(!AssignProcessToJobObject(sensorJob,ownedSensor.Handle)){if(!ownedSensor.HasExited)ownedSensor.Kill();throw new IOException("Cannot contain sensor helper.");}
                 }catch {StopOwnedNormalSensor();Emit("sensors","temperatures",new Dictionary<string,object>{{"cpu",MissingSensor()},{"gpu",MissingSensor()},{"status","unavailable"},{"reason","The reviewed sensor helper could not start without changing system privileges."}});}
@@ -549,7 +607,7 @@ namespace InterlinkedMaster
             }
             lastSensors=result;Emit("sensors","temperatures",result);
         }
-        public void Dispose(){running=false;connectRequested=false;StopSensorBroker();frameReady.Set();if(usbThread!=null&&usbThread.IsAlive)usbThread.Join(3500);if(sensorBrokerThread!=null&&sensorBrokerThread.IsAlive)sensorBrokerThread.Join(1500);if(usbThread==null)StopUsb();if(violetAtlas!=null)violetAtlas.Dispose();title.Dispose();roomFont.Dispose();mono.Dispose();small.Dispose();detail.Dispose();binaryFont.Dispose();temperatureLabel.Dispose();temperatureValue.Dispose();}
+        public void Dispose(){running=false;connectRequested=false;StopSensorBroker();frameReady.Set();usbFrameReady.Set();if(usbThread!=null&&usbThread.IsAlive)usbThread.Join(3500);if(sensorBrokerThread!=null&&sensorBrokerThread.IsAlive)sensorBrokerThread.Join(1500);if(usbThread==null)StopUsb();if(violetAtlas!=null)violetAtlas.Dispose();title.Dispose();roomFont.Dispose();mono.Dispose();small.Dispose();detail.Dispose();binaryFont.Dispose();temperatureLabel.Dispose();temperatureValue.Dispose();}
         internal static int SelfTest(string directory)
         {
             Directory.CreateDirectory(directory);using(var worker=new Worker()){

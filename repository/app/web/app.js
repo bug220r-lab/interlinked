@@ -485,6 +485,14 @@ function masterFrameAge(display,lastReceived,error='',now=Date.now()){
  const observed=Date.parse(display?.frameObservedAt||''),hasObservation=Number.isFinite(observed),stamp=hasObservation?observed:lastReceived;
  return stamp?(hasObservation?'OBSERVED ':'RECEIVED ')+Math.max(0,Math.floor((now-stamp)/1000))+'s ago'+(error?' · '+error:''):'No frame received';
 }
+function masterSubagents(summary,snapshotUtc,now=Date.now()){
+ const age=now-Date.parse(snapshotUtc),observedAge=now-Date.parse(summary?.observedAt),count=summary?.workingCount;
+ const valid=Number.isFinite(age)&&age>=0&&age<=15000&&Number.isFinite(observedAge)&&observedAge>=0&&observedAge<=180000&&Number.isInteger(count)&&count>=0&&count<=256&&['observed','partial'].includes(summary?.status);
+ const partial=valid&&summary.status==='partial';
+ return {text:valid?String(count)+(partial?'?':''):'—',tone:valid?(partial?'attention':'active'):'quiet',
+  explanation:valid?'Observed working subagents'+(partial?'; ? means tracking is incomplete.':'; event observations are not a complete live inventory.'):'Working subagent count unavailable; missing or stale observations do not mean zero.',
+  observedAt:summary?.observedAt,source:String(summary?.source||'Codex lifecycle (observed)')};
+}
 function masterProjectModel(project){
  const activity=project.activity||{},health=project.health||{},git=project.git||{},workspace=project.workspace||{};
  const activityStatus=activity.stale?'stale':masterStatus(activity);
@@ -545,6 +553,9 @@ function masterSetView(enabled){
 }
 function masterRenderProjects(){
  const rows=masterSnapshot?.projects||[];$('master-project-count').textContent=String(rows.length).padStart(2,'0');$('master-projects').replaceChildren();
+ const total=masterSubagents(masterSnapshot?.subagents,masterSnapshot?.utc);
+ $('master-subagent-total').textContent='SUBAGENTS WORKING '+total.text;$('master-subagent-total').className='master-station-summary tone-'+total.tone;
+ $('master-subagent-total').setAttribute('aria-label','Subagents working: '+total.text+'. '+total.explanation);$('master-subagent-total').setAttribute('title',total.explanation);
  if(!rows.length){$('master-projects').append(masterElement('p','master-muted','No project stations are registered. Add a source folder in settings.'));return;}
  for(const [index,row] of rows.entries()){
   const p=masterProjectModel(row),card=masterElement('article','master-project-station tone-'+p.tone);
@@ -552,10 +563,12 @@ function masterRenderProjects(){
   const content=masterElement('div','master-station-content'),heading=masterElement('div','master-station-heading');heading.append(masterElement('h3','',p.label),masterElement('span','master-activity-chip',p.activity));
   const health=masterElement('div','master-health-line');health.append(masterElement('span','', 'BUILD / TEST'),masterElement('strong','tone-'+p.healthTone,p.health));
   const workspace=masterElement('div','master-health-line');workspace.append(masterElement('span','','WORKSPACE'),masterElement('strong','tone-'+p.workspaceTone,p.workspace));
-  content.append(heading,health,masterElement('p','master-station-summary',p.summary),workspace,masterElement('p','master-station-summary',p.workspaceSummary));
+  const subs=masterSubagents(row.subagents,masterSnapshot?.utc),subagentLine=masterElement('div','master-health-line');subagentLine.append(masterElement('span','','SUBAGENTS WORKING'),masterElement('strong','tone-'+subs.tone,subs.text));subagentLine.setAttribute('aria-label','Subagents working: '+subs.text+'. '+subs.explanation);subagentLine.setAttribute('title',subs.explanation);
+  content.append(heading,health,masterElement('p','master-station-summary',p.summary),workspace,masterElement('p','master-station-summary',p.workspaceSummary),subagentLine);
   const meta=masterElement('div','master-station-meta');meta.append(masterElement('span','',p.branch),masterElement('span','',p.dirty));
   const evidence=masterElement('details','master-evidence');evidence.open=masterEvidenceOpen.has(p.id);evidence.addEventListener('toggle',()=>{if(evidence.open)masterEvidenceOpen.add(p.id);else masterEvidenceOpen.delete(p.id);});evidence.append(masterElement('summary','','Source & evidence'));
   evidence.append(masterElement('p','','Activity: '+p.source+' · '+masterWhen(p.observedAt)),masterElement('p','','Build/test result: '+p.healthSource+' · '+masterWhen(p.healthObservedAt)),masterElement('p','','Build/test baseline: '+p.baseline),masterElement('p','','Workspace: '+p.workspaceSource+' · '+masterWhen(p.workspaceObservedAt)),masterElement('p','','Observed agents: '+p.agents));
+  evidence.append(masterElement('p','','Subagents: '+subs.source+' · '+masterWhen(subs.observedAt)+' · '+subs.explanation));
   content.append(meta,evidence);card.append(glyph,content);$('master-projects').append(card);
  }
 }
@@ -569,7 +582,7 @@ function masterLoadSettings(){
  if(!valid){$('master-settings-feedback').textContent='MASTER settings are unavailable. Review saved settings history to recover them.';return;}
  for(const section of ['display','capture','projects']){
   const draft=masterDrafts[section];if(draft.dirty)continue;draft.revision=masterSnapshot.settingsRevision??null;
-  if(section==='display'){$('master-mode').value=s.mode||'dashboard';$('master-fps-setting').value=String(s.fps||10);$('master-background').checked=!!s.background;$('master-login').checked=!!s.startAtLogin;for(const id of ['master-background','master-login'])$(id).indeterminate=masterSnapshot.lifecyclePreferencesKnown===false;masterLifecycleTouched.clear();}
+  if(section==='display'){$('master-mode').value=s.mode||'dashboard';$('master-fps-setting').value=String(s.fps||30);$('master-background').checked=!!s.background;$('master-login').checked=!!s.startAtLogin;for(const id of ['master-background','master-login'])$(id).indeterminate=masterSnapshot.lifecyclePreferencesKnown===false;masterLifecycleTouched.clear();}
   if(section==='capture'){for(const key of ['x','y','width','height'])$('master-capture-'+key).value=String(s.captureRect?.[key]??(['width','height'].includes(key)?240:0));$('master-capture-enabled').checked=!!s.captureEnabled;}
   if(section==='projects')draft.rows=(s.projects||[]).map(row=>({...row}));
  }
@@ -612,9 +625,9 @@ function masterRender(){
  $('master-source-status').textContent=s.demo?'DEMO FEED':'LOCAL OBSERVATORY';$('master-source-status').className='master-status '+(s.demo?'attention':'active');
  $('master-observed').textContent='Snapshot '+masterWhen(s.observedAt||s.utc||s.generatedAt);$('master-demo-note').hidden=!s.demo;
  const configurationNotice=String(s.configurationNotice||(s.restartRequired?'Restart INTERLINKED to activate the changed MASTER configuration.':''));$('master-configuration-notice').textContent=configurationNotice;$('master-configuration-notice').hidden=!configurationNotice;
- $('master-display-status').textContent=connected?'LCD connected':masterWords(display.status||'disconnected');$('master-display-message').textContent=display.message||display.error||'Close TRCC, then choose Connect display.';
+ $('master-display-status').textContent=connected?'LCD connected':masterWords(display.status||'disconnected');$('master-display-message').textContent=display.message||display.error||(connected?'INTERLINKED owns the cooler display.':'Close TRCC, then choose Connect display.');
  $('master-display-led').className='master-led '+(connected?'active':'');$('master-connect').disabled=masterBusy||connected||!!s.demo;$('master-disconnect').disabled=masterBusy||!connected;
- const stats=display.stats||s.stats||display;$('master-fps').textContent='LCD FPS '+(connected&&Number.isFinite(stats.deliveredFps)?stats.deliveredFps.toFixed(1):'—');$('master-dropped').textContent='DROPPED '+(Number.isFinite(stats.droppedFrames)?stats.droppedFrames:'—');
+ const stats=display.stats||s.stats||display;$('master-fps').textContent='DELIVERY FPS '+(connected&&Number.isFinite(stats.deliveredFps)?stats.deliveredFps.toFixed(1):'—');$('master-dropped').textContent='DROPPED '+(Number.isFinite(stats.droppedFrames)?stats.droppedFrames:'—');
  $('master-cpu').textContent=masterTemperature(s.temperatures?.cpu);$('master-gpu').textContent=masterTemperature(s.temperatures?.gpu);
  $('master-sensor-note').textContent=s.temperatures?.message||s.temperatures?.reason||(($('master-cpu').textContent==='—'||$('master-gpu').textContent==='—')?'Unverified or unavailable readings stay blank.':'Live verified readings · '+masterWhen(s.temperatures?.observedAt));
  $('master-enable-sensors').disabled=masterBusy||!connected||!!s.demo;
@@ -627,7 +640,7 @@ function masterRender(){
 }
 async function masterPoll(){
  if(masterPollBusy||stopped)return;masterPollBusy=true;
- try{masterSnapshot=await api('/api/master/state');masterRender();}finally{masterPollBusy=false;}
+ try{masterSnapshot=await api('/api/master/state');masterRender();}catch(error){masterRender();throw error;}finally{masterPollBusy=false;}
 }
 async function masterRequest(fn){if(masterBusy)throw new Error('Please wait for the current display request.');masterBusy=true;masterClearError();masterRender();try{return await fn();}finally{masterBusy=false;masterRender();}}
 async function masterEnableSensors(){

@@ -15,6 +15,42 @@ import time
 from pathlib import Path
 
 
+def jpeg_contract(data):
+    """Inspect the actual native JPEG rather than trusting its requested quality."""
+    position, geometry, tables = 2, None, []
+    while position + 4 < len(data):
+        if data[position] != 255:
+            raise ValueError('JPEG marker alignment')
+        while position < len(data) and data[position] == 255:
+            position += 1
+        marker = data[position]
+        position += 1
+        if marker in (0xda, 0xd9):
+            break
+        if marker in (0xd8, 0x01) or 0xd0 <= marker <= 0xd7:
+            continue
+        length = int.from_bytes(data[position:position+2], 'big')
+        if length < 2 or position + length > len(data):
+            raise ValueError('JPEG segment bounds')
+        segment = data[position+2:position+length]
+        if marker == 0xc0:
+            geometry = (int.from_bytes(segment[3:5], 'big'), int.from_bytes(segment[1:3], 'big'))
+        if marker == 0xdb:
+            offset = 0
+            while offset < len(segment):
+                precision = segment[offset] >> 4
+                offset += 1
+                if precision not in (0, 1):
+                    raise ValueError('JPEG quantization precision')
+                width = precision + 1
+                if offset + 64*width > len(segment):
+                    raise ValueError('JPEG quantization bounds')
+                tables.append([int.from_bytes(segment[offset+i*width:offset+(i+1)*width], 'big') for i in range(64)])
+                offset += 64*width
+        position += length
+    return geometry == (480, 480), len(tables) >= 2 and all(value == 1 for table in tables for value in table)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--worker', type=Path, required=True)
@@ -94,6 +130,19 @@ def main():
             collected.append(frames.get(timeout=8))
         if len({hashlib.sha256(frame).digest() for frame in collected}) < 12:
             failures.append('Diagnostic sequence did not produce changing frames')
+        full_quality = True
+        exact_geometry = True
+        for frame in collected:
+            try:
+                geometry, quality = jpeg_contract(frame)
+                exact_geometry &= geometry
+                full_quality &= quality
+            except (ValueError, IndexError):
+                exact_geometry = full_quality = False
+        if not exact_geometry:
+            failures.append('Encoded JPEG is not baseline sequential 480 x 480')
+        if not full_quality:
+            failures.append('Encoded JPEG does not retain maximum-quality quantization tables')
         (args.output/'frame-first.jpg').write_bytes(collected[0])
         (args.output/'frame-last.jpg').write_bytes(collected[-1])
         # A missing mini source must be explicitly unavailable, never an idle fallback.
@@ -132,6 +181,7 @@ def main():
                 failures.append('Malformed broker arguments did not fail closed')
         report={'ok':not failures,'realEncodedFrames':len(collected),
                 'distinctEncodedFrames':len({hashlib.sha256(f).digest() for f in collected}),
+                'baselineSequential480Jpeg':exact_geometry,'maximumQualityQuantization':full_quality,
                 'missingMiniSourceUnavailable':capture_event is not None,
                 'sensorPermissionRefusedWithoutLcd':denied is not None and denied.get('status')=='unavailable',
                 'malformedBrokerArgumentsRefused':rejected,

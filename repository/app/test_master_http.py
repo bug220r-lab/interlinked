@@ -77,6 +77,19 @@ def main():
         check(snapshot['demo'] and len(snapshot['projects'])==3,'Demo snapshot contains three truthful default project stations')
         check(not snapshot['violet']['connected'],'No fixture or source inspection claims actual Dot connection')
         check(not snapshot['display']['connected'],'Preview alone does not connect to hardware')
+        check(snapshot['subagents']['workingCount'] is None,'No child evidence is unavailable rather than zero over HTTP')
+        counter_root=root/'counter-project';counter_root.mkdir()
+        counter_projects=[dict(row,root=str(counter_root)) if row['id']=='interlinked' else row for row in snapshot['settings']['projects']]
+        check(settings({'projects':counter_projects})[0]==200,'Synthetic counter root uses the guarded project registration path')
+        counter_module=g.load_companion('interlinked_master')
+        child_event=counter_module.sanitize_hook(dict(hook_event_name='SubagentStart',session_id='counter-parent',agent_id='counter-child',turn_id='counter-turn',cwd=str(counter_root)))
+        counter_module.publish_event(server.master.feed,child_event);server.master.refresh(collect_git=False)
+        counter_snapshot=json.loads(request('GET','/api/master/state')[2])
+        counter_project=next(row for row in counter_snapshot['projects'] if row['id']=='interlinked')
+        check(counter_project['subagents']['workingCount']==1 and counter_snapshot['subagents']['workingCount']==1 and counter_snapshot['subagents']['status']=='partial',
+              'Authenticated HTTP exposes observed project counts and a partial total for unobserved projects')
+        check(counter_module.bridge_snapshot(server.master.feed)['subagents']==counter_snapshot['subagents'],'Reduced MCP snapshot carries the same total without extra controls')
+        snapshot=counter_snapshot
         for path,body in (('/api/master/settings',{'fps':5}),('/api/master/display',{'connect':False})):
             check(request('POST',path,body,token=False)[0]==409,path+' requires capability token')
             check(request('POST',path,body,headers={'Origin':'https://foreign.invalid'})[0]==409,path+' rejects foreign write origin')
@@ -85,13 +98,16 @@ def main():
         check(request('POST','/api/master/settings',{'fps':5})[0]==409,'MASTER writes require an expected settings revision')
         check(settings({'fps':5})[0]==200,'Valid MASTER preference changes are accepted')
         check(json.loads(request('GET','/api/master/settings')[2])['fps']==5,'MASTER settings roundtrip uses authenticated endpoint')
+        check(settings({'fps':30})[0]==200,'Normal 30 FPS target is accepted through the revision-guarded API')
+        check(json.loads(request('GET','/api/master/settings')[2])['fps']==30,'30 FPS target survives authenticated settings roundtrip')
+        check(settings({'fps':5})[0]==200,'A saved 5 FPS fallback remains selectable after 30 FPS')
         conflict=request('POST','/api/master/settings',{'fps':10,'expectedRevision':revision})
         conflict_value=json.loads(conflict[2])
         check(conflict[0]==409 and conflict_value['code']=='CONFIGURATION_CONFLICT' and conflict_value['current']['settings']['fps']==5,
               'Stale settings writes return the current settings without overwriting them')
         for body in ({'helperPins':{'USBLCDNEW.dll':'a'*64}},{'executable':'cmd.exe'}, {'requireHelperPins':False},
                      {'projects':[{'id':'bad','label':'Bad','root':r'\\MSI\ProjectLibrary'}]},
-                     {'captureEnabled':True}, {'fps':30}, {'fps':45}, {'fps':60}):
+                     {'captureEnabled':True}, {'fps':20}, {'fps':45}, {'fps':60}):
             check(settings(body)[0]==409,'Untrusted MASTER configuration capability is rejected: '+str(next(iter(body))))
         check(settings({'fps':10})[0]==200,'Second configuration commit creates a recoverable prior version')
         for scope in ('master','library'):

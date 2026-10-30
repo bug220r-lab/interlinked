@@ -421,6 +421,121 @@ class EventModel:
         self.sessions = {}
         self.seen = deque(maxlen=4096)
         self.seen_set = set()
+        # Child role survives generic activity updates. This is an observed,
+        # bounded event model, never a complete inventory of Codex sessions.
+        self.subagents = {}
+        self.subagent_parent_uncertainty = {}
+        self.subagent_coverage_lost = False
+
+    @staticmethod
+    def _terminal_blocks(previous, event):
+        if not previous or previous['event'] not in {'Stop', 'Interrupt', 'SubagentStop', 'SessionEnd'}:
+            return False
+        if event['event'] in {'Stop', 'Interrupt', 'SubagentStop', 'SessionEnd'}:
+            return False
+        # An explicit new start can reuse an agent without a supplied turn ID.
+        if event['event'] == 'SubagentStart' and timestamp(event['observedAt']) > timestamp(previous['observedAt']):
+            return False
+        return event.get('turnId') == previous.get('turnId')
+
+    @staticmethod
+    def _tie_blocks(previous, event):
+        # Hook timestamps can have millisecond precision. At the same instant,
+        # waiting/terminal observations beat working regardless of delivery order.
+        def priority(kind):
+            if kind in {'Stop', 'Interrupt', 'SubagentStop', 'SessionEnd'}:
+                return 3
+            if kind == 'PermissionRequest':
+                return 2
+            return 1 if kind in {'SubagentStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse'} else 0
+        return (previous is not None and timestamp(previous['observedAt']) == timestamp(event['observedAt'])
+                and priority(previous['event']) > priority(event['event']))
+
+    def _observe_subagent(self, event):
+        kind, parent = event['event'], event['sessionId']
+        agent = event.get('agentId')
+        when = timestamp(event['observedAt'])
+        if kind in {'SubagentStart', 'SubagentStop'} and not agent:
+            self.subagent_coverage_lost = True
+            return
+        if not agent:
+            # Some runtime hooks identify the child as their session rather
+            # than repeating agentId. Resolve only an explicit unique edge;
+            # retain the original event separately in generic activity.
+            matches = [key for key in self.subagents if key[1] == parent]
+            if len(matches) == 1:
+                parent, agent = matches[0]
+                event = dict(event, sessionId=parent, agentId=agent, viaChildSession=True)
+            elif matches:
+                for key in matches:
+                    child = self.subagents[key]
+                    may_resume = (kind in {'UserPromptSubmit', 'PreToolUse', 'PostToolUse'}
+                        and not self._terminal_blocks(child, event) and not self._tie_blocks(child, event))
+                    if when >= timestamp(child['observedAt']) and (child['state'] != 'stopped' or child.get('viaChildSession') or may_resume):
+                        child['uncertainAt'] = max(child.get('uncertainAt', 0), when)
+                return
+        # Parent events cannot identify which child is waiting or interrupted.
+        # Keep identity-specific timestamps unchanged when marking uncertainty.
+        if not agent and kind in {'PermissionRequest', 'Interrupt', 'SessionEnd'}:
+            # Background hook delivery can reorder a child's start behind the
+            # parent's permission request. Preserve that uncertainty as well.
+            if parent not in self.subagent_parent_uncertainty and len(self.subagent_parent_uncertainty) >= 256:
+                oldest = min(self.subagent_parent_uncertainty, key=self.subagent_parent_uncertainty.get)
+                self.subagent_parent_uncertainty.pop(oldest)
+                self.subagent_coverage_lost = True
+            self.subagent_parent_uncertainty[parent] = max(self.subagent_parent_uncertainty.get(parent, 0), when)
+            for (session, _), child in self.subagents.items():
+                if session == parent and child['state'] == 'working' and when >= timestamp(child['observedAt']):
+                    child['uncertainAt'] = max(child.get('uncertainAt', 0), when)
+            return
+        key = (parent, agent)
+        child = self.subagents.get(key)
+        if child is None:
+            if kind not in {'SubagentStart', 'SubagentStop'}:
+                return
+            if len(self.subagents) >= 256:
+                oldest = min(self.subagents, key=lambda k: timestamp(self.subagents[k]['observedAt']))
+                self.subagents.pop(oldest)
+                self.subagent_coverage_lost = True
+            main = self.sessions.get((parent, 'main'), {})
+            child = dict(cwd=event['cwd'], parentCwd=main.get('cwd'), state='unknown',
+                         event=kind, observedAt=event['observedAt'],
+                         uncertainAt=self.subagent_parent_uncertainty.get(parent, 0))
+            self.subagents[key] = child
+            # An explicit role may arrive after either supported child hook
+            # shape. A newer child directory never changes its original owner.
+            candidates = [value for value in [self.sessions.get(key)] if value]
+            generic = self.sessions.get((agent, 'main'))
+            matches = [edge for edge in self.subagents if edge[1] == agent]
+            if generic and len(matches) == 1:
+                candidates.append(dict(generic, sessionId=parent, agentId=agent, viaChildSession=True))
+            elif generic and timestamp(generic['observedAt']) >= when:
+                # A second delayed relationship can reveal that a previous
+                # child-session observation was ambiguous after all.
+                for edge in matches:
+                    other = self.subagents[edge]
+                    if (edge == key or other.get('viaChildSession')) and timestamp(generic['observedAt']) >= timestamp(other['observedAt']):
+                        other['uncertainAt'] = max(other.get('uncertainAt', 0), timestamp(generic['observedAt']))
+            latest = None
+            for observation in candidates:
+                if (latest is None or timestamp(observation['observedAt']) > timestamp(latest['observedAt'])
+                        or self._tie_blocks(observation, latest)):
+                    latest = observation
+            if latest and (timestamp(latest['observedAt']) > when or self._tie_blocks(latest, event)) and not self._terminal_blocks(event, latest):
+                event = latest
+                kind, when = event['event'], timestamp(event['observedAt'])
+        elif when < timestamp(child['observedAt']) or self._terminal_blocks(child, event) or self._tie_blocks(child, event):
+            return
+        state = ('working' if kind in {'SubagentStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse'}
+                 else 'waiting' if kind == 'PermissionRequest'
+                 else 'stopped' if kind in {'SubagentStop', 'Stop', 'Interrupt', 'SessionEnd'} else 'unknown')
+        child.update(state=state, event=kind, observedAt=event['observedAt'], viaChildSession=event.get('viaChildSession', False))
+        if event.get('turnId') is not None:
+            child['turnId'] = event['turnId']
+        else:
+            child.pop('turnId', None)
+        if state == 'stopped' or when > child.get('uncertainAt', 0):
+            child.pop('uncertainAt', None)
 
     def accept(self, event):
         if event.get('format') != 'interlinked-master-event-v1':
@@ -444,12 +559,12 @@ class EventModel:
             self.seen_set.discard(self.seen[0])
         self.seen.append(identifier)
         self.seen_set.add(identifier)
+        self._observe_subagent(event)
         key = (event['sessionId'], event.get('agentId', 'main'))
         previous = self.sessions.get(key)
         if previous and when < timestamp(previous['observedAt']):
             return False
-        terminal = {'Stop', 'Interrupt', 'SubagentStop', 'SessionEnd'}
-        if previous and previous['event'] in terminal and event.get('turnId') == previous.get('turnId') and event['event'] not in terminal:
+        if self._terminal_blocks(previous, event) or (event.get('agentId') is not None and self._tie_blocks(previous, event)):
             return False
         if len(self.sessions) >= 256 and key not in self.sessions:
             oldest = min(self.sessions, key=lambda k: timestamp(self.sessions[k]['observedAt']))
@@ -478,6 +593,83 @@ class EventModel:
         first = rows[0] if rows else {}
         return dict(status=first.get('status', 'unknown'), source='Codex lifecycle' if rows else 'Not connected',
                     observedAt=first.get('observedAt'), stale=first.get('stale', False), agents=rows)
+
+    def subagent_counts(self, registrations, now=None):
+        """Return reduced observed-working summaries, without identities or paths.
+
+        A feed parse error can set subagent_coverage_lost as well as incrementing
+        the service error counter. Once coverage is lost it remains partial for
+        this collector lifetime; silence never reconciles an incomplete feed.
+        """
+        now = time.time() if now is None else now
+        roots = []
+        for order, registration in enumerate(registrations):
+            for field in ('activityRoot', 'root'):
+                if registration.get(field):
+                    root = os.path.normcase(os.path.abspath(registration[field])).rstrip('\\/')
+                    roots.append((root, order, registration['id']))
+        roots.sort(key=lambda row: (-len(row[0]), row[1]))
+
+        def match(cwd):
+            if not cwd:
+                return None
+            path = os.path.normcase(os.path.abspath(cwd))
+            return next((identifier for root, _, identifier in roots
+                         if path == root or path.startswith(root + os.sep)), None)
+
+        # Nesting is followed only through explicit child IDs, never from paths
+        # that resemble UUIDs. Duplicate parent identities are ambiguous.
+        by_agent = {}
+        for key in self.subagents:
+            by_agent.setdefault(key[1], []).append(key)
+
+        def owner(key, visited):
+            if key in visited:
+                return None
+            visited.add(key)
+            child = self.subagents[key]
+            ancestors = by_agent.get(key[0], [])
+            if len(ancestors) == 1:
+                inherited = owner(ancestors[0], visited)
+                if inherited is not None:
+                    return inherited
+            # The parent's own event may arrive after the child start. Consult
+            # it only when no initiating-parent directory was captured earlier.
+            parent_cwd = child.get('parentCwd') or self.sessions.get((key[0], 'main'), {}).get('cwd')
+            return match(parent_cwd) or match(child['cwd'])
+
+        assigned = {row['id']: [] for row in registrations}
+        for key, child in self.subagents.items():
+            identifier = owner(key, set())
+            if identifier in assigned:
+                assigned[identifier].append(child)
+
+        def summary(children):
+            known = [child for child in children if 0 <= now - timestamp(child['observedAt']) <= EVENT_TTL
+                     and child['state'] != 'unknown' and not child.get('uncertainAt')]
+            observed = max((child['observedAt'] for child in known), key=timestamp, default=None)
+            if not known:
+                return dict(workingCount=None, status='unavailable', observedAt=None, source='Codex lifecycle (observed)')
+            # A confirmed old stop is history, not an unresolved worker. It
+            # cannot establish a fresh zero by itself (handled above), nor
+            # should it permanently taint unrelated fresh child evidence.
+            unresolved = any(child not in known and not (
+                child['state'] == 'stopped' and not child.get('uncertainAt')
+                and now - timestamp(child['observedAt']) > EVENT_TTL) for child in children)
+            partial = self.subagent_coverage_lost or unresolved
+            return dict(workingCount=sum(child['state'] == 'working' for child in known),
+                        status='partial' if partial else 'observed', observedAt=observed, source='Codex lifecycle (observed)')
+
+        projects = {identifier: summary(children) for identifier, children in assigned.items()}
+        available = [value for value in projects.values() if value['workingCount'] is not None]
+        if not available:
+            total = summary([])
+        else:
+            total = dict(workingCount=sum(value['workingCount'] for value in available),
+                         status='observed' if len(available) == len(projects) and all(value['status'] == 'observed' for value in available) else 'partial',
+                         observedAt=max((value['observedAt'] for value in available), key=timestamp),
+                         source='Codex lifecycle (observed)')
+        return projects, total
 
 
 def default_projects(demo=False):
@@ -557,7 +749,7 @@ def receipt_health(receipt, git):
 
 
 def default_settings(runtime):
-    return dict(mode='dashboard', fps=10, rotationSeconds=8, focusProject=None,
+    return dict(mode='dashboard', fps=30, rotationSeconds=8, focusProject=None,
         captureRect=dict(x=0, y=0, width=240, height=240), captureEnabled=False,
         captureWindowId=None, captureWindowBounds=None, background=True,
         startAtLogin=not runtime.demo, projects=default_projects(runtime.demo))
@@ -647,6 +839,14 @@ class MasterService:
         self.violet_asset = Path(violet_asset) if violet_asset else Path(runtime.kit) / 'INTERLINKED-Desktop' / 'Violet.png'
         self._git = {}; self._last_git = 0
         self._ack_sample = None
+        # One-time administrative setup authorizes only this exact installed
+        # service/worker pair. Demo checkouts never reconnect real hardware.
+        self._auto_start_until = time.monotonic() + 150 if self._automatic_startup_allowed() else 0
+        self._auto_sensor_until = self._auto_start_until - 90 if self._auto_start_until else 0
+        self._auto_connect_until = 0
+        self._auto_connect_sent = False
+        self._auto_cancel_pending = False
+        self._auto_start_next = 0
         self.refresh(collect_git=False)
         if start:
             self._start_worker()
@@ -662,8 +862,8 @@ class MasterService:
         result = deepcopy(body)
         if 'mode' in result and result['mode'] not in {'dashboard', 'live_mini'}:
             raise ValueError('Unknown display mode.')
-        if 'fps' in result and (type(result['fps']) is not int or result['fps'] not in (5, 10, 15)):
-            raise ValueError('Choose 5, 10 or 15 FPS.')
+        if 'fps' in result and (type(result['fps']) is not int or result['fps'] not in (5, 10, 15, 30)):
+            raise ValueError('Choose a target of 5, 10, 15 or 30 FPS.')
         if 'rotationSeconds' in result and result['rotationSeconds'] != 8:
             raise ValueError('The detail rotation interval is eight seconds.')
         for key in ('captureEnabled', 'background', 'startAtLogin'):
@@ -728,6 +928,8 @@ class MasterService:
             self._settings = prospective
             self.settings_revision = saved['revision']
             self.lifecycle_preferences_known = known
+            if not known or not prospective.get('startAtLogin'):
+                self._cancel_automatic_startup()
             if self.settings_revision == prior_revision:
                 return self.state()
             self._write_activity_roots()
@@ -787,6 +989,8 @@ class MasterService:
             raise ValueError('Select a current configuration restore preview.')
         with self.lock:
             saved = self.configuration.restore(body['previewId'], expected_revision=body.get('expectedRevision'))
+            # Recovery cannot leave an earlier automatic hardware request armed.
+            self._cancel_automatic_startup()
             self._settings = deepcopy(saved['value']['settings'])
             self.settings_revision = saved['revision']
             self.lifecycle_preferences_known = saved['value']['lifecyclePreferencesKnown']
@@ -811,6 +1015,10 @@ class MasterService:
             return self._frame
 
     def display(self, body):
+        # A manual action always takes precedence over the startup retry window.
+        self._auto_start_until = 0
+        self._auto_connect_sent = False
+        self._auto_cancel_pending = False
         if body in ({'action': 'enable_sensors'}, {'action': 'disable_sensors'}):
             if self.runtime.demo:
                 raise ValueError('Sensor setup is unavailable in a synthetic demo.')
@@ -825,9 +1033,9 @@ class MasterService:
             self._send(dict(op='capture_sources'))
         elif isinstance(body, dict) and set(body) == {'connect'} and type(body['connect']) is bool:
             self._ensure_worker()
-            self._send(dict(op='display', connect=body['connect']))
             with self.lock:
                 self._state['display'].update(status='connecting' if body['connect'] else 'disconnecting', message='Waiting for display worker')
+            self._send(dict(op='display', connect=body['connect']))
         else:
             raise ValueError('Display takes a boolean connect field, capture_sources, enable_sensors or disable_sensors action.')
         return self.state()
@@ -989,6 +1197,10 @@ class MasterService:
                 self._state['display'].update({k: v for k, v in message.items() if k in allowed and isinstance(v, (str, int, float, bool, type(None)))})
                 if 'displayStatus' in message:
                     self._state['display']['status'] = message['displayStatus']
+                    if 'message' not in message:
+                        # The worker status supersedes the pending
+                        # request text, so the UI can show its actual error.
+                        self._state['display']['message'] = None
                 if kind == 'stats':
                     self._state['display']['targetFps'] = message.get('fps')
                     self._state['display']['fps'] = message.get('renderFps')
@@ -1033,6 +1245,7 @@ class MasterService:
                 self.events.accept(value)
             except (OSError, ValueError, TypeError, json.JSONDecodeError, KeyError):
                 self.event_errors += 1
+                self.events.subagent_coverage_lost = True
             try:
                 ordinary(path).unlink()
             except (OSError, ValueError):
@@ -1081,6 +1294,7 @@ class MasterService:
         except Exception:
             operation = {}
             controller_observed = None
+        subagents_by_project, subagents = self.events.subagent_counts(settings['projects'])
         projects = []
         for registration in settings['projects']:
             identifier = registration['id']
@@ -1129,26 +1343,92 @@ class MasterService:
                 except (OSError, ValueError, KeyError, json.JSONDecodeError):
                     workspace = dict(status='offline', summary='ED-IT Buddy status publisher is not connected')
             projects.append(dict(id=identifier, label=registration['label'], activity=activity, health=health, git=git,
-                workspace=workspace, source=activity['source'], observedAt=activity['observedAt']))
+                workspace=workspace, subagents=subagents_by_project[identifier],
+                source=activity['source'], observedAt=activity['observedAt']))
         try:
             attention = collect_attention(self.feed, projects)
         except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
             attention = dict(available=False, items=[], pendingCount=0, delivery='Attention queue unavailable')
         with self.lock:
-            self._state.update(utc=utc(), projects=projects, violet=self._violet(), attention=attention)
+            self._state.update(utc=utc(), projects=projects, subagents=subagents, violet=self._violet(), attention=attention)
             observed = self._state['temperatures'].get('observedAt')
             if observed and time.time() - timestamp(observed) > 5:
                 self._state['temperatures'] = dict(cpu=dict(value=None, unit='C', status='unavailable'), gpu=dict(value=None, unit='C', status='unavailable'), status='stale', observedAt=observed)
             value = self.state()
-        export = {k: deepcopy(value[k]) for k in ('format', 'version', 'utc', 'demo', 'projects', 'violet', 'temperatures', 'attention')}
+        export = {k: deepcopy(value[k]) for k in ('format', 'version', 'utc', 'demo', 'projects', 'subagents', 'violet', 'temperatures', 'attention')}
         write_json(self.feed / 'snapshot.json', export)
         if self._worker is not None and self._worker.poll() is None:
             self._send(dict(op='snapshot', snapshot=value))
+
+    def _automatic_startup_allowed(self):
+        if self.runtime.demo:
+            return False
+        observed = self.state()
+        if not observed['settingsValid'] or not observed['lifecyclePreferencesKnown'] or not observed['settings'].get('startAtLogin'):
+            return False
+        expected = Path(r'C:\Users\Jude\Documents\MSI-Project-Library')
+        if Path(self.runtime.kit) != expected:
+            return False
+        try:
+            record = read_json(Path(r'C:\Program Files\INTERLINKED Cooler Startup\startup.json'), 8192)
+            return (record.get('format') == 'interlinked-cooler-startup-v1'
+                    and record.get('enabled') is True and record.get('machine') == 'THIS-MACHINE'
+                    and record.get('user') == 'Jude'
+                    and record.get('appSha256') == hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+                    and record.get('workerSha256') == hashlib.sha256(self.worker_path.read_bytes()).hexdigest())
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            return False
+
+    def _cancel_automatic_startup(self):
+        self._auto_start_until = 0
+        if self._auto_connect_sent and not self._state['display'].get('connected'):
+            self._auto_cancel_pending = True
+        if self._auto_cancel_pending:
+            try:
+                self._send(dict(op='display', connect=False))
+            except ValueError:
+                # A full bounded queue cannot discard the cancellation. Retry
+                # it on the next tick without rearming automatic connection.
+                return
+            self._auto_cancel_pending = False
+        self._auto_connect_sent = False
+
+    def _automatic_startup_tick(self, now=None):
+        now = time.monotonic() if now is None else now
+        with self.lock:
+            if self._auto_cancel_pending:
+                self._cancel_automatic_startup()
+                return
+            if not self._auto_start_until:
+                return
+            if (not self._automatic_startup_allowed() or now >= self._auto_start_until
+                    or self._auto_connect_until and now >= self._auto_connect_until
+                    or self._state['display'].get('connected')):
+                self._cancel_automatic_startup()
+                return
+            if now < self._auto_start_next or self._state['display'].get('status') == 'connecting':
+                return
+            # Let the scheduled publisher initialize first, avoiding a competing
+            # normal-user vendor publisher. Display still starts if sensors fail.
+            if self._state['temperatures'].get('status') != 'available' and now < self._auto_sensor_until:
+                return
+            if not self._auto_connect_until:
+                self._auto_connect_until = now + 60
+            self._auto_start_next = now + 5
+        self._ensure_worker()
+        with self.lock:
+            if not self._auto_start_until or not self._automatic_startup_allowed():
+                self._cancel_automatic_startup()
+                return
+            self._state['display'].update(status='connecting', message='Connecting the cooler after sign-in', error=None)
+            self._auto_connect_sent = True
+            self._send(dict(op='display', connect=True))
 
     def _loop(self):
         while not self.stop.wait(1):
             try:
                 self.refresh()
+                self._automatic_startup_tick()
             except (ValueError, OSError):
                 self.event_errors += 1
 
@@ -1183,7 +1463,7 @@ class UnavailableMaster:
 
     def state(self):
         return dict(format='interlinked-master-snapshot-v1', version=1, utc=utc(), demo=self.demo,
-            projects=[], settings=dict(mode='dashboard', fps=10, rotationSeconds=8,
+            projects=[], settings=dict(mode='dashboard', fps=30, rotationSeconds=8,
                 captureEnabled=False, projects=[]), settingsValid=False, lifecyclePreferencesKnown=False,
             settingsRevision=None, restartRequired=self.restart_required,
             violet=dict(status='unknown', connected=False, stale=False, source='Dot-reported', observedAt=None,
