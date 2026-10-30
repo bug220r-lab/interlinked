@@ -1,8 +1,8 @@
 {
   "format": "interlinked-distribution-manifest-v1",
-  "createdUtc": "2026-10-30T20:45:25.705360+00:00",
+  "createdUtc": "2026-10-30T21:09:53.169290+00:00",
   "scope": "Reviewed project hub, MW5, read-only MSI Jobs, MASTER observatory and restricted local Violet bridge, Windows rendering/capture/sensor worker, desktop host and guarded publication; private telemetry, payloads, credentials and binaries excluded. Additive Buddy companion, lock-owner media ingestion and authenticated project work report. Independent Stats workspace, contained native process lifecycle and guarded v6 application publication. Revision-checked settings, separate local recovery histories, MASTER review inbox and lifecycle validity guards. Reviewed cooler rendering and scheduling, observed subagent summaries, exact cooler-only publication and optional fixed-function startup setup.",
-  "previousManifestSha256": "904d61489563f31da8c5b86ddaeff4d52a843ad6d5f968bf7cb85c447d132ac6",
+  "previousManifestSha256": "8d816b54e241d9605d3dac87863be3af4f42bfef005346b887a804890d3aab8b",
   "files": [
     {
       "path": ".gitattributes",
@@ -85,8 +85,8 @@
     {
       "path": "repository/app/interlinked_master.py",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 84122,
-      "sha256": "80a56c81372baf6c4fd01413ef8aba80b4bb611eafe9ff5a2737fd0e4e7f396a"
+      "bytes": 85242,
+      "sha256": "af62dc7b7d5b13ad9a82bb9a9b803bc21c3c46b77c288a650f4422f5c51c8b8d"
     },
     {
       "path": "repository/app/interlinked_mw5.py",
@@ -121,8 +121,8 @@
     {
       "path": "repository/app/README.md",
       "origin": "GUI and source-library audit addition",
-      "bytes": 27481,
-      "sha256": "ebe8dc5d7b61809bb89af8e743d8e81b9575555f1ced0521499613ad4c9ec60e"
+      "bytes": 28212,
+      "sha256": "c086cbd8b769fd37550b63b54c8cf3836be001ffc499579cdd879b2f8001a5f0"
     },
     {
       "path": "repository/app/test_configuration.py",
@@ -205,8 +205,8 @@
     {
       "path": "repository/app/test_master_subagents.py",
       "origin": "Authored metadata-only subagent count regression checks",
-      "bytes": 16657,
-      "sha256": "4114ab045db69c2f191eeb19db198705ccf5628dd20756c0836657fc0461a04d"
+      "bytes": 25762,
+      "sha256": "7b0966ee5b5c203fc187ff125887db5cf5205dc97dd82ab8bbcfa04f80f50f91"
     },
     {
       "path": "repository/app/test_master_ui.js",
@@ -385,8 +385,8 @@
     {
       "path": "repository/desktop/Build-CoolerStartup.ps1",
       "origin": "Reviewed cooler startup source and isolated fixtures",
-      "bytes": 6099,
-      "sha256": "96ed5b8dc2c666f5ad25aa5e1bd68f1fa8f22595e5d8e29f794e675bc08c26b2"
+      "bytes": 7695,
+      "sha256": "9ad4a8c3a278b8e432f179d5534ab747b3b75e5efee5499c7db6544d9633b90b"
     },
     {
       "path": "repository/desktop/Build-Desktop.ps1",
@@ -403,8 +403,8 @@
     {
       "path": "repository/desktop/CoolerStartupSetup.cs",
       "origin": "Reviewed cooler startup source and isolated fixtures",
-      "bytes": 19245,
-      "sha256": "7432e832b0b4eac5a8944e489a44de52e7efbb73379bded40671a390ebe51a65"
+      "bytes": 24894,
+      "sha256": "54926642ca6b7622e2975eae620ebd4258fcc960c20f0b3635fadb3c14279cb1"
     },
     {
       "path": "repository/desktop/Interlinked.cs",
@@ -469,8 +469,8 @@
     {
       "path": "repository/desktop/README.md",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 24791,
-      "sha256": "ed17e9ef914e99a71abb0595c292f2c22dc97be641d40e6d5841420814cbf4f1"
+      "bytes": 25697,
+      "sha256": "c66126c51c3d96f4f05adbd57907175a0018eec13abbdbbe498b70d25c62b32e"
     },
     {
       "path": "repository/desktop/SensorStartup.cs",
@@ -487,8 +487,8 @@
     {
       "path": "repository/desktop/Test-CoolerStartup.ps1",
       "origin": "Reviewed cooler startup source and isolated fixtures",
-      "bytes": 13444,
-      "sha256": "fe98e6b298fb6a95470e94f80b7d99264b37107ecc527a32997d2e4cb597fbcc"
+      "bytes": 17677,
+      "sha256": "16259b237b8b1dcb5dc0ce78938541be66190b335a4f9ff4141740c6d8251f0e"
     },
     {
       "path": "repository/desktop/Test-Desktop-Package.ps1",
@@ -1189,7 +1189,7 @@
   ],
   "summary": {
     "files": 197,
-    "bytes": 2383061,
+    "bytes": 2406401,
     "pythonSourcesParsed": 73
   },
   "preservedBaseline": "Original SOURCE-MANIFEST, MAGIX-EXTENSION-MANIFEST, frozen workspace base and original launcher source remain exact. Buddy launcher is a separate current source addition.",
@@ -1282,5 +1282,42 @@
     "hardwareTested": false,
     "rebootTested": false,
     "scope": "Isolated source and native fixtures; hardware delivery, installed bytes and real reboot acceptance remain separate."
+  },
+  "separatelyDeliveredStartup": {
+    "sourceTests": 78,
+    "skipped": 1,
+    "nativeChecks": 9,
+    "installed": true,
+    "rebootTested": false,
+    "appInstalled": true,
+    "appSha256": "87a08dcb3a34744671d50b19371dacb3aae449f9721430fe73eab8300ea41303",
+    "workerSha256": "ad0491e02164f19b5c6dac079988ec916acd02209ecab79cc4c63148e1412483",
+    "scope": "Frozen installed startup backend; later shared collector changes are separate. Protected setup/task readback passed; real reboot and physical LCD/temperature acceptance pending.",
+    "setupComplete": true,
+    "sourceRelationship": "Owner-reported installed frozen artifact; not this reconciled source. No installation or startup re-enrollment performed by reconciliation."
+  },
+  "sourceReconciliation": {
+    "baseCommit": "6cf4d9fb299c4b6b87c06dc551c6ac0f3081b380",
+    "scope": "Merged completed owner source with reviewed safety guards after owner chats became idle; original working files privately backed up.",
+    "subagentMetadataTests": 54,
+    "masterTests": 81,
+    "masterSkipped": 0,
+    "nativeHttpChecks": 92,
+    "startupChecksFresh": 79,
+    "startupChecksReusedSensor": 79,
+    "preserved": [
+      "Full reviewed MASTER cancellation and unavailable-recovery semantics",
+      "Conservative inferred child-session turn namespaces and combined regression coverage",
+      "Explicit frozen reviewed application build input and pinned sensor reuse",
+      "Exact incomplete-installation repair, ordinary/protected paths and resumable identical copies",
+      "Missing-task HRESULT handling and account-name/SID normalization",
+      "Full task/DACL/ordinary-path, atomic opt-in, rollback and TRCC identity guards",
+      "Complete exact v5/v6/v7 cooler publication coverage"
+    ],
+    "completeRuntimeInventoryAvailable": false,
+    "installedByReconciliation": false,
+    "taskOrHardwareMutation": false,
+    "rebootTested": false,
+    "validationScope": "Isolated source and mocked/native refusal fixtures. Preserved installed startup evidence concerns a separately frozen artifact; hardware/reboot acceptance remains distinct."
   }
 }

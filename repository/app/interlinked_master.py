@@ -433,6 +433,10 @@ class EventModel:
             return False
         if event['event'] in {'Stop', 'Interrupt', 'SubagentStop', 'SessionEnd'}:
             return False
+        # Child-session turn IDs need not share the parent's namespace. A
+        # different inferred turn ID is not proof of a new child invocation.
+        if event.get('viaChildSession'):
+            return True
         # An explicit new start can reuse an agent without a supplied turn ID.
         if event['event'] == 'SubagentStart' and timestamp(event['observedAt']) > timestamp(previous['observedAt']):
             return False
@@ -455,6 +459,7 @@ class EventModel:
         kind, parent = event['event'], event['sessionId']
         agent = event.get('agentId')
         when = timestamp(event['observedAt'])
+        resumed_uncertain_at = 0
         if kind in {'SubagentStart', 'SubagentStop'} and not agent:
             self.subagent_coverage_lost = True
             return
@@ -469,9 +474,9 @@ class EventModel:
             elif matches:
                 for key in matches:
                     child = self.subagents[key]
-                    may_resume = (kind in {'UserPromptSubmit', 'PreToolUse', 'PostToolUse'}
-                        and not self._terminal_blocks(child, event) and not self._tie_blocks(child, event))
-                    if when >= timestamp(child['observedAt']) and (child['state'] != 'stopped' or child.get('viaChildSession') or may_resume):
+                    possible_resume = (when > timestamp(child['observedAt'])
+                        and kind not in {'Stop', 'Interrupt', 'SubagentStop', 'SessionEnd'})
+                    if when >= timestamp(child['observedAt']) and (child['state'] != 'stopped' or child.get('viaChildSession') or possible_resume):
                         child['uncertainAt'] = max(child.get('uncertainAt', 0), when)
                 return
         # Parent events cannot identify which child is waiting or interrupted.
@@ -517,13 +522,24 @@ class EventModel:
                     if (edge == key or other.get('viaChildSession')) and timestamp(generic['observedAt']) >= timestamp(other['observedAt']):
                         other['uncertainAt'] = max(other.get('uncertainAt', 0), timestamp(generic['observedAt']))
             latest = None
-            for observation in candidates:
-                if (latest is None or timestamp(observation['observedAt']) > timestamp(latest['observedAt'])
-                        or self._tie_blocks(observation, latest)):
-                    latest = observation
-            if latest and (timestamp(latest['observedAt']) > when or self._tie_blocks(latest, event)) and not self._terminal_blocks(event, latest):
-                event = latest
-                kind, when = event['event'], timestamp(event['observedAt'])
+            for candidate in candidates:
+                if latest is None or timestamp(candidate['observedAt']) > timestamp(latest['observedAt']) or self._tie_blocks(candidate, latest):
+                    latest = candidate
+            if latest and (timestamp(latest['observedAt']) > when or self._tie_blocks(latest, event)):
+                if not self._terminal_blocks(event, latest):
+                    event = latest
+                    kind, when = event['event'], timestamp(event['observedAt'])
+                elif latest.get('viaChildSession') and timestamp(latest['observedAt']) > when:
+                    # A delayed stop cannot disprove later child activity,
+                    # even when that activity cannot establish a new run.
+                    resumed_uncertain_at = timestamp(latest['observedAt'])
+        elif (event.get('viaChildSession') and child['state'] == 'stopped'
+              and when > timestamp(child['observedAt'])
+              and kind not in {'Stop', 'Interrupt', 'SubagentStop', 'SessionEnd'}):
+            # Follow-up turns can omit SubagentStart. Do not resurrect from
+            # unrelated turn-ID namespaces, but do not retain a confident zero.
+            child['uncertainAt'] = max(child.get('uncertainAt', 0), when)
+            return
         elif when < timestamp(child['observedAt']) or self._terminal_blocks(child, event) or self._tie_blocks(child, event):
             return
         state = ('working' if kind in {'SubagentStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse'}
@@ -536,6 +552,8 @@ class EventModel:
             child.pop('turnId', None)
         if state == 'stopped' or when > child.get('uncertainAt', 0):
             child.pop('uncertainAt', None)
+        if resumed_uncertain_at:
+            child['uncertainAt'] = max(child.get('uncertainAt', 0), resumed_uncertain_at)
 
     def accept(self, event):
         if event.get('format') != 'interlinked-master-event-v1':

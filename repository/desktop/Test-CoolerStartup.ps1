@@ -23,6 +23,21 @@ try{$sha=[Security.Cryptography.SHA256]::Create();try{$embedded=[BitConverter]::
 if($embedded -cne $record.sensorSha256){throw 'Embedded sensor payload differs.'}
 $checks.Add('Setup embeds exactly the reviewed fixed-function publisher')
 $setupType=$assembly.GetType('CoolerStartupSetup')
+$missing=$setupType.GetMethod('TaskMissing',[Reflection.BindingFlags]'NonPublic,Static')
+foreach($case in @(@([IO.FileNotFoundException]::new(),$true),@([Runtime.InteropServices.COMException]::new('missing',-2147024894),$true),@([UnauthorizedAccessException]::new(),$false))){
+ if($missing.Invoke($null,@($case[0])) -ne $case[1]){throw 'First-install task exception classification differs.'}
+}
+$checks.Add('Missing-task FileNotFound and COM variants are accepted while access denied is preserved')
+$principal=$setupType.GetMethod('PrincipalMatches',[Reflection.BindingFlags]'NonPublic,Static')
+if(-not $principal.Invoke($null,@($record.userSid)) -or -not $principal.Invoke($null,@('Jude')) -or $principal.Invoke($null,@('S-1-5-18'))){throw 'Task principal normalization differs.'}
+$checks.Add('Reviewed account names and SIDs normalize without granting another account')
+$sensorAssembly=[Reflection.Assembly]::LoadFile($sensor)
+foreach($name in @('UserSid','ExeHash','DllHash')){
+ if($sensorAssembly.GetType('SensorStartup').GetField($name,[Reflection.BindingFlags]'NonPublic,Static').GetRawConstantValue() -cne $setupType.GetField($name,[Reflection.BindingFlags]'NonPublic,Static').GetRawConstantValue()){throw 'Sensor payload account or vendor pins differ.'}
+}
+$checks.Add('Reused or compiled sensor payload retains the exact reviewed account and vendor pins')
+if($setupType.GetField('PreviousSetupHash',[Reflection.BindingFlags]'NonPublic,Static').GetRawConstantValue() -cne $record.previousSetupSha256){throw 'The repair build does not bind its reviewed predecessor hash.'}
+$checks.Add('Repair capability binds exactly the reviewed prior setup hash')
 $stateType=$assembly.GetType('CoolerStartupSetup+TaskState')
 $taskValidator=$setupType.GetMethod('ValidateTaskState',[Reflection.BindingFlags]'NonPublic,Static')
 $folderValidator=$setupType.GetMethod('ValidateFolderSecurity',[Reflection.BindingFlags]'NonPublic,Static')
@@ -39,6 +54,9 @@ function TaskState($Values){
 }
 [void]$taskValidator.Invoke($null,@((TaskState $valid)))
 $checks.Add('Exact fixed logon task definition passes pure ownership validation')
+$named=[ordered]@{};foreach($name in $valid.Keys){$named[$name]=$valid[$name]};$named.PrincipalSid='Jude';$named.TriggerSid='Jude'
+[void]$taskValidator.Invoke($null,@((TaskState $named)))
+$checks.Add('Full task validation accepts equivalent reviewed account-name readback')
 $invalid=[ordered]@{ActionCount=2;ActionType=5;ActionPath='C:\fixture\foreign.exe';Arguments='--foreign';WorkingDirectory='C:\fixture';PrincipalSid='S-1-5-18';LogonType=1;RunLevel=0;TriggerCount=2;TriggerType=1;TriggerEnabled=$false;TriggerSid='S-1-5-18';MultipleInstances=0;RestartCount=10;RestartInterval='PT1S';ExecutionTimeLimit='PT1H';DisallowBatteries=$true;StopOnBatteries=$true}
 foreach($field in $invalid.Keys){
  $changed=[ordered]@{};foreach($name in $valid.Keys){$changed[$name]=$valid[$name]};$changed[$field]=$invalid[$field]
@@ -72,9 +90,28 @@ foreach($changedSddl in @($taskSddl.Replace('O:BA','O:'+$record.userSid),$taskSd
 }
 $builder=Join-Path $PSScriptRoot 'Build-CoolerStartup.ps1'
 foreach($output in @('C:\Users\Jude\Documents\MSI-Project-Library','C:\Users\Jude\AppData\Local\ProjectLibrary\Cache','\\fixture\share\startup-build',$build)){
- $refused=$false;try{& $builder -OutputDirectory $output -UserSid $record.userSid|Out-Null}catch{$refused=$true}
+ $refused=$false;try{& $builder -OutputDirectory $output -UserSid $record.userSid -ReviewedAppPath $record.reviewedAppPath|Out-Null}catch{$refused=$true}
  if(-not $refused){throw 'Unsafe or existing build output was accepted.'}
  $checks.Add('Build refuses production, cache, UNC or existing output before creating files')
+}
+$repairType=$assembly.GetType('CoolerStartupSetup+RepairState');$repairValidator=$setupType.GetMethod('ValidateRepairState',[Reflection.BindingFlags]'NonPublic,Static')
+$repair=[ordered]@{TaskExists=$true;FolderExists=$true;LiveOptInExists=$false;FolderProtected=$true;SensorProtected=$true;SetupProtected=$true;SensorDigest=('1'*64);SetupDigest=('2'*64);ExpectedSensorDigest=('1'*64);ExpectedSetupDigest=('2'*64);BeforeTrccDigest=$null;ReviewedTrccDigest=('3'*64)}
+function RepairState($Values){$state=[Activator]::CreateInstance($repairType,$true);foreach($name in $Values.Keys){$repairType.GetField($name,[Reflection.BindingFlags]'NonPublic,Instance').SetValue($state,$Values[$name])};return $state}
+[void]$repairValidator.Invoke($null,@((RepairState $repair)))
+$checks.Add('Partial repair requires the exact prior setup and sensor with protected ownership and no live opt-in')
+$invalidRepair=[ordered]@{TaskExists=$false;FolderExists=$false;LiveOptInExists=$true;FolderProtected=$false;SensorProtected=$false;SetupProtected=$false;SensorDigest=('0'*64);SetupDigest=('0'*64);ExpectedSetupDigest='';BeforeTrccDigest=('4'*64)}
+foreach($name in $invalidRepair.Keys){
+ $changed=[ordered]@{};foreach($key in $repair.Keys){$changed[$key]=$repair[$key]};$changed[$name]=$invalidRepair[$name];$state=RepairState $changed
+ $refused=$false;try{[void]$repairValidator.Invoke($null,@($state))}catch{$refused=$true}
+ if(-not $refused){throw ('Unsafe partial repair accepted: '+$name)}
+ $checks.Add('Partial repair refuses changed ownership, task, committed opt-in, payload hash or prior TRCC phase')
+}
+$repair.BeforeTrccDigest=$repair.ReviewedTrccDigest;[void]$repairValidator.Invoke($null,@((RepairState $repair)))
+$checks.Add('An identical protected prior TRCC receipt can resume before any external task change')
+$copyValidator=$setupType.GetMethod('ExistingCopyMatches',[Reflection.BindingFlags]'NonPublic,Static')
+foreach($fixture in @(@($true,'same','same',$true),@($false,'same','same',$false),@($true,'foreign','same',$false))){
+ if($copyValidator.Invoke($null,@($fixture[0],$fixture[1],$fixture[2])) -ne $fixture[3]){throw 'Owned copy collision policy differs.'}
+ $checks.Add('Only an identical protected copy can be reused; differing records remain preserved')
 }
 $restoreValidator=$setupType.GetMethod('TrccRestoreAllowed',[Reflection.BindingFlags]'NonPublic,Static')
 $trccBefore='<Task xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task"><Principals><Principal id="Author"><UserId>'+$record.userSid+'</UserId><LogonType>InteractiveToken</LogonType><RunLevel>HighestAvailable</RunLevel></Principal></Principals><Triggers><LogonTrigger /></Triggers><Settings><Enabled>true</Enabled></Settings><Actions Context="Author"><Exec><Command>"C:\Program Files\TRCCCAP\TRCC.exe"</Command></Exec></Actions></Task>'

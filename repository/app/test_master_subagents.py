@@ -105,17 +105,18 @@ class SubagentTests(unittest.TestCase):
         self.accept('SubagentStop', session='parent', second=4)
         self.assertEqual((self.counts()[1]['workingCount'], self.counts()[1]['status']), (0, 'partial'))
 
-    def test_ambiguous_new_turn_cannot_preserve_a_confirmed_working_zero(self):
+    def test_ambiguous_child_session_turn_ids_cannot_establish_a_fresh_zero(self):
         for parent in ('parent', 'parent2'):
             self.accept(session=parent, second=1)
             self.accept('SubagentStop', session=parent, second=2)
-        # A delayed same-turn update cannot reverse either terminal row.
+        # Inferred child turns do not share a proven namespace with the
+        # parent's turn. Either spelling leaves resumed work uncertain.
         self.accept('PreToolUse', agent=None, session='a', second=3)
-        self.assertEqual((self.counts()[1]['workingCount'], self.counts()[1]['status']), (0, 'observed'))
-        # A newer turn may have resumed either child. Its ambiguous identity
-        # cannot establish which one is working or retain a confirmed zero.
+        self.assertIsNone(self.counts()[1]['workingCount'])
         self.accept('PreToolUse', agent=None, session='a', second=4, turn='turn2')
         self.assertIsNone(self.counts()[1]['workingCount'])
+        self.accept('SubagentStop', session='parent', second=5)
+        self.assertEqual((self.counts()[1]['workingCount'], self.counts()[1]['status']), (0, 'partial'))
 
     def test_child_session_directory_does_not_replace_initiating_project(self):
         self.accept()
@@ -312,6 +313,168 @@ class SubagentTests(unittest.TestCase):
         self.accept(session='parent')
         self.accept(session='parent2')
         self.assertEqual(self.counts()[1]['workingCount'], 2)
+
+    def test_old_stopped_history_does_not_taint_fresh_work(self):
+        self.base -= 200
+        self.accept(agent='old', second=1)
+        self.accept('SubagentStop', agent='old', second=2)
+        self.accept(agent='working', second=190)
+        summary = self.counts(second=200)[1]
+        self.assertEqual((summary['workingCount'], summary['status']), (1, 'observed'))
+        self.model.subagent_coverage_lost = True
+        self.assertEqual(self.counts(second=200)[1]['status'], 'partial')
+
+
+    def test_all_old_stopped_history_does_not_establish_fresh_zero(self):
+        self.accept('SubagentStop', second=1)
+        summary = self.counts(second=200)[1]
+        self.assertIsNone(summary['workingCount'])
+        self.assertEqual(summary['status'], 'unavailable')
+
+
+    def test_child_session_hooks_update_work_wait_stop_and_keep_generic_activity(self):
+        self.accept(agent='child', second=1)
+        self.accept('PermissionRequest', agent=None, session='child', second=2, turn='child-turn')
+        self.assertEqual(self.counts()[1]['workingCount'], 0)
+        self.assertEqual(self.model.subagents[('parent', 'child')]['state'], 'waiting')
+        self.assertEqual(self.model.sessions[('child', 'main')]['sessionId'], 'child')
+        self.assertNotIn('agentId', self.model.sessions[('child', 'main')])
+        self.accept('PostToolUse', agent=None, session='child', second=3, turn='child-turn')
+        self.assertEqual(self.counts()[1]['workingCount'], 1)
+        self.accept('Stop', agent=None, session='child', second=4, turn='child-turn')
+        self.assertEqual(self.counts()[1]['workingCount'], 0)
+        self.accept('PreToolUse', agent=None, session='child', second=5, turn='different-child-turn')
+        self.assertIsNone(self.counts()[1]['workingCount'])
+        self.assertEqual(self.model.subagents[('parent', 'child')]['state'], 'stopped')
+        self.accept('SubagentStart', agent='child', second=6, turn='new-parent-turn')
+        self.accept('PreToolUse', agent=None, session='child', second=7, turn='new-child-turn')
+        self.assertEqual(self.counts()[1]['workingCount'], 1)
+
+
+    def test_child_session_activity_refreshes_only_its_explicit_child(self):
+        self.base -= 200
+        self.accept(agent='child', second=1)
+        self.accept(agent='sibling', second=2)
+        self.accept('PreToolUse', agent=None, session='child', second=190, turn='child-turn')
+        summary = self.counts(second=200)[1]
+        self.assertEqual((summary['workingCount'], summary['status']), (1, 'partial'))
+        self.assertEqual(self.model.subagents[('parent', 'sibling')]['observedAt'],
+                         datetime.fromtimestamp(self.base + 2, timezone.utc).isoformat())
+
+
+    def test_ambiguous_child_session_stop_does_not_choose_a_parent(self):
+        self.accept(agent='child', session='parent1', second=1)
+        self.accept(agent='child', session='parent2', second=1)
+        self.accept('Stop', agent=None, session='child', second=2, turn='child-turn')
+        self.assertIsNone(self.counts()[1]['workingCount'])
+        self.assertTrue(all(child['state'] == 'working' for child in self.model.subagents.values()))
+        self.accept('PostToolUse', agent='child', session='parent1', second=3)
+        summary = self.counts()[1]
+        self.assertEqual((summary['workingCount'], summary['status']), (1, 'partial'))
+
+
+    def test_delayed_start_uses_newer_generic_child_session_evidence_and_original_owner(self):
+        self.accept('UserPromptSubmit', agent=None, session='parent', second=1, cwd=self.root)
+        self.accept('PermissionRequest', agent=None, session='child', second=3, turn='child-turn', cwd=self.other)
+        self.accept('SubagentStart', agent='child', second=2, cwd=self.root)
+        child = self.model.subagents[('parent', 'child')]
+        self.assertEqual(child['state'], 'waiting')
+        self.assertEqual(child['cwd'], self.root)
+        projects, _ = self.counts(registrations=self.registrations + [dict(id='two', root=self.other)])
+        self.assertEqual(projects['one']['workingCount'], 0)
+        self.assertIsNone(projects['two']['workingCount'])
+
+
+    def test_delayed_stop_cannot_use_generic_child_session_work_to_revive_it(self):
+        self.accept('PreToolUse', agent=None, session='child', second=3, turn='child-turn')
+        self.accept('SubagentStop', agent='child', second=2, turn='parent-turn')
+        self.assertIsNone(self.counts()[1]['workingCount'])
+        self.assertEqual(self.model.subagents[('parent', 'child')]['state'], 'stopped')
+
+
+    def test_inferred_activity_after_explicit_stop_makes_count_uncertain(self):
+        for kind in ('UserPromptSubmit', 'PreToolUse', 'PostToolUse', 'PermissionRequest'):
+            with self.subTest(kind=kind):
+                self.model = m.EventModel()
+                self.accept('SubagentStart', agent='child', second=1, turn='parent-turn')
+                self.accept('SubagentStop', agent='child', second=2, turn='parent-turn')
+                self.accept(kind, agent=None, session='child', second=3, turn='child-turn')
+                summary = self.counts()[1]
+                self.assertIsNone(summary['workingCount'])
+                self.assertEqual(summary['status'], 'unavailable')
+                self.assertTrue(self.model.subagents[('parent', 'child')]['uncertainAt'])
+
+
+    def test_inferred_activity_after_child_session_stop_does_not_keep_observed_zero(self):
+        self.accept('SubagentStart', agent='child', second=1)
+        self.accept('Stop', agent=None, session='child', second=2, turn='child-turn1')
+        self.accept('UserPromptSubmit', agent=None, session='child', second=3, turn='child-turn2')
+        self.assertIsNone(self.counts()[1]['workingCount'])
+
+
+    def test_old_stopped_child_with_later_inferred_activity_taints_fresh_other_work(self):
+        self.base -= 200
+        self.accept('SubagentStop', agent='old', second=1)
+        self.accept('PreToolUse', agent=None, session='old', second=190, turn='child-turn')
+        self.accept(agent='working', second=191)
+        summary = self.counts(second=200)[1]
+        self.assertEqual((summary['workingCount'], summary['status']), (1, 'partial'))
+
+
+    def test_ambiguous_inferred_resume_cannot_keep_stopped_children_confident(self):
+        self.accept('SubagentStop', agent='child', session='parent1', second=1)
+        self.accept('SubagentStop', agent='child', session='parent2', second=1)
+        self.accept('PreToolUse', agent=None, session='child', second=2, turn='child-turn')
+        self.assertIsNone(self.counts()[1]['workingCount'])
+
+
+    def test_equal_time_inferred_activity_does_not_undermine_confirmed_stop(self):
+        self.accept('SubagentStop', agent='child', second=1)
+        self.accept('PreToolUse', agent=None, session='child', second=1, turn='child-turn')
+        self.assertEqual(self.counts()[1]['workingCount'], 0)
+
+
+    def test_delayed_second_relationship_invalidates_ambiguous_session_evidence(self):
+        self.accept('Stop', agent=None, session='child', second=3, turn='child-turn')
+        self.accept('SubagentStart', agent='child', session='parent1', second=1)
+        self.assertEqual(self.counts()[1]['workingCount'], 0)
+        self.accept('SubagentStart', agent='child', session='parent2', second=2)
+        self.assertIsNone(self.counts()[1]['workingCount'])
+
+
+    def test_nested_parent_child_session_permission_does_not_mark_descendants_waiting(self):
+        self.accept(agent='child', second=1)
+        self.accept(agent='nested', session='child', second=2)
+        self.accept('PermissionRequest', agent=None, session='child', second=3, turn='child-turn')
+        self.assertEqual(self.counts()[1]['workingCount'], 1)
+        self.assertEqual(self.model.subagents[('parent', 'child')]['state'], 'waiting')
+        nested = self.model.subagents[('child', 'nested')]
+        self.assertEqual(nested['state'], 'working')
+        self.assertFalse(nested.get('uncertainAt'))
+
+
+    def test_unrelated_main_session_does_not_establish_or_refresh_child_role(self):
+        self.base -= 200
+        self.accept(agent='child', second=1)
+        self.accept('PreToolUse', agent=None, session='unrelated', second=190)
+        self.assertIsNone(self.counts(second=200)[1]['workingCount'])
+        self.assertEqual(len(self.model.subagents), 1)
+
+
+    def test_delayed_role_uses_terminal_over_equal_time_generic_work(self):
+        self.accept('PreToolUse', agent='child', second=3)
+        self.accept('Stop', agent=None, session='child', second=3, turn='child-turn')
+        self.accept('SubagentStart', agent='child', second=1)
+        self.assertEqual(self.counts()[1]['workingCount'], 0)
+        self.assertEqual(self.model.subagents[('parent', 'child')]['state'], 'stopped')
+
+
+    def test_future_terminal_evidence_remains_unresolved(self):
+        self.accept('SubagentStop', agent='future', second=20)
+        self.accept(agent='working', second=1)
+        summary = self.counts(second=10)[1]
+        self.assertEqual((summary['workingCount'], summary['status']), (1, 'partial'))
+
 
     def test_summary_contains_no_paths_or_identities(self):
         self.accept(agent='private-agent', session='private-session')

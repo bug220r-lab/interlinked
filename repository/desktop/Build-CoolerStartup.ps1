@@ -1,8 +1,11 @@
 [CmdletBinding()]
 param([Parameter(Mandatory=$true)][string]$OutputDirectory,
-      [Parameter(Mandatory=$true)][string]$UserSid)
+      [Parameter(Mandatory=$true)][string]$UserSid,
+      [Parameter(Mandatory=$true)][string]$ReviewedAppPath,
+      [string]$ReviewedSensorPath='', [string]$PreviousSetupSha256='')
 $ErrorActionPreference='Stop'
 if($UserSid -notmatch '^S-1-5-21-\d+-\d+-\d+-1001$'){throw 'Use the reviewed Jude account SID.'}
+if($PreviousSetupSha256 -and ($PreviousSetupSha256 -cnotmatch '^[a-f0-9]{64}$' -or -not $ReviewedSensorPath)){throw 'Repair requires the exact prior setup hash and reviewed sensor payload.'}
 $output=[IO.Path]::GetFullPath($OutputDirectory)
 if($output.StartsWith('\\')){throw 'Use an ordinary local private build directory.'}
 $private:forbidden=@('C:\Users\Jude\Documents\MSI-Project-Library',
@@ -22,6 +25,14 @@ while($private:ancestor){
     $private:ancestor=[IO.Path]::GetDirectoryName($private:ancestor)
 }
 if(Test-Path -LiteralPath $output){throw 'Use a new build directory.'}
+foreach($private:inputPath in @($ReviewedAppPath,$ReviewedSensorPath)|Where-Object {$_}){
+    $private:ancestor=[IO.Path]::GetFullPath($private:inputPath)
+    if(-not(Test-Path -LiteralPath $private:ancestor -PathType Leaf)){throw 'Reviewed build inputs must be existing files.'}
+    while($private:ancestor){
+        if(([int][IO.File]::GetAttributes($private:ancestor)-band (0x400-bor 0x1000-bor 0x40000-bor 0x400000))-ne 0){throw 'Reviewed build inputs must not be linked, offline or cloud paths.'}
+        $private:ancestor=[IO.Path]::GetDirectoryName($private:ancestor)
+    }
+}
 [void][IO.Directory]::CreateDirectory($output)
 $kit='C:\Users\Jude\Documents\MSI-Project-Library'
 $device=Get-Content -LiteralPath (Join-Path $kit 'INTERLINKED-GUI-State\master\device.json') -Raw|ConvertFrom-Json
@@ -48,22 +59,30 @@ try {
     try{$trccHash=[BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes([string]$trcc.Xml))).Replace('-','').ToLowerInvariant()}finally{$sha.Dispose()}
 } catch {
     $reason=$_.Exception;while($reason.InnerException){$reason=$reason.InnerException}
-    if($reason -isnot [Runtime.InteropServices.COMException] -or $reason.HResult -ne -2147024894){throw}
+    if($reason.HResult -ne -2147024894){throw}
 }
-$appHash=(Get-FileHash -LiteralPath (Join-Path $PSScriptRoot '..\app\interlinked_master.py')).Hash.ToLowerInvariant()
+$appHash=(Get-FileHash -LiteralPath $ReviewedAppPath).Hash.ToLowerInvariant()
 $compiler='C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 $encoding=[Text.UTF8Encoding]::new($false)
 $pins=Join-Path $output 'SensorPins.cs'
 [IO.File]::WriteAllText($pins,"internal static partial class SensorStartup { const string UserSid=`"$UserSid`", ExeHash=`"$exeHash`", DllHash=`"$dllHash`"; }",$encoding)
 $sensor=Join-Path $output 'INTERLINKED.Sensor.Startup.exe'
-& $compiler /nologo /target:winexe /platform:x64 /optimize+ ('/out:'+$sensor) $pins (Join-Path $PSScriptRoot 'SensorStartup.cs') (Join-Path $PSScriptRoot 'SensorStartupNative.cs')
-if($LASTEXITCODE -ne 0){throw 'Sensor startup compilation failed.'}
+if($ReviewedSensorPath){Copy-Item -LiteralPath $ReviewedSensorPath -Destination $sensor}else{
+    & $compiler /nologo /target:winexe /platform:x64 /optimize+ ('/out:'+$sensor) $pins (Join-Path $PSScriptRoot 'SensorStartup.cs') (Join-Path $PSScriptRoot 'SensorStartupNative.cs')
+    if($LASTEXITCODE -ne 0){throw 'Sensor startup compilation failed.'}
+}
 $sensorHash=(Get-FileHash -LiteralPath $sensor).Hash.ToLowerInvariant()
+$private:sensorAssembly=[Reflection.Assembly]::LoadFile($sensor)
+foreach($private:pin in @(@('UserSid',$UserSid),@('ExeHash',$exeHash),@('DllHash',$dllHash))){
+    if($private:sensorAssembly.GetType('SensorStartup').GetField($private:pin[0],[Reflection.BindingFlags]'NonPublic,Static').GetRawConstantValue() -cne $private:pin[1]){throw 'Reviewed sensor account or vendor pins differ.'}
+}
 $startup=[ordered]@{format='interlinked-cooler-startup-v1';enabled=$true;machine='THIS-MACHINE';user='Jude';userSid=$UserSid;appSha256=$appHash;workerSha256=$workerHash;sensorSha256=$sensorHash}
+$startup.setupFile=if($PreviousSetupSha256){'INTERLINKED.Cooler.Startup.Setup.Repaired.exe'}else{'INTERLINKED.Cooler.Startup.Setup.exe'}
+$startup.previousSetupSha256=$PreviousSetupSha256
 $json=$startup|ConvertTo-Json -Compress
 $setupPins=Join-Path $output 'SetupPins.cs'
 $literal=$json.Replace('"','""')
-[IO.File]::WriteAllText($setupPins,"internal static partial class CoolerStartupSetup { const string UserSid=`"$UserSid`", ExeHash=`"$exeHash`", DllHash=`"$dllHash`", WorkerHash=`"$workerHash`", AppHash=`"$appHash`", SensorHash=`"$sensorHash`", TrccTaskHash=`"$trccHash`", WorkerPath=@`"$workerPath`", AppPath=@`"$appPath`", StartupJson=@`"$literal`"; }",$encoding)
+[IO.File]::WriteAllText($setupPins,"internal static partial class CoolerStartupSetup { const string UserSid=`"$UserSid`", ExeHash=`"$exeHash`", DllHash=`"$dllHash`", WorkerHash=`"$workerHash`", AppHash=`"$appHash`", SensorHash=`"$sensorHash`", PreviousSetupHash=`"$PreviousSetupSha256`", TrccTaskHash=`"$trccHash`", WorkerPath=@`"$workerPath`", AppPath=@`"$appPath`", StartupJson=@`"$literal`"; }",$encoding)
 $manifest=Join-Path $output 'setup.manifest'
 [IO.File]::WriteAllText($manifest,'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0"><trustInfo xmlns="urn:schemas-microsoft-com:asm.v3"><security><requestedPrivileges><requestedExecutionLevel level="requireAdministrator" uiAccess="false"/></requestedPrivileges></security></trustInfo></assembly>',$encoding)
 $setup=Join-Path $output 'INTERLINKED.Cooler.Startup.Setup.exe'
@@ -71,5 +90,6 @@ $setup=Join-Path $output 'INTERLINKED.Cooler.Startup.Setup.exe'
 if($LASTEXITCODE -ne 0){throw 'Startup setup compilation failed.'}
 $startup.setupSha256=(Get-FileHash -LiteralPath $setup).Hash.ToLowerInvariant()
 $startup.trccTaskSha256=$trccHash
+$startup.reviewedAppPath=[IO.Path]::GetFullPath($ReviewedAppPath)
 [IO.File]::WriteAllText((Join-Path $output 'build.json'),($startup|ConvertTo-Json),$encoding)
 $startup|ConvertTo-Json

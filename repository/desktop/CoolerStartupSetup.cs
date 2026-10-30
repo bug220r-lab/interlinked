@@ -7,12 +7,46 @@ using System.Security.Principal;
 using System.Text;
 using System.Windows.Forms;
 using System.Xml;
+using System.Runtime.InteropServices;
 
 internal static partial class CoolerStartupSetup
 {
     private const string Folder=@"C:\Program Files\INTERLINKED Cooler Startup";
     private const string TaskName="INTERLINKED Cooler Temperatures";
     private const string TaskSddl="O:BAG:BAD:P(A;;GA;;;SY)(A;;GA;;;BA)";
+    internal static bool TaskMissing(Exception ex){return ex.HResult==unchecked((int)0x80070002);}
+    internal static bool PrincipalMatches(string name){try{return AccountSid(name)==UserSid;}catch{return false;}}
+    internal sealed class RepairState {
+        internal bool TaskExists,FolderExists,LiveOptInExists,FolderProtected,SensorProtected,SetupProtected;
+        internal string SensorDigest,SetupDigest,ExpectedSensorDigest,ExpectedSetupDigest,BeforeTrccDigest,ReviewedTrccDigest;
+    }
+    internal static void ValidateRepairState(RepairState state) {
+        if(!state.TaskExists || !state.FolderExists || state.LiveOptInExists || !state.FolderProtected || !state.SensorProtected || !state.SetupProtected ||
+            String.IsNullOrEmpty(state.ExpectedSetupDigest) || state.SensorDigest!=state.ExpectedSensorDigest || state.SetupDigest!=state.ExpectedSetupDigest ||
+            (state.BeforeTrccDigest!=null && state.BeforeTrccDigest!=state.ReviewedTrccDigest))
+            throw new Exception("The reviewed incomplete setup or its TRCC phase differs; existing records were preserved.");
+    }
+    internal static bool ExistingCopyMatches(bool protectedOrdinary,string observed,string expected){return protectedOrdinary && observed==expected;}
+    [StructLayout(LayoutKind.Sequential)] private struct FileIdentity {internal uint Attributes,CreationLow,CreationHigh,AccessLow,AccessHigh,WriteLow,WriteHigh,Volume,SizeHigh,SizeLow,Links,IndexHigh,IndexLow;}
+    [DllImport("kernel32.dll",SetLastError=true)] private static extern bool GetFileInformationByHandle(Microsoft.Win32.SafeHandles.SafeFileHandle handle,out FileIdentity identity);
+    private static void Ordinary(string path,bool directory) {
+        string walk=Path.GetFullPath(path);
+        while(walk!=null){if(((int)File.GetAttributes(walk)&0x441400)!=0)throw new Exception("Linked, offline or cloud startup paths are not supported.");walk=Path.GetDirectoryName(walk);}
+        if(!directory)using(var stream=File.Open(path,FileMode.Open,FileAccess.Read,FileShare.Read)){
+            FileIdentity identity;if(!GetFileInformationByHandle(stream.SafeFileHandle,out identity) || identity.Links!=1)throw new Exception("Startup files must have one ordinary local link.");
+        }
+    }
+    private static bool ProtectedOwned(string path,bool directory) {
+        try{
+            Ordinary(path,directory);
+            FileSystemSecurity security=directory?(FileSystemSecurity)Directory.GetAccessControl(path):File.GetAccessControl(path);
+            string owner=security.GetOwner(typeof(SecurityIdentifier)).Value;
+            if(!security.AreAccessRulesProtected || (owner!="S-1-5-18" && owner!="S-1-5-32-544"))return false;
+            const FileSystemRights writes=FileSystemRights.Write|FileSystemRights.Delete|FileSystemRights.DeleteSubdirectoriesAndFiles|FileSystemRights.ChangePermissions|FileSystemRights.TakeOwnership;
+            foreach(FileSystemAccessRule rule in security.GetAccessRules(true,true,typeof(SecurityIdentifier))){string sid=rule.IdentityReference.Value;if(rule.AccessControlType==AccessControlType.Allow && sid!="S-1-5-18" && sid!="S-1-5-32-544" && (rule.FileSystemRights&writes)!=0)return false;}
+            return true;
+        }catch{return false;}
+    }
     internal sealed class TaskState {
         internal int ActionCount,ActionType,TriggerCount,TriggerType,LogonType,RunLevel,MultipleInstances,RestartCount;
         internal string ActionPath,Arguments,WorkingDirectory,PrincipalSid,TriggerSid,ExecutionTimeLimit,RestartInterval;
@@ -32,7 +66,7 @@ internal static partial class CoolerStartupSetup
     internal static void ValidateTaskState(TaskState value) {
         if(value.ActionCount!=1 || value.ActionType!=0 || !String.Equals(value.ActionPath,Path.Combine(Folder,"INTERLINKED.Sensor.Startup.exe"),StringComparison.OrdinalIgnoreCase) ||
             !String.IsNullOrEmpty(value.Arguments) || !String.Equals(value.WorkingDirectory,Folder,StringComparison.OrdinalIgnoreCase) ||
-            value.PrincipalSid!=UserSid || value.LogonType!=3 || value.RunLevel!=1 || value.TriggerCount!=1 || value.TriggerType!=9 || !value.TriggerEnabled || value.TriggerSid!=UserSid ||
+            !PrincipalMatches(value.PrincipalSid) || value.LogonType!=3 || value.RunLevel!=1 || value.TriggerCount!=1 || value.TriggerType!=9 || !value.TriggerEnabled || !PrincipalMatches(value.TriggerSid) ||
             value.MultipleInstances!=2 || value.RestartCount!=3 || value.RestartInterval!="PT1M" || value.ExecutionTimeLimit!="PT0S" || value.DisallowBatteries || value.StopOnBatteries)
             throw new Exception("Startup task ownership or fixed settings differ; existing data was preserved.");
     }
@@ -71,6 +105,17 @@ internal static partial class CoolerStartupSetup
     private static string Hash(string path){using(var sha=SHA256.Create())using(var f=File.OpenRead(path))return BitConverter.ToString(sha.ComputeHash(f)).Replace("-","").ToLowerInvariant();}
     private static string TextHash(string text){using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(text))).Replace("-","").ToLowerInvariant();}
     private static void ProtectedText(string name,string text){using(var output=ProtectedFile(Path.Combine(Folder,name))){byte[] bytes=new UTF8Encoding(false).GetBytes(text);output.Write(bytes,0,bytes.Length);output.Flush(true);}}
+    private static void ProtectedTextOnce(string name,string text) {
+        string path=Path.Combine(Folder,name);
+        if(File.Exists(path)){if(!ProtectedOwned(path,false) || !ExistingCopyMatches(true,Hash(path),TextHash(text)))throw new Exception("Existing startup receipt differs; it was preserved.");return;}
+        ProtectedText(name,text);
+    }
+    private static void CopySetupOnce(string name) {
+        string source=typeof(CoolerStartupSetup).Assembly.Location,path=Path.Combine(Folder,name),expected=Hash(source);
+        if(File.Exists(path)){if(!ProtectedOwned(path,false) || !ExistingCopyMatches(true,Hash(path),expected))throw new Exception("Existing startup setup copy differs; it was preserved.");return;}
+        using(var input=File.OpenRead(source))using(var output=ProtectedFile(path)){input.CopyTo(output);output.Flush(true);}
+        if(Hash(path)!=expected)throw new Exception("Startup setup copy readback failed.");
+    }
     private static void ArchiveOptIn() {
         string record=Path.Combine(Folder,"startup.json");
         if(File.Exists(record))File.Move(record,Path.Combine(Folder,"startup.disabled-"+DateTime.UtcNow.ToString("yyyyMMddTHHmmssfffZ")+"-"+Guid.NewGuid().ToString("N")+".json"));
@@ -164,21 +209,30 @@ internal static partial class CoolerStartupSetup
             if(Hash(WorkerPath)!=WorkerHash || Hash(AppPath)!=AppHash || Hash(@"C:\Program Files\TRCCCAP\HWINFO.exe")!=ExeHash || Hash(@"C:\Program Files\TRCCCAP\HWiNFO64.dll")!=DllHash)
                 throw new Exception("The reviewed installed package changed. Rebuild the setup against the current approved installation.");
             dynamic scheduler=Activator.CreateInstance(Type.GetTypeFromProgID("Schedule.Service"));scheduler.Connect();dynamic root=scheduler.GetFolder("\\");
-            dynamic trcc=null;try{trcc=root.GetTask("TRCCAppStartup");}catch(System.Runtime.InteropServices.COMException ex){if((uint)ex.ErrorCode!=0x80070002)throw;}
+            dynamic trcc=null;try{trcc=root.GetTask("TRCCAppStartup");}catch(Exception ex){if(!TaskMissing(ex))throw;}
             string trccBefore=trcc==null?null:(string)trcc.Xml;
             if((trcc==null && TrccTaskHash!="") || (trcc!=null && TextHash(trccBefore)!=TrccTaskHash))throw new Exception("The reviewed TRCC startup task changed; it was preserved.");
             bool trccWasEnabled=trcc!=null && TrccEnabled(TrccDocument(trccBefore));
-            bool exists=false;try{root.GetTask(TaskName);exists=true;}catch(System.Runtime.InteropServices.COMException ex){if((uint)ex.ErrorCode!=0x80070002)throw;}
-            if(exists || Directory.Exists(Folder))throw new Exception("Startup installation already exists; it was preserved.");
+            bool exists=false;try{root.GetTask(TaskName);exists=true;}catch(Exception ex){if(!TaskMissing(ex))throw;}
+            bool resume=PreviousSetupHash!="";
+            if(resume){
+                string sensor=Path.Combine(Folder,"INTERLINKED.Sensor.Startup.exe"),previous=Path.Combine(Folder,"INTERLINKED.Cooler.Startup.Setup.exe"),before=Path.Combine(Folder,"trcc-startup-before.xml");
+                bool folderProtected=Directory.Exists(Folder) && ProtectedOwned(Folder,true),sensorProtected=File.Exists(sensor) && ProtectedOwned(sensor,false),setupProtected=File.Exists(previous) && ProtectedOwned(previous,false);
+                if(File.Exists(before) && !ProtectedOwned(before,false))throw new Exception("Partial TRCC receipt ownership differs.");
+                ValidateRepairState(new RepairState{TaskExists=exists,FolderExists=Directory.Exists(Folder),LiveOptInExists=File.Exists(Path.Combine(Folder,"startup.json")),FolderProtected=folderProtected,SensorProtected=sensorProtected,SetupProtected=setupProtected,
+                    SensorDigest=sensorProtected?Hash(sensor):null,SetupDigest=setupProtected?Hash(previous):null,ExpectedSensorDigest=SensorHash,ExpectedSetupDigest=PreviousSetupHash,
+                    BeforeTrccDigest=File.Exists(before)?Hash(before):null,ReviewedTrccDigest=TrccTaskHash});
+                dynamic prior=root.GetTask(TaskName);ValidateTaskState(ReadTaskState(prior.Definition));ValidateTaskSecurity((string)prior.GetSecurityDescriptor(7));
+            } else if(exists || Directory.Exists(Folder))throw new Exception("Startup installation already exists; it was preserved.");
             var acl=new DirectorySecurity();acl.SetAccessRuleProtection(true,false);acl.SetOwner(new SecurityIdentifier("S-1-5-32-544"));
             foreach(string sid in new[]{"S-1-5-18","S-1-5-32-544"})acl.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(sid),FileSystemRights.FullControl,InheritanceFlags.ContainerInherit|InheritanceFlags.ObjectInherit,PropagationFlags.None,AccessControlType.Allow));
             acl.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier("S-1-5-32-545"),FileSystemRights.ReadAndExecute,InheritanceFlags.ContainerInherit|InheritanceFlags.ObjectInherit,PropagationFlags.None,AccessControlType.Allow));
-            Directory.CreateDirectory(Folder,acl);
+            if(!resume)Directory.CreateDirectory(Folder,acl);
             ValidateInstalledFolder();
             string executable=Path.Combine(Folder,"INTERLINKED.Sensor.Startup.exe");
-            using(var payload=typeof(CoolerStartupSetup).Assembly.GetManifestResourceStream("sensor"))using(var output=ProtectedFile(executable)){payload.CopyTo(output);output.Flush(true);}
+            if(!resume)using(var payload=typeof(CoolerStartupSetup).Assembly.GetManifestResourceStream("sensor"))using(var output=ProtectedFile(executable)){payload.CopyTo(output);output.Flush(true);}
             if(Hash(executable)!=SensorHash)throw new Exception("Sensor installation readback failed.");
-            using(var input=File.OpenRead(typeof(CoolerStartupSetup).Assembly.Location))using(var output=ProtectedFile(Path.Combine(Folder,"INTERLINKED.Cooler.Startup.Setup.exe"))){input.CopyTo(output);output.Flush(true);}
+            CopySetupOnce(resume?"INTERLINKED.Cooler.Startup.Setup.Repaired.exe":"INTERLINKED.Cooler.Startup.Setup.exe");
             dynamic task=scheduler.NewTask(0);task.RegistrationInfo.Author="INTERLINKED";task.RegistrationInfo.Description="Approved fixed vendor temperature publisher for Jude. No project or display privileges.";
             task.Principal.UserId=UserSid;task.Principal.LogonType=3;task.Principal.RunLevel=1;
             task.Settings.DisallowStartIfOnBatteries=false;task.Settings.StopIfGoingOnBatteries=false;task.Settings.ExecutionTimeLimit="PT0S";task.Settings.MultipleInstances=2;
@@ -187,19 +241,20 @@ internal static partial class CoolerStartupSetup
             dynamic trigger=task.Triggers.Create(9);trigger.UserId=UserSid;
             dynamic action=task.Actions.Create(0);action.Path=executable;action.WorkingDirectory=Folder;
             string sddl=TaskSddl+"(A;;GRGX;;;"+UserSid+")";
-            root.RegisterTaskDefinition(TaskName,task,2,UserSid,null,3,sddl);
+            if(!resume)root.RegisterTaskDefinition(TaskName,task,2,UserSid,null,3,sddl);
             dynamic installed=root.GetTask(TaskName);
             ValidateTaskState(ReadTaskState(installed.Definition));
             ValidateTaskSecurity((string)installed.GetSecurityDescriptor(7));
-            if(installed.Enabled)throw new Exception("New startup task was unexpectedly enabled.");
+            if(!resume && installed.Enabled)throw new Exception("New startup task was unexpectedly enabled.");
             CompleteStartup(delegate {
+                installed.Enabled=false;if(installed.Enabled)throw new Exception("Owned startup task could not be paused for repair.");
                 if(trcc!=null){
                     if(TextHash((string)trcc.Xml)!=TrccTaskHash)throw new Exception("TRCC startup changed during setup; it was preserved.");
-                    ProtectedText("trcc-startup-before.xml",trccBefore);
+                    ProtectedTextOnce("trcc-startup-before.xml",trccBefore);
                     if(trccWasEnabled){
                         trcc.Enabled=false;
                         if(!TrccRestoreAllowed(trccBefore,(string)trcc.Xml,TrccTaskHash))throw new Exception("TRCC disabled-state readback differs.");
-                        ProtectedText("trcc-startup-disabled.xml",(string)trcc.Xml);
+                        ProtectedTextOnce("trcc-startup-disabled.xml",(string)trcc.Xml);
                     }
                 }
                 installed.Enabled=true;
