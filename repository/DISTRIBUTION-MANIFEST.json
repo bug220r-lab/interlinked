@@ -1,8 +1,8 @@
 {
   "format": "interlinked-distribution-manifest-v1",
-  "createdUtc": "2026-10-30T17:36:20.320419+00:00",
+  "createdUtc": "2026-10-30T19:11:21.677108+00:00",
   "scope": "Reviewed project hub, MW5, read-only MSI Jobs, MASTER observatory and restricted local Violet bridge, Windows rendering/capture/sensor worker, desktop host and guarded publication; private telemetry, payloads, credentials and binaries excluded. Additive Buddy companion, lock-owner media ingestion and authenticated project work report.",
-  "previousManifestSha256": "65f3d7c046b43bf5610f8f8701a19e32759c89ee40c3dda4eba2052cd5ae0b38",
+  "previousManifestSha256": "4dc887c3a2b815427dc4bfb58bcc97ef11c2c708a67a451394a96c015d620efd",
   "files": [
     {
       "path": ".gitattributes",
@@ -391,14 +391,14 @@
     {
       "path": "repository/desktop/MasterWorker.cs",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 58519,
-      "sha256": "dc9a26d63721fa54b30d912bd6d5cd9e4a8278e8020fb67c62a9d932f2b1e430"
+      "bytes": 67897,
+      "sha256": "48bc6750542aee028b49cc528f677396331dac32e3f1efa2ce5b49f9685fd78d"
     },
     {
       "path": "repository/desktop/README.md",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 13923,
-      "sha256": "f1c2cb4b0e42bd1b2a29f2333b33689cd1ef959d0e3db4291dfcb84751a7708d"
+      "bytes": 15053,
+      "sha256": "6dab370b70bdba73491084bc5f539625b3c034676278d78d058842622148d035"
     },
     {
       "path": "repository/desktop/Test-Desktop-Package.ps1",
@@ -1150,11 +1150,23 @@
       "sha256": "8292e73ee50bf82a180e7f70860a55678f6e05b7b4abe6e8ca2884166d204fb0",
       "origin": "exact initial imported source",
       "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\test_preparation.ps1"
+    },
+    {
+      "path": "repository/desktop/VioletStatusFixture.cs",
+      "origin": "authored Violet status rendering regression fixture",
+      "bytes": 7774,
+      "sha256": "d904fe95deaf35013124716f181b0ddb3b5cb9d874c2bf62ebbf43b9e740b8f1"
+    },
+    {
+      "path": "repository/desktop/Test-Violet-Status.ps1",
+      "origin": "authored Violet status rendering regression fixture",
+      "bytes": 1475,
+      "sha256": "d9db0e7626ab0a8e8cab3fc9e7867a30604fc82cda3b539a5193f03c0e3e2300"
     }
   ],
   "summary": {
-    "files": 176,
-    "bytes": 1996207,
+    "files": 178,
+    "bytes": 2019698,
     "pythonSourcesParsed": 67
   },
   "preservedBaseline": "Original SOURCE-MANIFEST, MAGIX-EXTENSION-MANIFEST, frozen workspace base and original launcher source remain exact. Buddy launcher is a separate current source addition.",

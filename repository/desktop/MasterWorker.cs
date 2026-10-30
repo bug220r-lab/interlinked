@@ -54,9 +54,10 @@ namespace InterlinkedMaster
         private readonly Stream output=Console.OpenStandardOutput();
         private readonly AutoResetEvent frameReady=new AutoResetEvent(false);
         private readonly ImageCodecInfo jpegCodec=Array.Find(ImageCodecInfo.GetImageEncoders(),x=>x.MimeType=="image/jpeg");
-        private static readonly Color Purple=Color.FromArgb(155,48,238), Lilac=Color.FromArgb(182,92,255), White=Color.FromArgb(245,240,255), Dim=Color.FromArgb(148,139,166);
+        private static readonly Color Purple=Color.FromArgb(192,58,255), Lilac=Color.FromArgb(206,87,255), White=Color.FromArgb(245,240,255), Dim=Color.FromArgb(162,154,174);
         private static readonly Color Green=Color.FromArgb(112,235,177), Amber=Color.FromArgb(255,191,89), Red=Color.FromArgb(255,100,126);
         private readonly Font title=new Font("Consolas",17,FontStyle.Bold,GraphicsUnit.Pixel), roomFont=new Font("Segoe UI",14,FontStyle.Bold,GraphicsUnit.Pixel), mono=new Font("Consolas",12,FontStyle.Regular,GraphicsUnit.Pixel), small=new Font("Segoe UI",11,FontStyle.Regular,GraphicsUnit.Pixel), detail=new Font("Segoe UI",16,FontStyle.Bold,GraphicsUnit.Pixel);
+        private readonly Font binaryFont=new Font("Consolas",10,FontStyle.Regular,GraphicsUnit.Pixel), temperatureLabel=new Font("Segoe UI",22,FontStyle.Bold,GraphicsUnit.Pixel), temperatureValue=new Font("Segoe UI",25,FontStyle.Bold,GraphicsUnit.Pixel);
 
         private void Emit(string type,params object[] fields)
         {
@@ -193,46 +194,145 @@ namespace InterlinkedMaster
         }
 
         private static bool Waiting(string state){return state=="waiting"||state=="needs_input"||state=="waiting_for_input"||state=="waiting_on_approval";}
-        private static Color StateColor(string state){if(state=="failed"||state=="error")return Red;if(Waiting(state))return Amber;if(state=="passed"||state=="verified_success"||state=="turn_finished"||state=="completed")return Green;if(state=="working"||state=="running")return Lilac;return Dim;}
+        private static Color StateColor(string state){if(state=="failed"||state=="error"||state=="test_failed")return Red;if(Waiting(state))return Amber;if(state=="passed"||state=="verified_success")return Green;if(state=="working"||state=="running")return Lilac;return Dim;}
         private static string Activity(Dictionary<string,object> project){var activity=Values.Get(project,"activity");if(activity is string)return(string)activity;var info=Values.Obj(activity);return Values.Bool(info,"stale")?"stale":Values.Text(info,"status","unknown");}
         private static string Human(string value){return value.Replace('_',' ').Replace('-',' ');}
+        private static bool Fresh(string value,double seconds){DateTime when;return DateTime.TryParse(value,CultureInfo.InvariantCulture,DateTimeStyles.RoundtripKind,out when)&&(DateTime.UtcNow-when.ToUniversalTime()).TotalSeconds>=0&&(DateTime.UtcNow-when.ToUniversalTime()).TotalSeconds<=seconds;}
+        internal static bool SnapshotFresh(Dictionary<string,object> state){return Fresh(Values.Text(state,"utc"),15);}
+        internal static string ProjectState(Dictionary<string,object> project)
+        {
+            var health=Values.Obj(Values.Get(project,"health"));if(Values.Text(health,"status")=="failed")return "test_failed";
+            string activity=Activity(project);var workspace=Values.Obj(Values.Get(project,"workspace"));string work=Fresh(Values.Text(workspace,"observedAt"),15)?Values.Text(workspace,"status"):"unknown";
+            if(Waiting(activity)||Waiting(work))return "waiting";
+            if(activity=="working"||activity=="running"||work=="running"||work=="working"||work=="busy"||work=="editing")return "working";
+            if(activity=="turn_finished"||activity=="completed")return "turn_finished";
+            if(activity=="interrupted")return "interrupted";
+            if(Values.Text(health,"status")=="passed")return "passed";
+            if(work=="idle"||work=="ready")return "idle";
+            return activity=="stale"?"stale":"unknown";
+        }
+        internal static string StatusLabel(string status){switch(status){case "test_failed":return "CHECK FAILED";case "waiting":return "NEEDS INPUT";case "turn_finished":return "TURN FINISHED";case "passed":return "CHECK PASSED";default:return Human(status).ToUpperInvariant();}}
+        internal static string TemperatureText(Dictionary<string,object> sensor)
+        {
+            object raw=Values.Get(sensor,"value");double? value=Values.Number(sensor,"value");string status=Values.Text(sensor,"status");
+            bool valid=!(raw is bool)&&value.HasValue&&!double.IsNaN(value.Value)&&!double.IsInfinity(value.Value)&&value.Value>=0&&value.Value<150&&!Values.Bool(sensor,"stale")&&(status=="live"||status=="available"||status=="verified")&&Fresh(Values.Text(sensor,"observedAt"),5);
+            return valid?value.Value.ToString("0",CultureInfo.InvariantCulture)+"°C":"—";
+        }
+        internal static int FocusIndex(List<Dictionary<string,object>> projects,Dictionary<string,object> config,double time)
+        {
+            if(projects.Count==0)return 0;
+            foreach(string priority in new[]{"test_failed","waiting"})for(int i=0;i<projects.Count;i++)if(ProjectState(projects[i])==priority)return i;
+            string requested=Values.Text(config,"focusProject");for(int i=0;i<projects.Count;i++)if(Values.Text(projects[i],"id")==requested)return i;
+            return (int)(Math.Max(0,time)/Math.Max(1,Values.Int(config,"rotationSeconds",8)))%projects.Count;
+        }
         private void Text(Graphics g,string text,Font font,Color color,RectangleF rect,StringAlignment align=StringAlignment.Near){using(var brush=new SolidBrush(color))using(var format=new StringFormat{Alignment=align,LineAlignment=StringAlignment.Center,Trimming=StringTrimming.EllipsisCharacter,FormatFlags=StringFormatFlags.NoWrap})g.DrawString(text,font,brush,rect,format);}
+        private static double VioletObservationAge(string value)
+        {
+            DateTime when;return DateTime.TryParse(value,CultureInfo.InvariantCulture,DateTimeStyles.RoundtripKind,out when)?(DateTime.UtcNow-when.ToUniversalTime()).TotalSeconds:double.NaN;
+        }
+        internal static string VioletStatusLine(Dictionary<string,object> state)
+        {
+            var report=Values.Obj(Values.Get(state,"violet"));string reporter=Values.Text(report,"reporter");
+            if(Values.Bool(state,"demo")||reporter=="demo")return "VIOLET: DEMO · NOT LIVE";
+            double snapshotAge=VioletObservationAge(Values.Text(state,"utc"));
+            if(double.IsNaN(snapshotAge)||snapshotAge<0||snapshotAge>15)return "VIOLET: NO UPDATE · STALE FEED";
+            if(reporter!="dot"&&reporter!="local_task")return "VIOLET: NO UPDATE · UNVERIFIED";
+            double age=VioletObservationAge(Values.Text(report,"observedAt",Values.Text(report,"reportedAt")));
+            if(double.IsNaN(age)||age<0)return "VIOLET: NO UPDATE · UNKNOWN TIME";
+            if(Values.Bool(report,"stale",true)||age>120)return "VIOLET: NO UPDATE · STALE";
+            if(!Values.Bool(report,"connected"))return "VIOLET: NO UPDATE · DISCONNECTED";
+            string label;switch(Values.Text(report,"status")){
+                case "working":label="WORKING";break;case "waiting":label="WAITING";break;
+                case "turn_finished":label="FINISHED";break;case "interrupted":label="INTERRUPTED";break;
+                default:label="NO UPDATE";break;
+            }
+            return "VIOLET: "+label+" · "+(reporter=="local_task"?"LOCAL TASK":"DOT REPORT");
+        }
+        private void DrawVioletStatus(Graphics g,Dictionary<string,object> state)
+        {
+            string line=VioletStatusLine(state);Color color=line.StartsWith("VIOLET: WORKING",StringComparison.Ordinal)?Lilac:line.StartsWith("VIOLET: FINISHED",StringComparison.Ordinal)?White:line.StartsWith("VIOLET: WAITING",StringComparison.Ordinal)||line.StartsWith("VIOLET: INTERRUPTED",StringComparison.Ordinal)||line.StartsWith("VIOLET: DEMO",StringComparison.Ordinal)?Amber:Dim;
+            Text(g,line,mono,color,new RectangleF(28,392,424,17));
+        }
         private void Border(Graphics g,Rectangle rect,Color color){using(var pen=new Pen(color,1))g.DrawPolygon(pen,new[]{new Point(rect.Left+8,rect.Top),new Point(rect.Right,rect.Top),new Point(rect.Right,rect.Bottom-8),new Point(rect.Right-8,rect.Bottom),new Point(rect.Left,rect.Bottom),new Point(rect.Left,rect.Top+8)});}
         private List<Dictionary<string,object>> Projects(Dictionary<string,object> state)
         {
             var rows=Values.Rows(Values.Get(state,"projects"));if(rows.Count==0)foreach(string name in new[]{"ED-IT Buddy","MW5 MOD","INTERLINKED"})rows.Add(new Dictionary<string,object>{{"id",name},{"label",name},{"activity",new Dictionary<string,object>{{"status","unknown"}}}});return rows;
+        }
+        private void Binary(Graphics g,float x,float y,Color color,double alpha,int digit)
+        {
+            using(var brush=new SolidBrush(Color.FromArgb((int)(Math.Max(0,Math.Min(1,alpha))*255),color)))g.DrawString((digit&1).ToString(CultureInfo.InvariantCulture),binaryFont,brush,x-3,y-6,StringFormat.GenericTypographic);
+        }
+        private static PointF PathPoint(PointF[] points,double distance)
+        {
+            for(int i=1;i<points.Length;i++){double dx=points[i].X-points[i-1].X,dy=points[i].Y-points[i-1].Y,length=Math.Sqrt(dx*dx+dy*dy);if(distance<=length&&length>0)return new PointF(points[i-1].X+(float)(dx*distance/length),points[i-1].Y+(float)(dy*distance/length));distance-=length;}return points[points.Length-1];
+        }
+        private void DrawWire(Graphics g,int x,string status,int index,double time)
+        {
+            bool active=status=="working"||status=="waiting"||status=="test_failed";Color color=active?StateColor(status):Color.FromArgb(101,91,117);
+            PointF[] points=x==240?new[]{new PointF(240,147),new PointF(240,177)}:new[]{new PointF(240,147),new PointF(240,158),new PointF(x,158),new PointF(x,177)};
+            using(var pen=new Pen(color,1))g.DrawLines(pen,points);if(!active)return;
+            double length=0;for(int i=1;i<points.Length;i++)length+=Math.Abs(points[i].X-points[i-1].X)+Math.Abs(points[i].Y-points[i-1].Y);
+            double rate=status=="waiting"?.38:status=="test_failed"?.9:.7;
+            for(int n=0;n<2;n++){double head=((time*rate+index*.23+n*.5)%1)*length;for(int j=4;j>=0;j--){double d=head-j*9;if(d<0)continue;var p=PathPoint(points,d);Binary(g,p.X,p.Y,j==0?White:color,(1-j/6.0)*.95,n+j+(int)(time*2));}}
+            for(int n=0;n<16;n++){
+                double life=(time*(status=="waiting"?.55:1.1)+n*.618+index*.17)%1,d=((n*.38197+time*.18)%1)*length;
+                var p=PathPoint(points,d);var before=PathPoint(points,Math.Max(0,d-.5));var after=PathPoint(points,Math.Min(length,d+.5));bool horizontal=Math.Abs(after.X-before.X)>Math.Abs(after.Y-before.Y);
+                float drift=(float)((3+life*13)*(n%2==1?1:-1));Binary(g,p.X+(horizontal?(float)Math.Sin(n*3+life*4)*2:drift),p.Y+(horizontal?drift:(float)Math.Sin(n*3+life*4)*2),n%6==0?White:color,Math.Sin(life*Math.PI)*.7,n+index+(int)(time*2));
+            }
         }
         internal Bitmap DrawFrame(Dictionary<string,object> state,Dictionary<string,object> config,double time)
         {
             var bitmap=new Bitmap(480,480,PixelFormat.Format24bppRgb);
             using(var g=Graphics.FromImage(bitmap)){
                 g.Clear(Color.Black);g.SmoothingMode=SmoothingMode.AntiAlias;g.TextRenderingHint=System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-                Border(g,new Rectangle(8,8,464,464),Color.FromArgb(77,36,103));Text(g,"INTERLINKED MASTER",title,White,new RectangleF(20,18,350,26));Text(g,DateTime.Now.ToString("HH:mm"),mono,Lilac,new RectangleF(388,20,70,22),StringAlignment.Far);
-                using(var pen=new Pen(Color.FromArgb(91,40,126),1)){g.DrawLine(pen,20,53,460,53);g.DrawLine(pen,240,141,240,161);g.DrawLine(pen,87,161,393,161);foreach(int x in new[]{87,240,393})g.DrawLine(pen,x,161,x,178);}
-                DrawViolet(g,state,config,time,new Rectangle(195,59,90,90));Text(g,"LIVE PROJECT TELEMETRY",small,Dim,new RectangleF(20,151,440,19),StringAlignment.Center);
-                var projects=Projects(state);int focus=(int)(time/Math.Max(1,Values.Int(config,"rotationSeconds",8)))%projects.Count;
-                string requested=Values.Text(config,"focusProject");for(int i=0;i<projects.Count;i++)if(Values.Text(projects[i],"id")==requested)focus=i;
-                for(int i=0;i<projects.Count;i++){if(Values.Text(Values.Obj(Values.Get(projects[i],"health")),"status")=="failed"||Waiting(Activity(projects[i]))){focus=i;break;}}
-                for(int i=0;i<Math.Min(3,projects.Count);i++)DrawRoom(g,projects[i],new Rectangle(20+i*153,178,134,106),i==focus,time,i);
-                var selected=projects[focus];var health=Values.Obj(Values.Get(selected,"health"));var git=Values.Obj(Values.Get(selected,"git"));string activity=Activity(selected);Border(g,new Rectangle(20,300,440,113),Color.FromArgb(107,55,146));
-                Text(g,Values.Text(selected,"label",Values.Text(selected,"id")),detail,White,new RectangleF(32,308,415,23));Text(g,Human(activity).ToUpperInvariant(),mono,StateColor(activity),new RectangleF(32,338,410,19));
-                string summary=Values.Text(health,"summary");if(summary=="")summary="Build / tests: "+Human(Values.Text(health,"status","unknown"));Text(g,summary,small,StateColor(Values.Text(health,"status")),new RectangleF(32,362,410,19));
-                string branch=Values.Text(git,"branch");string source=Values.Text(Values.Obj(Values.Get(selected,"activity")),"source",Values.Text(selected,"source","Not connected"));Text(g,(branch==""?"":branch+"  ·  ")+source,small,Dim,new RectangleF(32,386,410,17));
-                var temperatures=Values.Obj(Values.Get(state,"temperatures"));DrawTemperature(g,"CPU",Values.Obj(Values.Get(temperatures,"cpu")),new Rectangle(20,427,210,34));DrawTemperature(g,"GPU",Values.Obj(Values.Get(temperatures,"gpu")),new Rectangle(250,427,210,34));
-                if(Values.Bool(config,"diagnostic")){int x=20+(int)(time*65)%400;using(var brush=new SolidBrush(Lilac))g.FillRectangle(brush,x,466,32,3);Text(g,"TEST FRAME "+sequence,small,White,new RectangleF(20,57,165,20));}
-                else if(Values.Bool(state,"demo"))Text(g,"DEMO",small,Amber,new RectangleF(20,57,100,20));
+                Border(g,new Rectangle(6,6,468,468),Color.FromArgb(73,36,94));bool fresh=SnapshotFresh(state);
+                var projects=Projects(state);int focus=FocusIndex(projects,config,time),page=focus/3*3;
+                DrawViolet(g,state,config,time,new Rectangle(174,9,132,143));
+                string overall="unknown",source="NO LIVE STATUS";
+                if(fresh){foreach(string priority in new[]{"test_failed","waiting","working"}){foreach(var project in projects)if(ProjectState(project)==priority){overall=priority;break;}if(overall!="unknown")break;}
+                    var violet=Values.Obj(Values.Get(state,"violet"));bool reported=Values.Bool(violet,"connected")&&!Values.Bool(violet,"stale");
+                    source=overall=="test_failed"?"CHECK RESULT":overall!="unknown"?"PROJECT ACTIVITY":reported?Values.Text(violet,"source","UNVERIFIED").ToUpperInvariant():"NO LIVE STATUS";
+                }
+                Text(g,source,detail,Lilac,new RectangleF(310,60,158,26));var attention=Values.Obj(Values.Get(state,"attention"));int pending=Values.Int(attention,"pendingCount");
+                string alerts=fresh&&Values.Bool(attention,"available")?(pending==0?"No pending alerts":pending+" alert"+(pending==1?"":"s")+" to review"):"Alerts unavailable";
+                Text(g,alerts,detail,pending>0&&fresh?Amber:Color.FromArgb(226,177,255),new RectangleF(310,89,158,25));
+                for(int slot=0;slot<3&&page+slot<projects.Count;slot++)DrawWire(g,87+slot*153,fresh?ProjectState(projects[page+slot]):"stale",slot,time);
+                for(int slot=0;slot<3&&page+slot<projects.Count;slot++)DrawRoom(g,projects[page+slot],new Rectangle(18+slot*153,177,138,155),page+slot==focus,time,slot,fresh);
+                var selected=projects[focus];string status=fresh?ProjectState(selected):"stale";Border(g,new Rectangle(18,349,444,42),StateColor(status));
+                string summary=status=="stale"?"Activity update stale":status=="unknown"?"Status unavailable":status=="test_failed"?"Build/test check failed":status=="waiting"?"Waiting for your input":status=="turn_finished"?"Chat turn finished":Human(StatusLabel(status));
+                string paging=projects.Count>3?" ["+(page/3+1)+"/"+((projects.Count+2)/3)+"]":"";
+                Text(g,Values.Text(selected,"label",Values.Text(selected,"id"))+" · "+summary+paging,roomFont,White,new RectangleF(31,358,418,24));
+                var temperatures=Values.Obj(Values.Get(state,"temperatures"));DrawTemperature(g,"CPU",fresh?Values.Obj(Values.Get(temperatures,"cpu")):new Dictionary<string,object>(),new Rectangle(18,410,214,49));DrawTemperature(g,"GPU",fresh?Values.Obj(Values.Get(temperatures,"gpu")):new Dictionary<string,object>(),new Rectangle(248,410,214,49));
+                DrawVioletStatus(g,state);
+                if(Values.Bool(config,"diagnostic")){int x=20+(int)(time*65)%400;using(var brush=new SolidBrush(Lilac))g.FillRectangle(brush,x,466,32,3);Text(g,"TEST FRAME "+sequence,small,White,new RectangleF(16,16,145,20));}
+                else if(Values.Bool(state,"demo"))Text(g,"DEMO",small,Amber,new RectangleF(16,16,70,20));
             }return bitmap;
         }
-        private void DrawRoom(Graphics g,Dictionary<string,object> project,Rectangle rect,bool focus,double time,int index)
+        private void DrawRoom(Graphics g,Dictionary<string,object> project,Rectangle rect,bool focus,double time,int index,bool fresh)
         {
-            string activity=Activity(project);Color status=StateColor(activity);Border(g,rect,focus?Lilac:Color.FromArgb(68,39,89));Text(g,Values.Text(project,"label",Values.Text(project,"id")),roomFont,White,new RectangleF(rect.Left+8,rect.Top+6,rect.Width-16,21));
-            using(var pen=new Pen(Color.FromArgb(46,29,57),1)){g.DrawLine(pen,rect.Left+8,rect.Top+31,rect.Right-8,rect.Top+31);g.DrawLine(pen,rect.Left+8,rect.Bottom-28,rect.Right-8,rect.Bottom-28);}
-            for(int i=0;i<3;i++){int dx=rect.Left+19+i*35,dy=rect.Top+49;bool moving=activity=="working"||activity=="running";float bob=moving?(float)Math.Sin(time*5+i+index)*2:0;using(var brush=new SolidBrush(Color.FromArgb(41,30,55)))g.FillRectangle(brush,dx-4,dy+8,24,11);using(var brush=new SolidBrush(i==0?status:Color.FromArgb(75,52,93))){g.FillRectangle(brush,dx,dy-3,15,8);g.FillEllipse(brush,dx+4,dy+11+bob,8,8);g.FillRectangle(brush,dx+3,dy+19+bob,10,9);}}
-            Text(g,Human(activity).ToUpperInvariant(),small,status,new RectangleF(rect.Left+6,rect.Bottom-24,rect.Width-12,19),StringAlignment.Center);
+            string status=fresh?ProjectState(project):"stale";Color color=StateColor(status);bool active=status=="working",motion=active||status=="waiting"||status=="test_failed";
+            Border(g,rect,motion?color:Color.FromArgb(105,87,127));Text(g,Values.Text(project,"label",Values.Text(project,"id")),roomFont,White,new RectangleF(rect.Left+10,rect.Top+8,rect.Width-20,24));
+            using(var pen=new Pen(Color.FromArgb(80,54,95),1)){g.DrawLine(pen,rect.Left+9,rect.Top+38,rect.Right-9,rect.Top+38);g.DrawLine(pen,rect.Left+9,rect.Bottom-36,rect.Right-9,rect.Bottom-36);}
+            if(motion){var saved=g.Save();g.SetClip(new Rectangle(rect.Left+8,rect.Top+44,rect.Width-16,rect.Height-82));int count=active?24:18;
+                for(int n=0;n<count;n++){double life=(time*(active?.65:.4)+n*.618+index*.29)%1,angle=n*2.39996+time*(n%2==1?-.4:.4),radius=17+life*34;Binary(g,rect.Left+rect.Width/2+(float)(Math.Cos(angle)*radius),rect.Top+85+(float)(Math.Sin(angle)*radius*.58-life*6),n%8==0?White:color,Math.Sin(life*Math.PI)*.8,n+index+(int)(time*1.5));}
+                if(active)for(int n=0;n<6;n++){float yy=rect.Top+45+(float)((time*30+n*19+index*27)%(rect.Height-82));Binary(g,rect.Left+13+n*20,yy,color,.32,n+(int)time);Binary(g,rect.Left+13+n*20,yy-11,color,.16,n+1+(int)time);}g.Restore(saved);
+            }
+            // A single aggregate activity figure, independent of the number of observed agents.
+            int cx=rect.Left+rect.Width/2,y=rect.Top+59;float bob=active?(float)Math.Sin(time*7+index)*1.2f:0;
+            using(var brush=new SolidBrush(Color.FromArgb(39,26,55)))g.FillRectangle(brush,cx-25,y+25,50,6);
+            using(var brush=new SolidBrush(active?Color.FromArgb(113,51,156):Color.FromArgb(81,71,94)))g.FillRectangle(brush,cx-16,y,32,19);
+            using(var brush=new SolidBrush(Color.FromArgb(16,11,24)))g.FillRectangle(brush,cx-13,y+3,26,12);
+            using(var brush=new SolidBrush(color)){for(int k=0;k<3;k++)g.FillRectangle(brush,cx-10,y+5+k*3,active?6+((int)(time*6+k*5)%15):10,1);g.FillEllipse(brush,cx-5,y+31+bob,10,10);g.FillRectangle(brush,cx-6,y+43+bob,12,13);if(active){g.FillRectangle(brush,cx-10,y+47+(int)(time*6)%2,4,3);g.FillRectangle(brush,cx+6,y+48-(int)(time*6)%2,4,3);}}
+            Text(g,StatusLabel(status),mono,color,new RectangleF(rect.Left+5,rect.Bottom-30,rect.Width-10,23),StringAlignment.Center);
+            if(active){float x=rect.Left+10+(float)((time*.42+index*.3)%1)*(rect.Width-36);using(var pen=new Pen(Color.FromArgb(239,199,255),1.5f))g.DrawLine(pen,x,rect.Bottom,x+15,rect.Bottom);}
+            if(focus)using(var brush=new SolidBrush(color))g.FillRectangle(brush,rect.Left+8,rect.Top+5,3,2);
         }
         private void DrawTemperature(Graphics g,string label,Dictionary<string,object> sensor,Rectangle rect)
         {
-            Border(g,rect,Color.FromArgb(74,38,99));Text(g,label,small,Dim,new RectangleF(rect.Left+11,rect.Top+4,50,25));double? value=Values.Number(sensor,"value");bool valid=value.HasValue&&value.Value>=0&&value.Value<150&&!Values.Bool(sensor,"stale")&&Values.Text(sensor,"status")=="live";Text(g,valid?value.Value.ToString("0",CultureInfo.InvariantCulture)+"°C":"—",detail,valid?Lilac:Dim,new RectangleF(rect.Left+65,rect.Top+3,rect.Width-78,27),StringAlignment.Far);
+            Border(g,rect,Color.FromArgb(163,65,223));string value=TemperatureText(sensor);float a=g.MeasureString(label,temperatureLabel,1000,StringFormat.GenericTypographic).Width,b=g.MeasureString(value,temperatureValue,1000,StringFormat.GenericTypographic).Width;
+            float left=rect.Left+(rect.Width-a-b-10)/2;
+            using(var brush=new SolidBrush(White))g.DrawString(label,temperatureLabel,brush,new PointF(left,rect.Top+10),StringFormat.GenericTypographic);
+            using(var brush=new SolidBrush(value=="—"?Dim:Lilac))g.DrawString(value,temperatureValue,brush,new PointF(left+a+10,rect.Top+7),StringFormat.GenericTypographic);
         }
         private void DrawViolet(Graphics g,Dictionary<string,object> state,Dictionary<string,object> config,double time,Rectangle target)
         {
@@ -245,10 +345,8 @@ namespace InterlinkedMaster
             if(violetAtlas==null){Border(g,new Rectangle(target.Left+15,target.Top+9,target.Width-30,target.Height-18),Purple);Text(g,"VIOLET",small,Lilac,new RectangleF(target.Left,target.Top+32,target.Width,25),StringAlignment.Center);return;}
             var dot=Values.Obj(Values.Get(state,"violet"));bool dotReported=Values.Bool(dot,"connected")&&!Values.Bool(dot,"stale");string dotActivity=Values.Text(dot,"activity",Values.Text(dot,"status"));
             string overall=dotReported&&Waiting(dotActivity)?"waiting":dotReported&&(dotActivity=="working"||dotActivity=="running")?"working":"unknown";
-            string source=dotReported?Values.Text(dot,"source","UNVERIFIED"):"UNKNOWN";
-            foreach(var project in Projects(state)){if(Values.Text(Values.Obj(Values.Get(project,"health")),"status")=="failed"){overall="failed";source="PROJECT TELEMETRY";break;}if(Waiting(Activity(project))&&overall!="failed"){overall="waiting";source="PROJECT TELEMETRY";}else if(Activity(project)=="working"&&overall=="unknown"){overall="working";source="PROJECT TELEMETRY";}}
-            Text(g,source.ToUpperInvariant(),small,Lilac,new RectangleF(288,92,175,22));
-            var attention=Values.Obj(Values.Get(state,"attention"));Text(g,Values.Bool(attention,"available")?"QUEUED "+Values.Text(attention,"pendingCount","0"):"QUEUE UNAVAILABLE",small,Dim,new RectangleF(288,116,175,22));
+            foreach(var project in Projects(state)){string status=ProjectState(project);if(status=="test_failed"){overall="failed";break;}if(status=="waiting"&&overall!="failed")overall="waiting";else if(status=="working"&&overall=="unknown")overall="working";}
+            if(!SnapshotFresh(state))overall="unknown";
             int row=overall=="failed"?5:overall=="waiting"?6:overall=="working"?7:0,count=row==5?8:6,column=(int)(time*5)%count;
             g.DrawImage(violetAtlas,target,new Rectangle(column*192,row*208,192,208),GraphicsUnit.Pixel);
         }
@@ -451,7 +549,7 @@ namespace InterlinkedMaster
             }
             lastSensors=result;Emit("sensors","temperatures",result);
         }
-        public void Dispose(){running=false;connectRequested=false;StopSensorBroker();frameReady.Set();if(usbThread!=null&&usbThread.IsAlive)usbThread.Join(3500);if(sensorBrokerThread!=null&&sensorBrokerThread.IsAlive)sensorBrokerThread.Join(1500);if(usbThread==null)StopUsb();if(violetAtlas!=null)violetAtlas.Dispose();title.Dispose();roomFont.Dispose();mono.Dispose();small.Dispose();detail.Dispose();}
+        public void Dispose(){running=false;connectRequested=false;StopSensorBroker();frameReady.Set();if(usbThread!=null&&usbThread.IsAlive)usbThread.Join(3500);if(sensorBrokerThread!=null&&sensorBrokerThread.IsAlive)sensorBrokerThread.Join(1500);if(usbThread==null)StopUsb();if(violetAtlas!=null)violetAtlas.Dispose();title.Dispose();roomFont.Dispose();mono.Dispose();small.Dispose();detail.Dispose();binaryFont.Dispose();temperatureLabel.Dispose();temperatureValue.Dispose();}
         internal static int SelfTest(string directory)
         {
             Directory.CreateDirectory(directory);using(var worker=new Worker()){
