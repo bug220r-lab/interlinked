@@ -1,10 +1,13 @@
 """Reviewed metadata-only Codex lifecycle observer. Failures never block coding."""
 from __future__ import annotations
 import argparse
+import base64
 import importlib.util
 import json
 import os
 from pathlib import Path
+import re
+import shlex
 import sys
 
 
@@ -17,26 +20,42 @@ def companion():
     return module
 
 
-def hook_config(python=None):
-    command = '"' + str(python or sys.executable) + '" -I -B "' + str(Path(__file__).resolve()) + '"'
+def windows_command(argv):
+    """Use literal argv in both CMD and PowerShell, without nested expansion."""
+    if all(re.fullmatch(r'[A-Za-z0-9_./:\\-]+', value) for value in argv):
+        return ' '.join(argv)
+    # A leading quoted executable is not invocation syntax in PowerShell.
+    # Encode the complete call so the outer shell never expands path contents.
+    literals = ["'" + value.replace("'", "''") + "'" for value in argv]
+    script = '& ' + ' '.join(literals) + '; exit $LASTEXITCODE'
+    encoded = base64.b64encode(script.encode('utf-16le')).decode('ascii')
+    return 'powershell.exe -NoProfile -NonInteractive -EncodedCommand ' + encoded
+
+
+def hook_config(python=None, state_root=None):
+    argv = [str(python or sys.executable), '-I', '-B', str(Path(__file__).resolve())]
+    if state_root is not None:
+        argv += ['--state-root', str(state_root)]
+    command_windows = windows_command(argv)
+    command = command_windows if os.name == 'nt' else shlex.join(argv)
     events = ('SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse',
               'PermissionRequest', 'Stop', 'Interrupt', 'SubagentStart', 'SubagentStop')
     hooks = {}
     for event in events:
-        handler = dict(type='command', command=command, commandWindows=command, timeout=1)
+        handler = dict(type='command', command=command, commandWindows=command_windows, timeout=1)
         if event != 'SessionEnd':
             handler['async'] = True
         hooks[event] = [dict(hooks=[handler])]
     return dict(description='INTERLINKED MASTER passive metadata observer; review and trust before use.', hooks=hooks)
 
 
-def merged_config(existing, python=None):
+def merged_config(existing, python=None, state_root=None):
     """Add only this exact observer; preserve unrelated groups and settings."""
     if not isinstance(existing, dict) or not isinstance(existing.get('hooks', {}), dict):
         raise ValueError('Existing hook configuration is invalid.')
     result = json.loads(json.dumps(existing))
     hooks = result.setdefault('hooks', {})
-    for event, additions in hook_config(python)['hooks'].items():
+    for event, additions in hook_config(python, state_root)['hooks'].items():
         current = hooks.setdefault(event, [])
         if not isinstance(current, list):
             raise ValueError('Existing hook event is invalid.')
@@ -60,10 +79,10 @@ def main():
             with args.existing_config.open('r', encoding='utf-8-sig') as stream:
                 existing = json.load(stream)
         with args.proposal.open('x', encoding='utf-8') as stream:
-            json.dump(merged_config(existing, args.python), stream, indent=2)
+            json.dump(merged_config(existing, args.python, args.state_root), stream, indent=2)
         return 0
     if args.show_config:
-        print(json.dumps(hook_config(args.python), indent=2))
+        print(json.dumps(hook_config(args.python, args.state_root), indent=2))
         return 0
     try:
         module = companion()

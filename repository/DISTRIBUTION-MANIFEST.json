@@ -1,8 +1,8 @@
 {
   "format": "interlinked-distribution-manifest-v1",
-  "createdUtc": "2026-10-30T14:00:26.389954+00:00",
+  "createdUtc": "2026-10-30T15:09:43.379757+00:00",
   "scope": "Reviewed project hub, MW5, read-only MSI Jobs, MASTER observatory and restricted local Violet bridge, Windows rendering/capture/sensor worker, desktop host and guarded publication; private telemetry, payloads, credentials and binaries excluded.",
-  "previousManifestSha256": "12b8e5f9173c12fcc450dad194bb315c896d51df24aa5c3f62295337f4a12a64",
+  "previousManifestSha256": "406ddeb357d62ff91a332005419bf6ddb5007f828ae35a3bfea789191c10db1d",
   "files": [
     {
       "path": ".gitattributes",
@@ -115,8 +115,8 @@
     {
       "path": "repository/app/master_hook.py",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 4117,
-      "sha256": "e20583d565b155b9d798f4e7859c2cbca370241b314561cf7a11424bf09bb06d"
+      "bytes": 5082,
+      "sha256": "b4b97f179dd0b2a87502216b47a0244d6423eb41c6cefb835c4cdca8167781fe"
     },
     {
       "path": "repository/app/test_desktop_startup.py",
@@ -1132,14 +1132,20 @@
       "sha256": "8292e73ee50bf82a180e7f70860a55678f6e05b7b4abe6e8ca2884166d204fb0",
       "origin": "exact initial imported source",
       "source": "C:\\Users\\jlewi\\Documents\\Codex\\2026-10-28\\prep\\work\\ssh-job-verification\\test_preparation.ps1"
+    },
+    {
+      "path": "repository/app/test_master_hook_launch.py",
+      "origin": "authored Windows observer regression",
+      "bytes": 9684,
+      "sha256": "7ad69b539069dfc25a1740b5a8b41c40cf27b33465fbac89c34c661f94799de1"
     }
   ],
   "summary": {
-    "files": 173,
-    "bytes": 1904049,
-    "pythonSourcesParsed": 64
+    "files": 174,
+    "bytes": 1914698,
+    "pythonSourcesParsed": 65
   },
   "preservedBaseline": "Original SOURCE-MANIFEST and MAGIX-EXTENSION-MANIFEST remain exact; accepted launcher and client bytes unchanged.",
   "privacy": "No personal catalog, media audit report, deployment seal, source media, cache, credential or runtime binary is included.",
-  "validationScope": "Sourced Violet v2 reports and legacy migration, four restricted MCP tools, bounded persistent attention queue and acknowledgments, native expression/source display and pending-count UI. Synthetic MASTER backend/API/UI, native changing frames/UTF-8, hub/MW5/Jobs/tray and guarded publisher regressions; source integrity verified separately. Prepared 25-file guarded update, not installed. Current production dashboard and sensors preserved. Actual Violet read/publish acceptance and plugin activation remain unverified; live-mini capture optional, long stability/boot/reconnect deferred. Private reports and payloads excluded."
+  "validationScope": "Sourced Violet v2 reports and legacy migration, four restricted MCP tools, bounded persistent attention queue and acknowledgments, native expression/source display and pending-count UI. Synthetic MASTER backend/API/UI, native changing frames/UTF-8, hub/MW5/Jobs/tray and guarded publisher regressions; source integrity verified separately. Prepared 25-file guarded update, not installed. Current production dashboard and sensors preserved. Actual Violet read/publish acceptance and plugin activation remain unverified; live-mini capture optional, long stability/boot/reconnect deferred. Private reports and payloads excluded. Windows observer launch generation passes 35 real PowerShell/CMD fixture checks plus three existing hook regressions; corrected active definitions require normal user re-review before live acceptance."
 }
