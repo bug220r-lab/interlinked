@@ -78,6 +78,12 @@ node repository/app/test_master_ui.js
 
 These checks cover metadata privacy, hook merging, MCP under isolated Python, explicit health baselines, timestamps, worker restart isolation, native preview and all authenticated MASTER routes. They never request USB ownership or elevated setup. Physical changing-video cadence, sensor independence, actual Dot access, real mini capture, a continuous-use soak and installed-byte verification are distinct acceptance evidence. Use Windows extended paths or a short absolute test root for existing long-path fixtures.
 
+## ED-IT Buddy project reports
+
+The selected project's Buddy report distinguishes media stored on MSI, searchable media, prepared outputs and delivery into the project. A completed local import is counted as stored rather than prepared; indexing failures remain attention items even after storage succeeds. Report refresh reads the existing authenticated local endpoint and never starts MSI work. Failed refreshes retain the previous observation with a historical label, and task messages and output references render as bounded text.
+
+The Media inbox, transfer recovery, opt-in folder watches and indexing progress display belong to the separate ED-IT Buddy application. Storage and indexing do not deliver media into an INTERLINKED project. Project delivery uses the existing explicit companion action and managed-session checks; saving a project version to MSI remains explicit.
+
 ## Unified library
 
 `interlinked_hub.py` reads the unchanged client's `list` output in a bounded read-only subprocess. Refresh is asynchronous; offline failures retain an owned private catalog snapshot with its refresh time and stale status. The canonical shares remain `\\MSI\ProjectLibrary` and `\\MSI\ProjectReturns`. Exact general-catalog IDs already present in the reviewed MAGIX index route exclusively through MAGIX; other library IDs have opaque UI keys and retain their original ID for engine commands and release confirmation. Name/basename similarities never merge projects.

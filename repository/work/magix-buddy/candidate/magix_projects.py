@@ -19,7 +19,7 @@ import uuid
 
 BASE_SHA='c60fb2559a90a2301aa3d741c1d2e676e5ed90559fb40a63e27ef83d75f697aa'
 INDEX_SHA='bccb71983d23a3baa88926aca4d14fe6ce95d003e46e1d3d696350e47b746a83'
-BUDDY_SHA='001d5f04fb69c7e12ec7538f1843ad572cd497447d09c381e237c1c757dfba4d'
+BUDDY_SHA='d3a2b316baf5def28cc2002fa9827f2bfce1315f51481224e865e35fdf2bde9e'
 PROTOCOL='magix-multiple-projects-v1'
 PREFIX='Drive_C/Users/jlewi/'
 ROOTS=('OneDrive/Documents','OneDrive/Pictures','OneDrive/Desktop','Downloads',

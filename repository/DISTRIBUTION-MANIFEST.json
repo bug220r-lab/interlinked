@@ -1,8 +1,8 @@
 {
   "format": "interlinked-distribution-manifest-v1",
-  "createdUtc": "2026-10-30T21:09:53.169290+00:00",
-  "scope": "Reviewed project hub, MW5, read-only MSI Jobs, MASTER observatory and restricted local Violet bridge, Windows rendering/capture/sensor worker, desktop host and guarded publication; private telemetry, payloads, credentials and binaries excluded. Additive Buddy companion, lock-owner media ingestion and authenticated project work report. Independent Stats workspace, contained native process lifecycle and guarded v6 application publication. Revision-checked settings, separate local recovery histories, MASTER review inbox and lifecycle validity guards. Reviewed cooler rendering and scheduling, observed subagent summaries, exact cooler-only publication and optional fixed-function startup setup.",
-  "previousManifestSha256": "8d816b54e241d9605d3dac87863be3af4f42bfef005346b887a804890d3aab8b",
+  "createdUtc": "2026-10-30T22:06:10.110088+00:00",
+  "scope": "Reviewed project hub, MW5, read-only MSI Jobs, MASTER observatory and restricted local Violet bridge, Windows rendering/capture/sensor worker, desktop host and guarded publication; private telemetry, payloads, credentials and binaries excluded. Additive Buddy companion, lock-owner media ingestion and authenticated project work report. Independent Stats workspace, contained native process lifecycle and guarded v6 application publication. Revision-checked settings, separate local recovery histories, MASTER review inbox and lifecycle validity guards. Reviewed cooler rendering and scheduling, observed subagent summaries, exact cooler-only publication and optional fixed-function startup setup. Media inbox project reports distinguish stored, searchable and delivered outcomes; current launcher publication dependency pins advance together while installed startup and sensor pins remain separate.",
+  "previousManifestSha256": "c19b748f6aacfb7c3294c3416d34cda3aa97622f7da26b78db991bbea3696eca",
   "files": [
     {
       "path": ".gitattributes",
@@ -25,8 +25,26 @@
     {
       "path": "README.md",
       "origin": "authored documentation or packaging metadata",
-      "bytes": 8394,
-      "sha256": "6104da42aa4998f04ad694c7dafb019735915ccbd11f981eb4b32902e793605f"
+      "bytes": 8672,
+      "sha256": "7656d03bd11e0f1e63353ed27131b8f09ec81e740263fabea95d0f10e0811dbf"
+    },
+    {
+      "path": "repository/MAGIX-EXTENSION-MANIFEST.json",
+      "origin": "authored documentation or packaging metadata",
+      "bytes": 5680,
+      "sha256": "cbf3fa3c011d815ff620ed34741d9658fd5d917ce3c73f1c112a714fc335c301"
+    },
+    {
+      "path": "repository/README.md",
+      "origin": "authored documentation or packaging metadata",
+      "bytes": 13920,
+      "sha256": "6fb42c70af44d1b93011f269d56d3a566158acdee2239132baa8d956b4af2b4f"
+    },
+    {
+      "path": "repository/SOURCE-MANIFEST.json",
+      "origin": "authored documentation or packaging metadata",
+      "bytes": 53300,
+      "sha256": "0204d94dac4baba841606750859909376832478a627a3ea9e11a31ac805da631"
     },
     {
       "path": "repository/app/INTERLINKED-Browser.cmd",
@@ -47,10 +65,16 @@
       "sha256": "308e68aaaaecd8c6d008bf8a15e304fa3f4429eca5602d94e2bf04b7087a5ef3"
     },
     {
+      "path": "repository/app/README.md",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 29095,
+      "sha256": "7627c774df14d33d35c46da5d460c9cf8a379603ad19adfd24bfde7e0dd9ff64"
+    },
+    {
       "path": "repository/app/interlinked_buddy.py",
       "origin": "Buddy companion integration reviewed source",
-      "bytes": 39815,
-      "sha256": "001d5f04fb69c7e12ec7538f1843ad572cd497447d09c381e237c1c757dfba4d"
+      "bytes": 40698,
+      "sha256": "d3a2b316baf5def28cc2002fa9827f2bfce1315f51481224e865e35fdf2bde9e"
     },
     {
       "path": "repository/app/interlinked_configuration.py",
@@ -68,7 +92,7 @@
       "path": "repository/app/interlinked_gui.py",
       "origin": "Buddy companion integration reviewed source",
       "bytes": 55703,
-      "sha256": "1084ae060023fee3b4376ba7d2ace5e9f90db2a89fc398643ae0495d3c3740d2"
+      "sha256": "dd0018070f5a7b25f4372812baf463150e4eab52471f53fa63ff123eb9b0b152"
     },
     {
       "path": "repository/app/interlinked_hub.py",
@@ -117,12 +141,6 @@
       "origin": "Existing pending application source retained during MSI observer integration",
       "bytes": 5082,
       "sha256": "b4b97f179dd0b2a87502216b47a0244d6423eb41c6cefb835c4cdca8167781fe"
-    },
-    {
-      "path": "repository/app/README.md",
-      "origin": "GUI and source-library audit addition",
-      "bytes": 28212,
-      "sha256": "c086cbd8b769fd37550b63b54c8cf3836be001ffc499579cdd879b2f8001a5f0"
     },
     {
       "path": "repository/app/test_configuration.py",
@@ -253,8 +271,8 @@
     {
       "path": "repository/app/web/app.js",
       "origin": "Buddy companion integration reviewed source",
-      "bytes": 96775,
-      "sha256": "d3340d03cd6c41849437411041b47d9dcbe48498492548f583e98ec3d87b9641"
+      "bytes": 96989,
+      "sha256": "41c6776c3eecb9e1b3d5c8e950dad24fcd7566814fa3332ef08495fc92b83397"
     },
     {
       "path": "repository/app/web/index.html",
@@ -275,16 +293,16 @@
       "sha256": "6a3617a1a245beb743783bbe3f7feac0da99deb3323173be3984416786fe628c"
     },
     {
-      "path": "repository/audit/audit_media.py",
-      "origin": "GUI and source-library audit addition",
-      "bytes": 28632,
-      "sha256": "b4f43a9d3345922cd78a8809bca198bb79cc0e625f280478e32fd5643777a420"
-    },
-    {
       "path": "repository/audit/README.md",
       "origin": "GUI and source-library audit addition",
       "bytes": 4006,
       "sha256": "74c2efa8642e00b8e7013145e6762e84fbc29bf6321321aeb3c05fdce453e97d"
+    },
+    {
+      "path": "repository/audit/audit_media.py",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 28632,
+      "sha256": "b4f43a9d3345922cd78a8809bca198bb79cc0e625f280478e32fd5643777a420"
     },
     {
       "path": "repository/audit/test_audit_logic.py",
@@ -323,12 +341,6 @@
       "sha256": "c0508360dc92063500ef25b0d300ac6c1b2b4c64f3345fd75dbcc808c47c25e0"
     },
     {
-      "path": "repository/deployment/import_magix_presets.py",
-      "origin": "GUI and source-library audit addition",
-      "bytes": 16482,
-      "sha256": "d1714a746432d560c9732633fa8ba042fc94f9634210e98b896872ec8085ef44"
-    },
-    {
       "path": "repository/deployment/Interlinked-Cooler-Publication.psm1",
       "origin": "Reviewed guarded cooler-only publisher and synthetic tests",
       "bytes": 14244,
@@ -344,13 +356,13 @@
       "path": "repository/deployment/Publish-Interlinked-Cooler.ps1",
       "origin": "Reviewed guarded cooler-only publisher and synthetic tests",
       "bytes": 3497,
-      "sha256": "34c33e013bf9f0100ef0c29608bb4e9167add66ba626084b2c024b64dcd25509"
+      "sha256": "9705bcd618f204412fad8e97730dfb663d95c59faa2e57eaf4642f14b87db0c9"
     },
     {
       "path": "repository/deployment/Publish-Interlinked-Desktop.ps1",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
       "bytes": 4707,
-      "sha256": "13858fbafc65ed2a4414f7f9c8f6d4c5191a196d103737ac2b10a5435b739a80"
+      "sha256": "dd6f1318befd4fe9723c9ccdabae355629f94c623a516cb819789aeb8afba3ca"
     },
     {
       "path": "repository/deployment/Publish-Interlinked-GUI.ps1",
@@ -367,8 +379,8 @@
     {
       "path": "repository/deployment/README.md",
       "origin": "GUI and source-library audit addition",
-      "bytes": 6519,
-      "sha256": "3809c4b182f16eb0b47625c67cc433893e53c69c53193bb6935892ec1752df66"
+      "bytes": 7300,
+      "sha256": "a16badc4655fba3f5ff5995871895a8d8b1773893787bee8e9201f92af8433d5"
     },
     {
       "path": "repository/deployment/Test-Interlinked-Cooler-Publication.ps1",
@@ -381,6 +393,12 @@
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
       "bytes": 25355,
       "sha256": "9c5c91a371ad5a91adae8f5cb19981dba68b45e3446d841abf58e33e038ac4f4"
+    },
+    {
+      "path": "repository/deployment/import_magix_presets.py",
+      "origin": "GUI and source-library audit addition",
+      "bytes": 16482,
+      "sha256": "d1714a746432d560c9732633fa8ba042fc94f9634210e98b896872ec8085ef44"
     },
     {
       "path": "repository/desktop/Build-CoolerStartup.ps1",
@@ -407,22 +425,16 @@
       "sha256": "54926642ca6b7622e2975eae620ebd4258fcc960c20f0b3635fadb3c14279cb1"
     },
     {
-      "path": "repository/desktop/Interlinked.cs",
-      "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 48954,
-      "sha256": "8487ffdc0f416d910111b450220018b1ecbf8801882d06fb55f10b9b9ddc9aff"
-    },
-    {
       "path": "repository/desktop/INTERLINKED.exe.config",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
       "bytes": 212,
       "sha256": "5d4cd327e430b0139d55bb5204d25e3944214cbeaa75a3790bb6771ed04dc26d"
     },
     {
-      "path": "repository/desktop/master_resource_probe.py",
-      "origin": "read-only owned-process resource metadata sampler",
-      "bytes": 10371,
-      "sha256": "f0e1354511524d5e2ff38ac196dffa5a2f485aa692578f8ab693522486581dd0"
+      "path": "repository/desktop/Interlinked.cs",
+      "origin": "reviewed WebView2 desktop host, tests and guarded publication",
+      "bytes": 48954,
+      "sha256": "8487ffdc0f416d910111b450220018b1ecbf8801882d06fb55f10b9b9ddc9aff"
     },
     {
       "path": "repository/desktop/MasterCaptureFixture.cs",
@@ -527,6 +539,18 @@
       "sha256": "d9db0e7626ab0a8e8cab3fc9e7867a30604fc82cda3b539a5193f03c0e3e2300"
     },
     {
+      "path": "repository/desktop/VioletStatusFixture.cs",
+      "origin": "authored Violet status rendering regression fixture",
+      "bytes": 7774,
+      "sha256": "d904fe95deaf35013124716f181b0ddb3b5cb9d874c2bf62ebbf43b9e740b8f1"
+    },
+    {
+      "path": "repository/desktop/master_resource_probe.py",
+      "origin": "read-only owned-process resource metadata sampler",
+      "bytes": 10371,
+      "sha256": "f0e1354511524d5e2ff38ac196dffa5a2f485aa692578f8ab693522486581dd0"
+    },
+    {
       "path": "repository/desktop/test_master_capture.py",
       "origin": "isolated Windows capture acceptance harness",
       "bytes": 2505,
@@ -551,12 +575,6 @@
       "sha256": "f3ceaa583b75017b556847baa84772bddf593557a5a84fde1bc091468dcfce47"
     },
     {
-      "path": "repository/desktop/VioletStatusFixture.cs",
-      "origin": "authored Violet status rendering regression fixture",
-      "bytes": 7774,
-      "sha256": "d904fe95deaf35013124716f181b0ddb3b5cb9d874c2bf62ebbf43b9e740b8f1"
-    },
-    {
       "path": "repository/docs/MAGIX-WORKSPACE-START-HERE.txt",
       "origin": "documented extension adaptation",
       "bytes": 4659,
@@ -579,12 +597,6 @@
       "origin": "GUI and source-library audit addition",
       "bytes": 6029,
       "sha256": "957a143ca9af92c3ba2cf6cad6142979b2664b7d17ec8b5d5ddacd1dad1e622c"
-    },
-    {
-      "path": "repository/MAGIX-EXTENSION-MANIFEST.json",
-      "origin": "authored documentation or packaging metadata",
-      "bytes": 5680,
-      "sha256": "cbf3fa3c011d815ff620ed34741d9658fd5d917ce3c73f1c112a714fc335c301"
     },
     {
       "path": "repository/master-plugin/.codex-plugin/plugin.json",
@@ -653,12 +665,6 @@
       "sha256": "a74e3303f03b67d072e64988874272c3343b818b66d81dd868f96a455f4b8e79"
     },
     {
-      "path": "repository/outputs/Project-Library-2026-10-29/Client/project_library.py",
-      "origin": "exact initial imported source",
-      "bytes": 42875,
-      "sha256": "3d66f560abee179b861867d9ebea6c64bff21ae240c88712db957496f5d1109d"
-    },
-    {
       "path": "repository/outputs/Project-Library-2026-10-29/Client/README.txt",
       "origin": "exact initial imported source",
       "bytes": 7841,
@@ -677,28 +683,22 @@
       "sha256": "8e4ac3e5a2b8f58484e4135c66323717ac7fd2fc3b74b44a96a1a74992a66c89"
     },
     {
-      "path": "repository/outputs/Project-Library-2026-10-29/Client/Settings.example.json",
-      "origin": "authored documentation or packaging metadata",
-      "bytes": 41,
-      "sha256": "b21840d562668f55aac384a4d6e1637f1cd955c7e9ea5daada67670898d5e650"
-    },
-    {
       "path": "repository/outputs/Project-Library-2026-10-29/Client/START-HERE.txt",
       "origin": "exact initial imported source",
       "bytes": 2496,
       "sha256": "abd06d1c18b8033b477763a9b458fc7c822d23638b07756fe58256cde7535067"
     },
     {
-      "path": "repository/outputs/Project-Library-2026-10-29/Helper/project_library.py",
+      "path": "repository/outputs/Project-Library-2026-10-29/Client/Settings.example.json",
+      "origin": "authored documentation or packaging metadata",
+      "bytes": 41,
+      "sha256": "b21840d562668f55aac384a4d6e1637f1cd955c7e9ea5daada67670898d5e650"
+    },
+    {
+      "path": "repository/outputs/Project-Library-2026-10-29/Client/project_library.py",
       "origin": "exact initial imported source",
       "bytes": 42875,
       "sha256": "3d66f560abee179b861867d9ebea6c64bff21ae240c88712db957496f5d1109d"
-    },
-    {
-      "path": "repository/outputs/Project-Library-2026-10-29/Helper/publish_library.py",
-      "origin": "exact initial imported source",
-      "bytes": 22615,
-      "sha256": "056d206fa35f5a0603cd9ab6703daf1b8775d73b123ced8d9d69f88041f1c660"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Helper/Set-Up-MSI-Sharing.cmd",
@@ -711,6 +711,18 @@
       "origin": "exact initial imported source",
       "bytes": 18466,
       "sha256": "968ac3be37448b0929dd5cce6c4eae3af0a35a9a9e5ac928fbc04dbc43345581"
+    },
+    {
+      "path": "repository/outputs/Project-Library-2026-10-29/Helper/project_library.py",
+      "origin": "exact initial imported source",
+      "bytes": 42875,
+      "sha256": "3d66f560abee179b861867d9ebea6c64bff21ae240c88712db957496f5d1109d"
+    },
+    {
+      "path": "repository/outputs/Project-Library-2026-10-29/Helper/publish_library.py",
+      "origin": "exact initial imported source",
+      "bytes": 22615,
+      "sha256": "056d206fa35f5a0603cd9ab6703daf1b8775d73b123ced8d9d69f88041f1c660"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Open-MSI-Terminal.cmd",
@@ -755,18 +767,6 @@
       "sha256": "857637ee66e01f712222a57e1edc32ca14930f58f38b6c9f7a7adccfd06ea98b"
     },
     {
-      "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/msi_job_process.py",
-      "origin": "exact initial imported source",
-      "bytes": 11439,
-      "sha256": "004b041547291241d2d4674fd08234e68ba26f43b69b77aeaf6d03d38264a60b"
-    },
-    {
-      "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/msi_job_runner.py",
-      "origin": "exact initial imported source",
-      "bytes": 10577,
-      "sha256": "e6052a9fc82fd970c95435ea31f8d65d6e9bc87160c921685b981252dab0cf8f"
-    },
-    {
       "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/Repair-Coding-Server-Firewall.ps1",
       "origin": "exact initial imported source",
       "bytes": 10337,
@@ -809,22 +809,22 @@
       "sha256": "f495e963bbce27297ea23e972a2e1ff7bf094b71e7488a4351887205116857a9"
     },
     {
+      "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/msi_job_process.py",
+      "origin": "exact initial imported source",
+      "bytes": 11439,
+      "sha256": "004b041547291241d2d4674fd08234e68ba26f43b69b77aeaf6d03d38264a60b"
+    },
+    {
+      "path": "repository/outputs/Project-Library-2026-10-29/Server-Setup/msi_job_runner.py",
+      "origin": "exact initial imported source",
+      "bytes": 10577,
+      "sha256": "e6052a9fc82fd970c95435ea31f8d65d6e9bc87160c921685b981252dab0cf8f"
+    },
+    {
       "path": "repository/outputs/Project-Library-2026-10-29/Sign-In-To-MSI.cmd",
       "origin": "exact initial imported source",
       "bytes": 866,
       "sha256": "7d7d1d26a0ba5902cf79b0296ed7b52a9eb3d2ebae7e71e32c34713991fe8d69"
-    },
-    {
-      "path": "repository/README.md",
-      "origin": "authored documentation or packaging metadata",
-      "bytes": 13920,
-      "sha256": "6fb42c70af44d1b93011f269d56d3a566158acdee2239132baa8d956b4af2b4f"
-    },
-    {
-      "path": "repository/SOURCE-MANIFEST.json",
-      "origin": "authored documentation or packaging metadata",
-      "bytes": 53300,
-      "sha256": "0204d94dac4baba841606750859909376832478a627a3ea9e11a31ac805da631"
     },
     {
       "path": "repository/verify_source_snapshot.py",
@@ -851,28 +851,28 @@
       "sha256": "77ccbaf66c0c65600f74ec4d54be676df7742dc2518b2c1d7e40ccd041e4e927"
     },
     {
-      "path": "repository/work/magix-all-projects/candidate/build_index.py",
-      "origin": "exact extension source",
-      "bytes": 3021,
-      "sha256": "76ddf2b505be85acbde65895bff4d58d25b12f647e5b5db7002cca7c8bf06fb5"
-    },
-    {
       "path": "repository/work/magix-all-projects/candidate/MAGIX-Local-Workspace.cmd",
       "origin": "exact extension source",
       "bytes": 171,
       "sha256": "f4f31ea31b13cf1ec947bc9652083036d2a94a2e2be76fa7611033cb6b34898c"
     },
     {
-      "path": "repository/work/magix-all-projects/candidate/magix_projects.py",
-      "origin": "exact extension source",
-      "bytes": 29710,
-      "sha256": "6c2ea58d9ac89a20c4b2bb42347b79f5802b049b2c81812314e09412578de1bf"
-    },
-    {
       "path": "repository/work/magix-all-projects/candidate/Set-Up-MAGIX-Workspace.cmd",
       "origin": "exact extension source",
       "bytes": 172,
       "sha256": "67d7876e4515c23614af37439c087ad4bf377353ef2617b782ff1f8a2e5dd0ec"
+    },
+    {
+      "path": "repository/work/magix-all-projects/candidate/build_index.py",
+      "origin": "exact extension source",
+      "bytes": 3021,
+      "sha256": "76ddf2b505be85acbde65895bff4d58d25b12f647e5b5db7002cca7c8bf06fb5"
+    },
+    {
+      "path": "repository/work/magix-all-projects/candidate/magix_projects.py",
+      "origin": "exact extension source",
+      "bytes": 29710,
+      "sha256": "6c2ea58d9ac89a20c4b2bb42347b79f5802b049b2c81812314e09412578de1bf"
     },
     {
       "path": "repository/work/magix-all-projects/candidate/test_launch_paths.py",
@@ -896,7 +896,7 @@
       "path": "repository/work/magix-buddy/candidate/magix_projects.py",
       "origin": "Buddy companion integration reviewed source",
       "bytes": 31015,
-      "sha256": "29434d26caa8c656ea6fd181d2a0d79e3eaad2a56b77e6b8bfae5751e22205b9"
+      "sha256": "2c3db9938e243f680c928c4199a7371661cd68c6650eef5bb128225cc3e35375"
     },
     {
       "path": "repository/work/magix-legacy-path-option/MAGIX-Legacy-Path.ps1",
@@ -911,12 +911,6 @@
       "sha256": "9bbf1405f2dfc8dae28e7040c147e81dd3bf6d49c12331d47329be7183012f6c"
     },
     {
-      "path": "repository/work/magix-workspace-launcher/independent_process_guard_check.py",
-      "origin": "exact initial imported source",
-      "bytes": 3514,
-      "sha256": "f07c4daeb2a51037d93cfb1ac33d0bcf4b92c3792968f58d6df595cbaf42a687"
-    },
-    {
       "path": "repository/work/magix-workspace-launcher/MAGIX-Local-Workspace.cmd",
       "origin": "exact initial imported source",
       "bytes": 172,
@@ -929,16 +923,22 @@
       "sha256": "f123d1ca489841f415bf8b21cfe799c2edc093a55b96c08d2287e0aee65aa741"
     },
     {
-      "path": "repository/work/magix-workspace-launcher/magix_workspace.py",
-      "origin": "exact initial imported source",
-      "bytes": 36460,
-      "sha256": "c60fb2559a90a2301aa3d741c1d2e676e5ed90559fb40a63e27ef83d75f697aa"
-    },
-    {
       "path": "repository/work/magix-workspace-launcher/Set-Up-MAGIX-Workspace.cmd",
       "origin": "exact initial imported source",
       "bytes": 355,
       "sha256": "27cd0f4a55c4ad6adf606182b06bcd00604aeacf199ae430da8dd4f3dedfd685"
+    },
+    {
+      "path": "repository/work/magix-workspace-launcher/independent_process_guard_check.py",
+      "origin": "exact initial imported source",
+      "bytes": 3514,
+      "sha256": "f07c4daeb2a51037d93cfb1ac33d0bcf4b92c3792968f58d6df595cbaf42a687"
+    },
+    {
+      "path": "repository/work/magix-workspace-launcher/magix_workspace.py",
+      "origin": "exact initial imported source",
+      "bytes": 36460,
+      "sha256": "c60fb2559a90a2301aa3d741c1d2e676e5ed90559fb40a63e27ef83d75f697aa"
     },
     {
       "path": "repository/work/magix-workspace-launcher/test_access_native.ps1",
@@ -971,16 +971,16 @@
       "sha256": "dfa817c3334dd7286b7c821b825ad5f37babcf1f7a6ffee9a8c0f426b992776a"
     },
     {
-      "path": "repository/work/msi-server-conversion/probe_job_cache_lock.py",
-      "origin": "exact initial imported source",
-      "bytes": 1099,
-      "sha256": "be7176ec44b202d07d7241801e0c2a09d0f6f439482783a45e420ad58c96bc53"
-    },
-    {
       "path": "repository/work/msi-server-conversion/Read-Verified-SSH-Public-Key.ps1",
       "origin": "exact initial imported source",
       "bytes": 5548,
       "sha256": "5ea7952417ebe708ce11116cc9d0d1b74014c14a6d24e849f1444bff05109ac7"
+    },
+    {
+      "path": "repository/work/msi-server-conversion/probe_job_cache_lock.py",
+      "origin": "exact initial imported source",
+      "bytes": 1099,
+      "sha256": "be7176ec44b202d07d7241801e0c2a09d0f6f439482783a45e420ad58c96bc53"
     },
     {
       "path": "repository/work/msi-server-conversion/test-ssh-firewall-repair.ps1",
@@ -1031,28 +1031,28 @@
       "sha256": "7cff21d5faec0d132d53e7d53ace76982ff7ecd566bdb5c1f08d9ae1be4589ee"
     },
     {
-      "path": "repository/work/new-pc-workflow/prepare_fixture.py",
-      "origin": "exact initial imported source",
-      "bytes": 3639,
-      "sha256": "7a777a9199d039ad08c7e2339c3e429b7382c19f866765fa97ed2a37836873b1"
-    },
-    {
       "path": "repository/work/new-pc-workflow/Publish-Reviewed-Fixture.ps1",
       "origin": "exact initial imported source",
       "bytes": 5980,
       "sha256": "2c37fcbe8cf34bff7ba7e4b0294eefa6094b4d9d40bdd3a0c5530d7567d4607f"
     },
     {
-      "path": "repository/work/new-pc-workflow/test_workflow.py",
-      "origin": "exact initial imported source",
-      "bytes": 4376,
-      "sha256": "20866f05abcdce06a460f61d30ef6e687b514b3378f045c02c51928ee3596c0e"
-    },
-    {
       "path": "repository/work/new-pc-workflow/Verify-New-PC-Workflow.cmd",
       "origin": "exact initial imported source",
       "bytes": 780,
       "sha256": "471d5883908f2b7875693c61de39e40fc5ba294635a37a70a45331ca70b1e148"
+    },
+    {
+      "path": "repository/work/new-pc-workflow/prepare_fixture.py",
+      "origin": "exact initial imported source",
+      "bytes": 3639,
+      "sha256": "7a777a9199d039ad08c7e2339c3e429b7382c19f866765fa97ed2a37836873b1"
+    },
+    {
+      "path": "repository/work/new-pc-workflow/test_workflow.py",
+      "origin": "exact initial imported source",
+      "bytes": 4376,
+      "sha256": "20866f05abcdce06a460f61d30ef6e687b514b3378f045c02c51928ee3596c0e"
     },
     {
       "path": "repository/work/new-pc-workflow/verify_new_pc_workflow.py",
@@ -1151,6 +1151,18 @@
       "sha256": "8a251646ed9c0e437ae6e777192289e68810ef0766968eeb59688fe12a26778d"
     },
     {
+      "path": "repository/work/ssh-job-verification/SSH-Verification-Common.ps1",
+      "origin": "exact initial imported source",
+      "bytes": 3463,
+      "sha256": "983c000df2bc1958a74dc9986cdacdceab9bb30f18572b40ddeefe773ec28833"
+    },
+    {
+      "path": "repository/work/ssh-job-verification/Verify-MSI-SSH-Job.cmd",
+      "origin": "exact initial imported source",
+      "bytes": 327,
+      "sha256": "2a16d742ce56ec29b381b3d036663d5a948d1097e6c1355923ea73bafab29be5"
+    },
+    {
       "path": "repository/work/ssh-job-verification/prepare_null_trigger_retest.py",
       "origin": "exact initial imported source",
       "bytes": 8267,
@@ -1163,12 +1175,6 @@
       "sha256": "bacb56735ec4f1d5da6d61ffdabde2e3aa002d54845f7375614383dabe0f35a1"
     },
     {
-      "path": "repository/work/ssh-job-verification/SSH-Verification-Common.ps1",
-      "origin": "exact initial imported source",
-      "bytes": 3463,
-      "sha256": "983c000df2bc1958a74dc9986cdacdceab9bb30f18572b40ddeefe773ec28833"
-    },
-    {
       "path": "repository/work/ssh-job-verification/test-null-trigger-repair.ps1",
       "origin": "exact initial imported source",
       "bytes": 3364,
@@ -1179,17 +1185,11 @@
       "origin": "exact initial imported source",
       "bytes": 5675,
       "sha256": "8292e73ee50bf82a180e7f70860a55678f6e05b7b4abe6e8ca2884166d204fb0"
-    },
-    {
-      "path": "repository/work/ssh-job-verification/Verify-MSI-SSH-Job.cmd",
-      "origin": "exact initial imported source",
-      "bytes": 327,
-      "sha256": "2a16d742ce56ec29b381b3d036663d5a948d1097e6c1355923ea73bafab29be5"
     }
   ],
   "summary": {
     "files": 197,
-    "bytes": 2406401,
+    "bytes": 2409440,
     "pythonSourcesParsed": 73
   },
   "preservedBaseline": "Original SOURCE-MANIFEST, MAGIX-EXTENSION-MANIFEST, frozen workspace base and original launcher source remain exact. Buddy launcher is a separate current source addition.",

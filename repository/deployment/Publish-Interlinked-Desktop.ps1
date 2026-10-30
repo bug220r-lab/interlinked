@@ -28,7 +28,7 @@ $allowed=@('INTERLINKED.cmd','INTERLINKED-Browser.cmd','INTERLINKED-App/interlin
  'INTERLINKED-Desktop/WebView2-NOTICE.txt','INTERLINKED-Desktop/DESKTOP-CHECKSUMS.json')
 $context=[pscustomobject]@{Workspace=$workspace;Kit=$kit;Allowed=$allowed;ClientFileCount=52;
  ClientSealSha256='362517385124df2ad6d55363fc0b39d072b4378c11e3f468b1bfebf8bc21f3fc';
- Pins=@{'magix_projects.py'='29434d26caa8c656ea6fd181d2a0d79e3eaad2a56b77e6b8bfae5751e22205b9';
+ Pins=@{'magix_projects.py'='2c3db9938e243f680c928c4199a7371661cd68c6650eef5bb128225cc3e35375';
         'magix_workspace.py'='c60fb2559a90a2301aa3d741c1d2e676e5ed90559fb40a63e27ef83d75f697aa';
         'MAGIX-All-Projects-Index.json'='bccb71983d23a3baa88926aca4d14fe6ce95d003e46e1d3d696350e47b746a83'}}
 $modulePath=Join-Path $PSScriptRoot 'Interlinked-Desktop-Publication.psm1'

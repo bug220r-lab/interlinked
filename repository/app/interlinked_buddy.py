@@ -428,16 +428,18 @@ class Companion:
         need(record.get('format')=='interlinked-buddy-project-report-v1' and record.get('project_id')==project and isinstance(record.get('summary'),dict),'Buddy report identity differs.')
         summary=record['summary'];tasks=summary.get('tasks',[])
         need(isinstance(tasks,list) and len(tasks)<=1000,'Buddy task report exceeds its bound.')
-        counts=dict(total=0,prepared=0,delivered=0,attention=0,running=0,queued=0)
+        counts=dict(total=0,prepared=0,delivered=0,attention=0,running=0,queued=0,stored=0,searchable=0)
         reduced=[]
         def text(value,limit):return value[:limit] if isinstance(value,str) else ''
         for task in tasks:
             if not isinstance(task,dict):continue
             status=text(task.get('status'),40);delivery=text(task.get('delivery_status'),40)
             counts['total']+=1
-            counts['prepared']+=status=='completed'
+            counts['prepared']+=status=='completed' and task.get('kind')!='local_import'
+            storage=text(task.get('storage_status'),40);indexing=text(task.get('indexing_status'),40)
+            counts['stored']+=storage=='stored';counts['searchable']+=indexing=='searchable'
             counts['delivered']+=delivery=='COMPLETED'
-            attention=status in ('failed','uncertain','needs_review') or delivery in ('FAILED','UNCERTAIN','needs_review')
+            attention=indexing in ('failed','needs_review') or status in ('failed','uncertain','needs_review') or delivery in ('FAILED','UNCERTAIN','needs_review')
             counts['attention']+=attention;counts['running']+=status=='running';counts['queued']+=status=='queued'
             outputs=task.get('outputs',[]);outputs=outputs if isinstance(outputs,list) else []
             references=[]
@@ -445,7 +447,7 @@ class Companion:
                 if not isinstance(item,dict):continue
                 label=text(item.get('project_relative_path') or item.get('path'),2048)
                 if label:references.append(dict(path=label,sha256=text(item.get('sha256'),64)))
-            reduced.append(dict(task_id=text(task.get('task_id'),80),kind=text(task.get('kind'),80),status=status,delivery_status=delivery,message=text(task.get('message'),1000),attention=attention,outputs=references,outputs_truncated=len(outputs)>10,reviewed_by_user_at=text(task.get('reviewed_by_user_at'),80)))
+            reduced.append(dict(task_id=text(task.get('task_id'),80),kind=text(task.get('kind'),80),status=status,storage_status=storage,indexing_status=indexing,delivery_status=delivery,message=text(task.get('message'),1000),attention=attention,outputs=references,outputs_truncated=len(outputs)>10,reviewed_by_user_at=text(task.get('reviewed_by_user_at'),80)))
         # Attention comes first without concealing finished tasks. Counters are
         # calculated before reducing the displayed task list.
         reduced.sort(key=lambda task:not task['attention'])

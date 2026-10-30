@@ -791,7 +791,7 @@ let buddyReportSequence=0,buddyReportRefreshed=0,buddyReportProject=null,buddyRe
 function buddyReportModel(value){
  const available=value?.available===true,raw=value?.counts||{};
  const number=key=>Number.isSafeInteger(raw[key])&&raw[key]>=0?raw[key]:0;
- return {available,observed:String(value?.source_observed_at||value?.observed_at||''),counts:{total:number('total'),prepared:number('prepared'),delivered:number('delivered'),attention:number('attention'),running:number('running'),queued:number('queued')},tasks:(Array.isArray(value?.tasks)?value.tasks:[]).slice(0,100),truncated:value?.truncated===true};
+ return {available,observed:String(value?.source_observed_at||value?.observed_at||''),counts:{total:number('total'),stored:number('stored'),searchable:number('searchable'),prepared:number('prepared'),delivered:number('delivered'),attention:number('attention'),running:number('running'),queued:number('queued')},tasks:(Array.isArray(value?.tasks)?value.tasks:[]).slice(0,100),truncated:value?.truncated===true};
 }
 function buddyRenderReport(value){
  const model=buddyReportModel(value),panel=$('buddy-report-panel');if(!panel)return;
@@ -804,7 +804,7 @@ function buddyRenderReport(value){
   if(!task||typeof task!=='object')continue;
   const item=document.createElement('li');item.className='buddy-report-task'+(task.attention?' attention':'');
   const title=document.createElement('strong');title.textContent=String(task.kind||'Task')+' · '+String(task.status||'unknown');
-  const delivery=document.createElement('span');delivery.className='buddy-report-delivery';delivery.textContent='Project delivery: '+String(task.delivery_status||'not_delivered');
+  const delivery=document.createElement('span');delivery.className='buddy-report-delivery';delivery.textContent=(task.storage_status?'MSI storage: '+String(task.storage_status)+' · Indexing: '+String(task.indexing_status||'not_queued')+' · ':'')+'Project delivery: '+String(task.delivery_status||'not_delivered');
   item.append(title,delivery);
   if(task.message){const message=document.createElement('p');message.textContent=String(task.message).slice(0,1000);item.append(message);}
   const outputs=Array.isArray(task.outputs)?task.outputs:[];
@@ -819,7 +819,7 @@ function buddyRenderReport(value){
   if(task.reviewed_by_user_at){const review=document.createElement('small');review.textContent='User marked reviewed: '+String(task.reviewed_by_user_at);item.append(review);}
   $('buddy-report-list').append(item);
  }
- $('buddy-report-limits').textContent=(model.truncated?'Showing up to 100 tasks, with attention items first. ':'')+'Prepared, delivered, and saved to MSI are separate outcomes. Save-back remains explicit.';
+ $('buddy-report-limits').textContent=(model.truncated?'Showing up to 100 tasks, with attention items first. ':'')+'Stored on MSI, searchable, delivered, and project save-back are separate outcomes. Save-back remains explicit.';
 }
 async function buddyLoadReport(){
  const id=selected?.id,sequence=++buddyReportSequence;if(!$('buddy-report-panel'))return;
