@@ -7,13 +7,14 @@ const models=source.split('// BEGIN MASTER MODELS\n')[1].split('// END MASTER MO
 const ui=source.split('// BEGIN MASTER INTERFACE\n')[1].split('// END MASTER INTERFACE')[0];
 const elements={},requests=[],checks=[];
 function element(){return {hidden:false,disabled:false,textContent:'',value:'',checked:false,open:false,modal:false,children:[],attributes:{},listeners:{},className:'',classList:{toggle(){}},show(){this.open=true;this.modal=false;},showModal(){this.open=true;this.modal=true;},close(){this.open=false;},append(...v){this.children.push(...v);},replaceChildren(...v){this.children=v;},setAttribute(k,v){this.attributes[k]=v;},addEventListener(k,fn){this.listeners[k]=fn;},querySelector(){return element();},getContext(){return {drawImage(){}};}};}
-let snapshot;
-const context={document:{createElement:()=>element(),body:{classList:{toggle(){}}},hidden:false},$:id=>elements[id]??=element(),stopped:false,token:'fixture-token',location:{},createImageBitmap:async()=>({width:480,height:480,close(){}}),fetch:async()=>({ok:true,headers:{get:()=> 'image/jpeg'},blob:async()=>({size:2000})}),api:async(route,body)=>{requests.push({route,body});return snapshot;}};
+let snapshot,apiHandler=null;
+const context={document:{createElement:()=>element(),body:{classList:{toggle(){}}},hidden:false},$:id=>elements[id]??=element(),stopped:false,token:'fixture-token',location:{},createImageBitmap:async()=>({width:480,height:480,close(){}}),fetch:async()=>({ok:true,headers:{get:()=> 'image/jpeg'},blob:async()=>({size:2000})}),api:async(route,body)=>{requests.push({route,body});return apiHandler?apiHandler(route,body):snapshot;}};
 vm.createContext(context);vm.runInContext(models+'\n'+ui,context);
 function check(ok,label){assert.ok(ok,label);checks.push(label);}
 const now=Date.now(),utc=new Date(now).toISOString();
 const project={id:'interlinked',label:'INTERLINKED',activity:{status:'waiting_for_approval',source:'Codex lifecycle',observedAt:utc,agents:[{id:'a'}]},health:{status:'unknown',summary:'No test result.',baseline:null},git:{branch:'main',dirty:true},workspace:{status:'offline',summary:'ED-IT Buddy status publisher is not connected',source:'ED-IT Buddy coordinator',observedAt:utc}};
 snapshot={version:1,demo:false,observedAt:utc,projects:[project],settings:{mode:'dashboard',fps:10,background:true,startAtLogin:false,projects:[{id:'interlinked',label:'INTERLINKED',root:'C:\\fixture'}]},display:{status:'waiting_for_trcc',connected:false,message:'Close TRCC first.'},temperatures:{cpu:{value:63,status:'live',observedAt:utc},gpu:{value:55,status:'stale',observedAt:utc}},violet:{connected:false,message:'No Dot update received.'},captureSources:[{id:'123',title:'Violet mini',process:'ChatGPT',bounds:{x:100,y:200,width:240,height:240}}]};
+snapshot.settingsRevision='revision-fixture-1';snapshot.settingsValid=true;snapshot.lifecyclePreferencesKnown=true;snapshot.settings.projects[0].activityRoot='C:\\activity-fixture';
 (async()=>{
  check(context.masterTone('waiting_for_approval')==='attention'&&context.masterTone('failed')==='danger','Approval and failure use distinct attention states');
  check(context.masterTone('working')==='active'&&context.masterTone('passed')==='good','Agent activity and successful evidence have distinct tones');
@@ -30,11 +31,14 @@ snapshot={version:1,demo:false,observedAt:utc,projects:[project],settings:{mode:
  check(elements['master-enable-sensors'].disabled===true&&!requests.some(r=>r.body?.action==='enable_sensors'),'A disconnected display cannot enable temperatures and status polling never prompts for permission');
  let sensorRejected=false;try{await context.masterEnableSensors();}catch(_){sensorRejected=true;}check(sensorRejected&&!requests.some(r=>r.body?.action==='enable_sensors'),'Temperature permission action refuses a disconnected display even when called directly');
  check(elements['master-display-message'].textContent==='Close TRCC first.','TRCC ownership conflict is visibly explained');
+ snapshot.display={status:'unavailable',connected:false,message:null,error:'Vendor LCD helper exited.'};await context.masterPoll();
+ check(elements['master-display-message'].textContent==='Vendor LCD helper exited.','An unavailable worker with cleared pending text shows its exact error');
  check(elements['master-cpu'].textContent==='63°C'&&elements['master-gpu'].textContent==='—','CPU and GPU freshness are independent');
  check(elements['master-violet-freshness'].textContent==='NOT CONNECTED','Absent Dot updates never imply a live Violet connection');
  check(elements['master-projects'].children.length===1&&elements['master-project-count'].textContent==='01','Registered projects map to visible stations');
  const stationText=el=>[el.textContent,...el.children.flatMap(child=>stationText(child))];check(stationText(elements['master-projects']).includes('ED-IT Buddy status publisher is not connected')&&stationText(elements['master-projects']).includes('BUILD / TEST')&&stationText(elements['master-projects']).includes('WORKSPACE'),'Coordinator availability remains visible beside independent build/test evidence');
  check(elements['master-mode'].value==='dashboard'&&elements['master-background'].checked,'Settings hydrate from the backend once');
+ check(elements['master-fps-setting'].value==='10','Existing saved 10 FPS target is preserved when settings hydrate');
  snapshot.display={status:'connected',connected:true,fps:10,deliveredFps:null};await context.masterPoll();check(elements['master-enable-sensors'].disabled===false,'A connected production display offers the explicit temperature permission control');
  check(elements['master-fps'].textContent==='LCD FPS —','A renderer rate cannot substitute for measured LCD delivery');
  snapshot.display.deliveredFps=3.75;await context.masterPoll();check(elements['master-fps'].textContent==='LCD FPS 3.8','LCD delivery reports acknowledged frame rate');
@@ -52,6 +56,7 @@ snapshot={version:1,demo:false,observedAt:utc,projects:[project],settings:{mode:
  const heading=elements['master-projects'].children[0].children[1].children[0].children[0];check(heading.textContent==='<script>alert(1)</script>','Untrusted project names render literally through textContent');
  elements['master-mode'].value='live_mini';elements['master-fps-setting'].value='5';elements['master-login'].checked=true;await context.masterSaveSettings();
  const settings=requests.find(r=>r.route==='/api/master/settings');check(settings.body.mode==='live_mini'&&settings.body.fps===5&&settings.body.startAtLogin===true,'Display preferences use the guarded settings endpoint');
+ elements['master-fps-setting'].value='5';await context.masterSaveSettings();
  let rejected=false;try{context.masterCapturePatch({},null,{enabled:true,x:0,y:0,width:240,height:240});}catch(_){rejected=true;}check(rejected,'Capture cannot be enabled without a selected source window');
  rejected=false;try{context.masterCapturePatch({},snapshot.captureSources[0],{enabled:true,x:0,y:0,width:0,height:240});}catch(_){rejected=true;}check(rejected,'Capture rejects a zero-sized source rectangle');
  const capture=context.masterCapturePatch({},snapshot.captureSources[0],{enabled:true,x:100,y:200,width:240,height:240});check(capture.captureWindowId==='123'&&capture.captureWindowBounds.x===100&&capture.captureEnabled,'Capture binds calibration to the selected window and observed bounds');

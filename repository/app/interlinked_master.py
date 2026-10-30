@@ -6,9 +6,11 @@ imports an editing engine. Private state and event payloads stay outside Git.
 from __future__ import annotations
 
 from collections import deque
+from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime, timezone
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -19,6 +21,15 @@ import subprocess
 import threading
 import time
 import uuid
+
+
+def configuration_module():
+    # Isolated MCP launches use -I and do not put the companion directory on sys.path.
+    path = Path(__file__).resolve().with_name('interlinked_configuration.py')
+    spec = importlib.util.spec_from_file_location('interlinked_master_configuration', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 MAX_JSON = 256 * 1024
 MAX_FRAME = 691136
@@ -236,15 +247,93 @@ def publish_violet(root, body):
     return dict(status='published', source=record['source'], reporter=reporter, observedAt=record['observedAt'])
 
 
-def master_attention(root):
+@contextmanager
+def attention_guard(root, timeout=.5):
+    """Only the owned attention metadata is locked, across service/MCP processes."""
     root = owned_directory(root, 'event-feed', create=False)
+    path = ordinary(root / '.attention.lock', missing=True)
+    deadline = time.monotonic() + timeout
+    stream = None
+    if os.name == 'nt':
+        import ctypes
+        import msvcrt
+        kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+        kernel.CreateFileW.argtypes = [ctypes.c_wchar_p, ctypes.c_uint32, ctypes.c_uint32,
+                                      ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_void_p]
+        kernel.CreateFileW.restype = ctypes.c_void_p
+        kernel.CloseHandle.argtypes = [ctypes.c_void_p]
+        while stream is None:
+            handle = kernel.CreateFileW(str(path), 0xc0000000, 0, None, 4, 0x00200000, None)
+            if handle != ctypes.c_void_p(-1).value:
+                try:
+                    fd = msvcrt.open_osfhandle(handle, os.O_RDWR | os.O_BINARY)
+                except BaseException:
+                    kernel.CloseHandle(handle)
+                    raise
+                stream = os.fdopen(fd, 'r+b')
+            elif ctypes.get_last_error() in (32, 33) and time.monotonic() < deadline:
+                time.sleep(.01)
+            else:
+                raise OSError('MASTER attention metadata is busy or unavailable.')
+    else:
+        import fcntl
+        fd = os.open(path, os.O_CREAT | os.O_RDWR | getattr(os, 'O_NOFOLLOW', 0), 0o600)
+        stream = os.fdopen(fd, 'r+b')
+        try:
+            while True:
+                try:
+                    fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError:
+                    if time.monotonic() >= deadline:
+                        raise OSError('MASTER attention metadata is busy.') from None
+                    time.sleep(.01)
+        except BaseException:
+            stream.close()
+            raise
+    try:
+        actual, named = os.fstat(stream.fileno()), path.lstat()
+        if (not stat.S_ISREG(actual.st_mode) or actual.st_nlink != 1 or named.st_nlink != 1 or
+                (actual.st_dev, actual.st_ino) != (named.st_dev, named.st_ino) or
+                getattr(actual, 'st_file_attributes', 0) & 0x441400):
+            raise ValueError('Unsafe MASTER attention lock.')
+        owned_directory(root, 'event-feed', create=False)
+        yield root
+    finally:
+        stream.close()
+
+
+def _attention_acks(root):
+    directory = ordinary(root / 'attention-acks', missing=True)
+    if not directory.exists():
+        return {}
+    paths = list(directory.iterdir())
+    if len(paths) > 200:
+        raise ValueError('Attention acknowledgment directory needs review.')
+    result = {}
+    for path in paths:
+        if path.suffix != '.json' or not ID.fullmatch(path.stem):
+            raise ValueError('Unexpected attention acknowledgment; existing data was preserved.')
+        ack = read_json(path, 4096)
+        if (set(ack) != {'format', 'id', 'acknowledgedAt'} or
+                ack.get('format') != 'interlinked-master-ack-v1' or ack.get('id') != path.stem):
+            raise ValueError('Invalid attention acknowledgment.')
+        timestamp(ack['acknowledgedAt'])
+        result[path.stem] = ack
+    return result
+
+
+def _master_attention_unlocked(root):
+    acknowledgments = _attention_acks(root)
     try:
         queue = read_json(root / 'attention.json')
     except FileNotFoundError:
+        if acknowledgments:
+            raise ValueError('Attention queue is missing; acknowledgment data was preserved.')
         queue = dict(format='interlinked-master-attention-v1', items=[])
     if queue.get('format') != 'interlinked-master-attention-v1' or not isinstance(queue.get('items'), list) or len(queue['items']) > 100:
         raise ValueError('Invalid attention queue.')
-    items = []
+    items, identifiers = [], set()
     for item in queue['items']:
         if not isinstance(item, dict) or item.get('kind') not in ('failure', 'input_needed'):
             raise ValueError('Invalid attention item.')
@@ -252,34 +341,45 @@ def master_attention(root):
             observedAt=item['observedAt'], source=clean_text(item.get('source', 'Project telemetry'), 80),
             summary='Build/test failed' if item['kind'] == 'failure' else 'Input requested')
         timestamp(item['observedAt'])
-        acknowledged = False
-        try:
-            ack = read_json(root / 'attention-acks' / (item['id'] + '.json'), 4096)
-            acknowledged = ack.get('format') == 'interlinked-master-ack-v1' and ack.get('id') == item['id']
-        except FileNotFoundError:
-            pass
-        items.append(dict(item, acknowledged=acknowledged))
+        if item['id'] in identifiers:
+            raise ValueError('Attention queue contains duplicate identities.')
+        identifiers.add(item['id'])
+        ack = acknowledgments.get(item['id'])
+        items.append(dict(item, acknowledged=ack is not None,
+            acknowledgedAt=ack['acknowledgedAt'] if ack else None))
     return dict(available=True, items=items, pendingCount=sum(not item['acknowledged'] for item in items), delivery='Queued for next Violet check')
+
+
+def master_attention(root):
+    with attention_guard(root) as root:
+        return _master_attention_unlocked(root)
 
 
 def acknowledge_attention(root, body):
     if not isinstance(body, dict) or set(body) != {'ids'} or not isinstance(body['ids'], list) or not 1 <= len(body['ids']) <= 100:
         raise ValueError('Supply between one and 100 attention IDs.')
     ids = [clean_id(value) for value in body['ids']]
-    queue = master_attention(root)
-    known = {item['id'] for item in queue['items']}
-    if any(value not in known for value in ids):
-        raise ValueError('Attention item is no longer retained.')
-    directory = ordinary(Path(root) / 'attention-acks', missing=True)
-    directory.mkdir(exist_ok=True)
-    for value in set(ids):
-        write_json(directory / (value + '.json'), dict(format='interlinked-master-ack-v1', id=value, acknowledgedAt=utc()))
-    return dict(acknowledged=sorted(set(ids)), resolvesProjectFailure=False)
+    with attention_guard(root) as root:
+        queue = _master_attention_unlocked(root)
+        known = {item['id']: item for item in queue['items']}
+        if any(value not in known for value in ids):
+            raise ValueError('Attention item is no longer retained.')
+        directory = ordinary(root / 'attention-acks', missing=True)
+        directory.mkdir(exist_ok=True)
+        for value in set(ids):
+            if not known[value]['acknowledged']:
+                write_json(directory / (value + '.json'), dict(format='interlinked-master-ack-v1', id=value, acknowledgedAt=utc()))
+        return dict(acknowledged=sorted(set(ids)), resolvesProjectFailure=False)
 
 
 def collect_attention(root, projects):
-    queue = master_attention(root)
-    items = [{k: v for k, v in item.items() if k != 'acknowledged'} for item in queue['items']]
+    with attention_guard(root) as root:
+        return _collect_attention_unlocked(root, projects)
+
+
+def _collect_attention_unlocked(root, projects):
+    queue = _master_attention_unlocked(root)
+    items = [{k: v for k, v in item.items() if k not in {'acknowledged', 'acknowledgedAt'}} for item in queue['items']]
     seen = {item['id'] for item in items}
     for project in projects:
         for kind, observation in [('failure', project['health']), ('input_needed', project['activity'])]:
@@ -292,15 +392,21 @@ def collect_attention(root, projects):
                     summary='Build/test failed' if kind == 'failure' else 'Input requested'))
                 seen.add(identifier)
     retained = items[-100:]
-    if retained != [{k: v for k, v in item.items() if k != 'acknowledged'} for item in queue['items']]:
+    if retained != [{k: v for k, v in item.items() if k not in {'acknowledged', 'acknowledgedAt'}} for item in queue['items']]:
         write_json(Path(root) / 'attention.json', dict(format='interlinked-master-attention-v1', items=retained))
     directory = ordinary(Path(root) / 'attention-acks', missing=True)
     if directory.exists():
         retained_ids = {item['id'] for item in retained}
         for path in directory.glob('*.json'):
             if path.stem not in retained_ids:
+                # Validate the old acknowledgment before pruning only owned metadata.
+                ack = read_json(path, 4096)
+                if (set(ack) != {'format', 'id', 'acknowledgedAt'} or
+                        ack.get('format') != 'interlinked-master-ack-v1' or ack.get('id') != path.stem):
+                    raise ValueError('Invalid retained attention acknowledgment.')
+                timestamp(ack['acknowledgedAt'])
                 ordinary(path).unlink()
-    return master_attention(root)
+    return _master_attention_unlocked(root)
 
 
 def bridge_snapshot(root):
@@ -450,6 +556,56 @@ def receipt_health(receipt, git):
                 lastResult=receipt['result'], current=current)
 
 
+def default_settings(runtime):
+    return dict(mode='dashboard', fps=10, rotationSeconds=8, focusProject=None,
+        captureRect=dict(x=0, y=0, width=240, height=240), captureEnabled=False,
+        captureWindowId=None, captureWindowBounds=None, background=True,
+        startAtLogin=not runtime.demo, projects=default_projects(runtime.demo))
+
+
+def master_configuration(runtime, root=None):
+    root = root or owned_directory(Path(runtime.state) / 'master', 'application')
+    def owner_check():
+        owned_directory(root, 'application', create=False)
+        return read_json(root / 'OWNER.json')
+    def validate(value):
+        if not isinstance(value, dict) or set(value) != {'settings', 'lifecyclePreferencesKnown'}:
+            raise ValueError('Unknown MASTER configuration value.')
+        if type(value['lifecyclePreferencesKnown']) is not bool:
+            raise ValueError('Invalid lifecycle preference availability.')
+        settings = dict(default_settings(runtime), **MasterService._validate_settings(value['settings']))
+        if settings['focusProject'] is not None and settings['focusProject'] not in {p['id'] for p in settings['projects']}:
+            raise ValueError('Select a registered project.')
+        if settings['captureEnabled'] and (not settings.get('captureWindowId') or not settings.get('captureWindowBounds')):
+            raise ValueError('Select and calibrate a visible mini window first.')
+        return dict(settings=settings, lifecyclePreferencesKnown=value['lifecyclePreferencesKnown'])
+    def legacy(raw):
+        if not isinstance(raw, dict) or set(raw) != {'format', 'settings'} or raw.get('format') != 'interlinked-master-settings-v1':
+            raise ValueError('Unknown MASTER settings format.')
+        return validate(dict(settings=raw['settings'], lifecyclePreferencesKnown=True))
+    config = configuration_module()
+    return config.ConfigStore(root / 'settings.json', 'master', owner_check, validate, legacy,
+        dict(settings=default_settings(runtime), lifecyclePreferencesKnown=True))
+
+
+def safe_restore_master(value, current):
+    """Historical configuration is never permission to resume capture or startup."""
+    proposed = deepcopy(value)
+    prior = current.get('value') if current.get('available') else None
+    known = bool(prior and prior.get('lifecyclePreferencesKnown'))
+    settings = proposed['settings']
+    if prior:
+        for field in ('background', 'startAtLogin'):
+            settings[field] = prior['settings'][field]
+    else:
+        # These placeholders are not actionable: lifecyclePreferencesKnown stays false.
+        settings.update(background=False, startAtLogin=False)
+    settings.update(captureEnabled=False, captureWindowId=None, captureWindowBounds=None,
+                    captureRect=dict(x=0, y=0, width=240, height=240))
+    proposed['lifecyclePreferencesKnown'] = known
+    return proposed
+
+
 class MasterService:
     def __init__(self, runtime, controller, worker_path=None, violet_asset=None, start=True):
         self.runtime, self.controller = runtime, controller
@@ -469,15 +625,13 @@ class MasterService:
         self._frame = b''
         self._worker = None
         self._thread = None
-        self._settings = dict(mode='dashboard', fps=10, rotationSeconds=8, focusProject=None,
-            captureRect=dict(x=0, y=0, width=240, height=240), captureEnabled=False,
-            captureWindowId=None, captureWindowBounds=None, background=True, startAtLogin=not runtime.demo,
-            projects=default_projects(runtime.demo))
-        if (self.root / 'settings.json').exists():
-            saved = read_json(self.root / 'settings.json')
-            if saved.get('format') != 'interlinked-master-settings-v1':
-                raise ValueError('Unknown MASTER settings format.')
-            self._settings.update(self._validate_settings(saved.get('settings', {})))
+        self.configuration = master_configuration(runtime, self.root)
+        saved = self.configuration.status()
+        if not saved['available']:
+            raise ValueError('MASTER configuration needs explicit recovery.')
+        self._settings = deepcopy(saved['value']['settings'])
+        self.settings_revision = saved['revision']
+        self.lifecycle_preferences_known = saved['value']['lifecyclePreferencesKnown']
         # Reopening never silently resumes a screen capture.
         self._settings['captureEnabled'] = False
         self._write_activity_roots()
@@ -499,7 +653,8 @@ class MasterService:
             self._thread = threading.Thread(target=self._loop, name='master-status', daemon=True)
             self._thread.start()
 
-    def _validate_settings(self, body):
+    @staticmethod
+    def _validate_settings(body):
         allowed = {'mode', 'fps', 'rotationSeconds', 'focusProject', 'captureRect', 'captureEnabled',
                    'captureWindowId', 'captureWindowBounds', 'background', 'startAtLogin', 'projects'}
         if not isinstance(body, dict) or set(body) - allowed:
@@ -539,17 +694,42 @@ class MasterService:
         write_json(self.feed / 'activity-roots.json', dict(format='interlinked-master-activity-roots-v1', roots=roots))
 
     def settings(self, body):
-        patch = self._validate_settings(body)
+        if not isinstance(body, dict):
+            raise ValueError('MASTER settings must be an object.')
+        expected = body.get('expectedRevision')
+        patch = self._validate_settings({k: v for k, v in body.items() if k != 'expectedRevision'})
         with self.lock:
-            prospective = dict(self._settings, **patch)
+            current = self.configuration.status()
+            if not current['available'] or not isinstance(expected, str) or expected != current['revision']:
+                self._configuration_conflict(current)
+            # The persisted revision is authoritative even if another reviewed
+            # metadata writer has committed since this service last observed it.
+            baseline = deepcopy(current['value']['settings'])
+            baseline['captureEnabled'] = (self._settings['captureEnabled']
+                if current['revision'] == self.settings_revision else False)
+            prospective = dict(baseline, **patch)
             if prospective['focusProject'] is not None and prospective['focusProject'] not in {p['id'] for p in prospective['projects']}:
                 raise ValueError('Select a registered project.')
             if patch.get('captureEnabled') and (not prospective.get('captureWindowId') or not prospective.get('captureWindowBounds')):
                 raise ValueError('Select and calibrate a visible mini window first.')
             if any(k in patch for k in ('captureRect', 'captureWindowId', 'captureWindowBounds')) and 'captureEnabled' not in patch:
                 prospective['captureEnabled'] = False
-            write_json(self.root / 'settings.json', dict(format='interlinked-master-settings-v1', settings=prospective))
+            known = (current['value']['lifecyclePreferencesKnown']
+                if current['revision'] == self.settings_revision else False)
+            known = known or {'background', 'startAtLogin'} <= set(patch)
+            prior_revision = self.settings_revision
+            try:
+                saved = self.configuration.save(dict(settings=prospective, lifecyclePreferencesKnown=known),
+                    expected_revision=expected, reason='MASTER settings changed')
+            except ValueError as exc:
+                if hasattr(exc, 'current'):
+                    self._configuration_conflict(exc.current)
+                raise
             self._settings = prospective
+            self.settings_revision = saved['revision']
+            self.lifecycle_preferences_known = known
+            if self.settings_revision == prior_revision:
+                return self.state()
             self._write_activity_roots()
         self._send(dict(op='settings', settings=self._worker_settings()))
         self.refresh(collect_git=False)
@@ -559,8 +739,72 @@ class MasterService:
         with self.lock:
             value = deepcopy(self._state)
             value['settings'] = deepcopy(self._settings)
+            value['settingsRevision'] = self.settings_revision
+            value['settingsValid'] = True
+            value['lifecyclePreferencesKnown'] = self.lifecycle_preferences_known
+            # Observed configuration and the active renderer are separate. An
+            # external valid revision is visible to editors immediately, while
+            # polls cannot replay its capture/startup choices into runtime.
+            try:
+                current = self.configuration.status()
+                if not current['available']:
+                    raise ValueError('MASTER configuration needs explicit recovery.')
+                if current['revision'] != self.settings_revision:
+                    value['settings'] = deepcopy(current['value']['settings'])
+                    value['settings'].update(captureEnabled=False, captureWindowId=None,
+                        captureWindowBounds=None, captureRect=dict(x=0, y=0, width=240, height=240))
+                    value['settingsRevision'] = current['revision']
+                    value['lifecyclePreferencesKnown'] = False
+                    value['restartRequired'] = True
+                    value['configurationNotice'] = 'Configuration changed outside this active service; review and save or restart before it is active.'
+            except (ValueError, OSError, KeyError, TypeError, json.JSONDecodeError):
+                value['settings'] = {k: deepcopy(v) for k, v in self._settings.items()
+                    if k not in {'background', 'startAtLogin'}}
+                value['settings']['captureEnabled'] = False
+                value.update(settingsRevision=None, settingsValid=False,
+                    lifecyclePreferencesKnown=False, restartRequired=True,
+                    configurationNotice='MASTER configuration is unavailable; existing bytes were preserved.')
             value['eventErrors'] = self.event_errors
             return value
+
+    def _configuration_conflict(self, current):
+        error = ValueError('MASTER settings changed. Review the current values and submit again.')
+        error.current = dict(settings=deepcopy(current['value']['settings']) if current.get('available') else {},
+            settingsRevision=current.get('revision'), settingsValid=bool(current.get('available')),
+            lifecyclePreferencesKnown=bool(current.get('available') and current['value'].get('lifecyclePreferencesKnown')))
+        raise error
+
+    def history(self):
+        return self.configuration.history()
+
+    def preview_restore(self, body):
+        if not isinstance(body, dict) or set(body) != {'snapshotId'}:
+            raise ValueError('Select one configuration snapshot.')
+        return self.configuration.preview(body['snapshotId'], safe_restore_master)
+
+    def restore(self, body):
+        if not isinstance(body, dict) or set(body) not in ({'previewId'}, {'previewId', 'expectedRevision'}):
+            raise ValueError('Select a current configuration restore preview.')
+        with self.lock:
+            saved = self.configuration.restore(body['previewId'], expected_revision=body.get('expectedRevision'))
+            self._settings = deepcopy(saved['value']['settings'])
+            self.settings_revision = saved['revision']
+            self.lifecycle_preferences_known = saved['value']['lifecyclePreferencesKnown']
+            self._write_activity_roots()
+        self._send(dict(op='settings', settings=self._worker_settings()))
+        self.refresh(collect_git=False)
+        return dict(status='restored', restartRequired=False, state=self.state())
+
+    def attention(self):
+        try:
+            return master_attention(self.feed)
+        except (ValueError, OSError, KeyError, TypeError, json.JSONDecodeError):
+            return dict(available=False, items=[], pendingCount=None,
+                        error='MASTER attention metadata is busy or unavailable. Existing records were preserved.')
+
+    def acknowledge_attention(self, body):
+        result = acknowledge_attention(self.feed, body)
+        return dict(result, queue=self.attention())
 
     def frame(self):
         with self.lock:
@@ -925,17 +1169,52 @@ class MasterService:
 class UnavailableMaster:
     """A broken display configuration cannot prevent the library from opening."""
     def __init__(self, runtime):
+        self.runtime = runtime
         self.demo = bool(runtime.demo)
+        self.configuration = None
+        self.restart_required = False
+        try:
+            root = owned_directory(Path(runtime.state) / 'master', 'application', create=False)
+            self.configuration = master_configuration(runtime, root)
+        except (ValueError, OSError, TypeError, KeyError, json.JSONDecodeError):
+            # Recovery never creates ownership over an untrusted or unsafe directory.
+            pass
+        self.feed = Path(runtime.state) / 'master' / 'feed' if runtime.demo else common_state_root()
 
     def state(self):
         return dict(format='interlinked-master-snapshot-v1', version=1, utc=utc(), demo=self.demo,
-            projects=[], settings=dict(mode='dashboard', fps=10, rotationSeconds=8, background=False,
-                startAtLogin=False, captureEnabled=False, projects=[]),
+            projects=[], settings=dict(mode='dashboard', fps=10, rotationSeconds=8,
+                captureEnabled=False, projects=[]), settingsValid=False, lifecyclePreferencesKnown=False,
+            settingsRevision=None, restartRequired=self.restart_required,
             violet=dict(status='unknown', connected=False, stale=False, source='Dot-reported', observedAt=None,
                 message='MASTER configuration needs review'),
             temperatures=dict(cpu=dict(value=None, unit='C', status='unavailable'), gpu=dict(value=None, unit='C', status='unavailable'), status='unavailable', observedAt=None),
             display=dict(status='configuration_error', connected=False, error='MASTER configuration needs review; project workflows are unaffected', message='Review the existing MASTER settings and ownership records'),
-            capture=dict(valid=False, status='unavailable', message='MASTER configuration needs review'), captureSources=[])
+            capture=dict(valid=False, status='unavailable', message='MASTER configuration needs review'),
+            captureSources=[], attention=self.attention())
+
+    def _configuration(self):
+        if self.configuration is None:
+            raise ValueError('MASTER ownership or paths need review. Recovery is unavailable.')
+        return self.configuration
+
+    def history(self):
+        return self._configuration().history()
+
+    def preview_restore(self, body):
+        if not isinstance(body, dict) or set(body) != {'snapshotId'}:
+            raise ValueError('Select one configuration snapshot.')
+        return self._configuration().preview(body['snapshotId'], safe_restore_master)
+
+    def restore(self, body):
+        if not isinstance(body, dict) or set(body) not in ({'previewId'}, {'previewId', 'expectedRevision'}):
+            raise ValueError('Select a current configuration restore preview.')
+        self._configuration().restore(body['previewId'], expected_revision=body.get('expectedRevision'))
+        self.restart_required = True
+        return dict(status='restored', restartRequired=True, state=self.state())
+
+    attention = MasterService.attention
+    acknowledge_attention = MasterService.acknowledge_attention
 
     def frame(self):
         return b''

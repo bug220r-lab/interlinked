@@ -102,7 +102,7 @@ def identifier(value):
     return value
 
 def load_companion(name):
-    need(name in ('interlinked_controller','interlinked_hub','interlinked_mw5','interlinked_master','interlinked_jobs','interlinked_buddy','interlinked_stats','interlinked_stats_process'),'Unknown companion module.')
+    need(name in ('interlinked_controller','interlinked_hub','interlinked_mw5','interlinked_master','interlinked_jobs','interlinked_buddy','interlinked_stats','interlinked_stats_process','interlinked_configuration'),'Unknown companion module.')
     if name in sys.modules:return sys.modules[name]
     path=Path(__file__).resolve().parent/(name+'.py')
     spec=importlib.util.spec_from_file_location(name,ordinary(path))
@@ -311,7 +311,8 @@ def production_runtime():
     seal=read_json(app/'GUI-CHECKSUMS.json',1024*1024)
     expected={'interlinked_gui.py','interlinked_controller.py','interlinked_hub.py','interlinked_mw5.py','interlinked_master.py','master_hook.py','master_bridge.py','interlinked_jobs.py','interlinked_buddy.py','web/index.html','web/app.js','web/style.css'}
     expected.update({'interlinked_stats.py','interlinked_stats_process.py'})
-    need(seal.get('format')=='interlinked-gui-checksums-v6' and set(seal.get('files',{}))==expected,'GUI seal is missing or incomplete.')
+    expected.add('interlinked_configuration.py')
+    need(seal.get('format')=='interlinked-gui-checksums-v7' and set(seal.get('files',{}))==expected,'GUI seal is missing or incomplete.')
     for rel,sha in seal['files'].items():
         path=ordinary(app/rel);need(digest(path)==sha,'GUI file differs: '+rel)
     for name,sha in (('magix_projects.py',MAGIX_SHA),('magix_workspace.py',BASE_SHA),('MAGIX-All-Projects-Index.json',INDEX_SHA)):
@@ -632,6 +633,10 @@ class Server(ThreadingHTTPServer):
             violet_asset=getattr(controller.r,'master_violet',None) if controller.r.demo else None)
         self.jobs=load_companion('interlinked_jobs').safe_service(controller.r)
 
+    def configuration(self,scope):
+        need(scope in ('master','library'),'Choose MASTER or library configuration.')
+        return self.master if scope=='master' else self.controller.hub
+
     def server_close(self):
         jobs=getattr(self,'jobs',None)
         if jobs is not None:jobs.close()
@@ -682,7 +687,15 @@ class Handler(BaseHTTPRequestHandler):
                 need(set(query)=={'job','stream'} and all(len(v)==1 for v in query.values()),'Select one job and log stream.')
                 self.respond(200,self.server.jobs.log(query['job'][0],query['stream'][0]))
             elif path=='/api/master/state' and not parsed.query:self.respond(200,self.server.master.state())
-            elif path=='/api/master/settings' and not parsed.query:self.respond(200,self.server.master.state()['settings'])
+            elif path=='/api/master/settings' and not parsed.query:
+                master=self.server.master.state()
+                self.respond(200,dict(master['settings'],settingsRevision=master.get('settingsRevision'),
+                    settingsValid=master.get('settingsValid',False),lifecyclePreferencesKnown=master.get('lifecyclePreferencesKnown',False)))
+            elif path=='/api/master/attention' and not parsed.query:self.respond(200,self.server.master.attention())
+            elif path=='/api/configuration/history':
+                query=parse_qs(parsed.query,strict_parsing=True)
+                need(set(query)=={'scope'} and len(query['scope'])==1,'Choose one configuration scope.')
+                self.respond(200,self.server.configuration(query['scope'][0]).history())
             elif path=='/api/master/frame' and not parsed.query:
                 picture=self.server.master.frame()
                 if picture:self.respond(200,picture,'image/jpeg')
@@ -715,7 +728,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             self.gate(api=True,write=True)
-            need(self.path in ('/api/action','/api/session','/api/quit','/api/missing/report','/api/missing/status','/api/preferences','/api/hub/refresh','/api/mw5/check','/api/mw5/preview','/api/mw5/apply','/api/mw5/finish','/api/master/settings','/api/master/display','/api/msi/jobs/refresh','/api/stats/action'),'Unknown action route.')
+            need(self.path in ('/api/action','/api/session','/api/quit','/api/missing/report','/api/missing/status','/api/preferences','/api/hub/refresh','/api/mw5/check','/api/mw5/preview','/api/mw5/apply','/api/mw5/finish','/api/master/settings','/api/master/display','/api/master/attention/acknowledge','/api/configuration/preview','/api/configuration/restore','/api/msi/jobs/refresh','/api/stats/action'),'Unknown action route.')
             need(self.headers.get('Content-Type','').split(';')[0]=='application/json','JSON content type required.')
             need(self.headers.get('Transfer-Encoding') is None,'Chunked request bodies are not accepted.')
             length=int(self.headers.get('Content-Length','-1'));need(0<=length<=MAX_BODY,'Request too large or missing length.')
@@ -727,21 +740,30 @@ class Handler(BaseHTTPRequestHandler):
                 need(set(body)=={'response','operationId','promptGeneration'},'Unexpected session fields.');result=self.server.controller.session_input(body['response'],body['operationId'],body['promptGeneration'])
             elif self.path=='/api/missing/report':result=self.server.controller.report_missing(body)
             elif self.path=='/api/missing/status':result=self.server.controller.status_missing(body)
-            elif self.path=='/api/stats/action':result=self.server.controller.stats.request(body)
             elif self.path=='/api/preferences':result=self.server.controller.preferences(body)
+            elif self.path=='/api/stats/action':result=self.server.controller.stats.request(body)
             elif self.path=='/api/hub/refresh':result=self.server.controller.refresh_hub(body)
             elif self.path=='/api/msi/jobs/refresh':
                 need(body=={},'Job refresh takes no parameters.')
                 result=self.server.jobs.refresh()
             elif self.path=='/api/master/settings':result=self.server.master.settings(body)
             elif self.path=='/api/master/display':result=self.server.master.display(body)
+            elif self.path=='/api/master/attention/acknowledge':result=self.server.master.acknowledge_attention(body)
+            elif self.path in ('/api/configuration/preview','/api/configuration/restore'):
+                expected={'scope','snapshotId'} if self.path.endswith('/preview') else {'scope','previewId'}
+                need(set(body)==expected,'Unexpected configuration recovery fields.')
+                service=self.server.configuration(body['scope'])
+                result=service.preview_restore({'snapshotId':body['snapshotId']}) if self.path.endswith('/preview') else service.restore({'previewId':body['previewId']})
             elif self.path.startswith('/api/mw5/'):result=self.server.controller.mw5_request(self.path.rsplit('/',1)[1],body)
             else:
                 need(body=={},'Quit takes no parameters.')
                 self.server.controller.request_quit()
                 result=dict(status='SERVER_STOPPING');threading.Thread(target=self.server.shutdown,daemon=True).start()
             self.respond(200,result)
-        except (ValueError,OSError,json.JSONDecodeError) as exc:self.respond(409,dict(error=str(exc)))
+        except (ValueError,OSError,json.JSONDecodeError) as exc:
+            error=dict(error=str(exc))
+            if hasattr(exc,'current'):error.update(code='CONFIGURATION_CONFLICT',current=exc.current)
+            self.respond(409,error)
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)

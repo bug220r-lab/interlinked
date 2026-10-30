@@ -17,6 +17,7 @@ namespace InterlinkedDesktop
         private readonly Func<string, object, Task<HttpResponseMessage>> api;
         private readonly JavaScriptSerializer json = new JavaScriptSerializer();
         private readonly bool demo;
+        private readonly Action<bool> startupPreference;
         private bool polling, disposed;
         internal bool BackgroundEnabled { get; private set; }
         internal string StartupError { get; private set; }
@@ -25,9 +26,10 @@ namespace InterlinkedDesktop
 
         internal MasterTray(Form window, bool synthetic, bool background,
             Func<string, object, Task<HttpResponseMessage>> call,
-            Action activate, Func<Task<bool>> quit)
+            Action activate, Func<Task<bool>> quit, Action<bool> applyStartup = null)
         {
             demo = synthetic; api = call; BackgroundEnabled = background;
+            startupPreference = applyStartup ?? ApplyStartup;
             var menu = new ContextMenuStrip();
             menu.Items.Add("Open INTERLINKED", null, delegate { activate(); });
             menu.Items.Add("Disconnect cooler", null, async delegate
@@ -55,6 +57,10 @@ namespace InterlinkedDesktop
                     if (!response.IsSuccessStatusCode) return;
                     var state = json.Deserialize<Dictionary<string, object>>(await response.Content.ReadAsStringAsync());
                     object raw;
+                    // Missing/invalid configuration is an observation failure, never
+                    // permission to apply fallback lifecycle defaults to Windows.
+                    if (state == null || !state.TryGetValue("settingsValid", out raw) || !(raw is bool) || !(bool)raw) return;
+                    if (!state.TryGetValue("lifecyclePreferencesKnown", out raw) || !(raw is bool) || !(bool)raw) return;
                     if (state == null || !state.TryGetValue("settings", out raw)) return;
                     var settings = raw as Dictionary<string, object>;
                     if (settings == null) return;
@@ -62,7 +68,7 @@ namespace InterlinkedDesktop
                         BackgroundEnabled = (bool)raw;
                     icon.Visible = !demo || BackgroundEnabled;
                     if (!demo && settings.TryGetValue("startAtLogin", out raw) && raw is bool)
-                        ApplyStartup((bool)raw);
+                        startupPreference((bool)raw);
                 }
             }
             catch (Exception) { /* Observation failures never stop a workflow. */ }

@@ -138,6 +138,34 @@ def main():
     check('localFreeBytes' in old.status()['storage'],'Local capacity remains visible while MSI is offline')
     old.close()
 
+    # Recovery metadata is independent of catalogs, managed caches and opening.
+    preference_state=root/'preference-state';preference_state.mkdir()
+    preference_runtime=SimpleNamespace(**dict(vars(runtime),state=preference_state))
+    preference_hub=h.ProjectHub(preference_runtime,runner=offline,auto_refresh=False)
+    legacy=dict(format='interlinked-hub-preferences-v1',favorites=['dormant-project'],recent=[dict(id='dormant-project',utc='2025-01-02T03:04:05+00:00')])
+    write(preference_hub.prefs_path,legacy)
+    raw=preference_hub.prefs_path.read_bytes()
+    check(preference_hub.preferences()['preferenceRevision'].startswith('legacy:') and preference_hub.prefs_path.read_bytes()==raw,'Legacy preference reads preserve bytes and expose a stable revision')
+    preference_hub.set_favorite('demo-magix-1',True)
+    snapshot=preference_hub.history()['items'][0]['id']
+    stale=preference_hub.preview_restore(dict(snapshotId=snapshot))
+    preference_hub.mark_recent('demo-magix-1')
+    reject(lambda:preference_hub.restore(dict(previewId=stale['previewId'])),'Preference restore refuses an intervening delta')
+    preview=preference_hub.preview_restore(dict(snapshotId=snapshot))
+    restored=preference_hub.restore(dict(previewId=preview['previewId']))
+    check(restored['favorites']==legacy['favorites'] and restored['recent']==legacy['recent'],'Restoration preserves dormant IDs and exact original recent UTC values')
+    check(restored['preferencesAvailable'] and not list(preference_state.rglob('Files')),'Preference restoration does not fetch or open project files')
+    preference_hub.set_favorite('demo-magix-1',True)
+    recovery_snapshot=preference_hub.history()['items'][0]['id']
+    preference_hub.prefs_path.write_bytes(b'{broken synthetic preferences')
+    preference_hub.close()
+    corrupt=h.ProjectHub(preference_runtime,runner=offline,auto_refresh=False)
+    check(not corrupt.preferences()['preferencesAvailable'] and corrupt.status()['libraryStatus']=='NOT_CHECKED','Corrupt preference content stays unavailable without stopping library startup')
+    reject(lambda:corrupt.set_favorite('demo-magix-1',False),'Normal preference writes cannot overwrite corrupted content')
+    recovered=corrupt.restore(dict(previewId=corrupt.preview_restore(dict(snapshotId=recovery_snapshot))['previewId']))
+    check(recovered['preferencesAvailable'] and len(list(corrupt.config.history_root.glob('corrupt-*.bin')))==1,'Explicit preference recovery preserves corrupt source bytes')
+    corrupt.close()
+
     bad=copy.deepcopy(catalog);bad['projects'].append(dict(bad['projects'][0],id='coding_project'))
     reject(lambda:h.validate_catalog(bad),'Case-colliding client IDs are rejected')
     for value in ('../escape','CON','x/escape','x:escape','x;whoami'):

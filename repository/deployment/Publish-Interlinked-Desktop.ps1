@@ -19,6 +19,7 @@ $allowed=@('INTERLINKED.cmd','INTERLINKED-Browser.cmd','INTERLINKED-App/interlin
  'INTERLINKED-App/interlinked_master.py','INTERLINKED-App/master_hook.py','INTERLINKED-App/master_bridge.py',
  'INTERLINKED-App/interlinked_jobs.py','INTERLINKED-App/interlinked_buddy.py',
  'INTERLINKED-App/interlinked_stats.py','INTERLINKED-App/interlinked_stats_process.py',
+ 'INTERLINKED-App/interlinked_configuration.py',
  'INTERLINKED-App/web/index.html','INTERLINKED-App/web/app.js','INTERLINKED-App/web/style.css',
  'INTERLINKED-Desktop/INTERLINKED.exe','INTERLINKED-Desktop/INTERLINKED.exe.config',
  'INTERLINKED-Desktop/INTERLINKED.Master.Worker.exe','INTERLINKED-Desktop/INTERLINKED.Master.Worker.exe.config','INTERLINKED-Desktop/Violet.png',

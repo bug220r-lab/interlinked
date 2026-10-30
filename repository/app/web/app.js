@@ -18,7 +18,7 @@ async function api(path,body){
  const options={headers:{'X-INTERLINKED-Token':token}};
  if(body!==undefined){options.method='POST';options.headers['Content-Type']='application/json';options.body=JSON.stringify(body);}
  const response=await fetch(path,options),value=await response.json();
- if(!response.ok)throw new Error(value.error||'The local service rejected this request.');
+ if(!response.ok){const error=new Error(value.error||'The local service rejected this request.');error.status=response.status;error.payload=value;throw error;}
  return value;
 }
 function safe(fn){return async(...args)=>{clearError();try{await fn(...args);}catch(error){showError(error);}};}
@@ -104,6 +104,7 @@ function evidenceText(evidence,label){
  return [when||'Time not recorded',version?'version '+version:'',scope,evidence.currentBaseline===false?'Previous baseline; current files are not certified':''].filter(Boolean).join(' · ');
 }
 function transferCanApply(preview){return !!preview&&preview.applicable===true&&!(preview.conflicts||[]).length&&typeof preview.id==='string'&&['stage','collect'].includes(preview.direction);}
+
 function statsControls(info,snapshot){
  const changing=!!info?.operation&&['STARTING','RUNNING'].includes(info.operation.status)&&!info.running;
  const idle=!!info&&!info.running&&info.status!=='RECOVERY_REQUIRED'&&!changing;
@@ -181,7 +182,7 @@ function renderState(){
  for(const button of document.querySelectorAll('.project-item'))button.disabled=!canSelectProject(projects.find(p=>p.id===button.dataset.project),state,mutation);
  if(selected&&!locked){$('open').disabled=!hasCapability(selected,'openApplication')||(isMagix(selected)&&(selected.loadingEntries||!$('entry').value));$('fetch').disabled=!hasCapability(selected,'fetch');$('folder').disabled=!hasCapability(selected,'openFolder');$('save').disabled=!hasCapability(selected,'save')||!['READY','PENDING_SAVE','DEMO'].includes(selected.cache.status);$('verify').disabled=!hasCapability(selected,'verify');$('release').disabled=!hasCapability(selected,'release')||!['READY','DEMO','RELEASING'].includes(selected.cache.status);}
  if(state.activeSession?.kind==='mw5'&&state.activeSession.projectId===selected?.id)$('open').disabled=mutation||state.transferring||state.closing||mw5Readiness?.busy||mw5Readiness?.session?.canOpen!==true;
- $('favorite-toggle').disabled=locked||!selected;
+ $('favorite-toggle').disabled=locked||!selected||preferences.preferencesAvailable===false;
  document.querySelector('.activity').classList.toggle('busy',busy);
  $('operation-status').textContent=job?human(job.status):'Ready when you are';
  const runningName=projects.find(p=>p.id===job?.projectId)?.name||job?.projectId||'owned mappings';
@@ -256,6 +257,7 @@ function renderHub(){
  const storage=hub.storage||{},local=storage.localFreeBytes??storage.local?.freeBytes,remote=storage.msiFreeBytes??storage.returnsFreeBytes??storage.msi?.freeBytes;
  $('hub-storage').textContent='Local '+(Number.isFinite(local)?size(local):'unknown')+' · MSI '+(Number.isFinite(remote)?size(remote):'unknown');
  $('hub-refresh').disabled=!!hub.refreshing||mutation||state.closing;
+ renderPreferencesAvailability();
 }
 function renderSessionBanner(){
  const job=state.operation,active=state.busy,session=state.activeSession,project=projects.find(p=>p.id===(session?.projectId||job?.projectId));
@@ -264,10 +266,11 @@ function renderSessionBanner(){
  $('session-title').textContent=active?(project?.name||job?.projectId||'Managed operation'):'No editing session active';
  $('session-next').textContent=session?.nextAction|| (active?(job?.awaitingDone?(isMagix(project)?'Next: save and close MAGIX, then finish the session.':'Next: save your work, close the application and its tools, then finish the session.'):'Next: wait for '+human(job?.action||'the current operation')+' to finish. Your working copy stays protected.'):(projectType(selected)==='mw5'?'Next: check readiness, stage the plugins, and open the MW5 Editor.':'Next: choose a project and prepare its managed working copy.'));
 }
-function adoptPreferences(result){const value=result.preferences||result;if(Array.isArray(value.favorites)&&Array.isArray(value.recent))preferences=value;}
-async function recordRecent(id){adoptPreferences(await api('/api/preferences',{recent:id}));renderList();}
+function adoptPreferences(result){const value=result.preferences||result;if(Array.isArray(value.favorites)&&Array.isArray(value.recent))preferences=value;renderPreferencesAvailability();}
+function renderPreferencesAvailability(){const notice=$('library-preferences-notice');if(notice){notice.hidden=preferences.preferencesAvailable!==false;notice.textContent='Library favorites and recent projects are unavailable. Open Settings history to review recovery options. Project workflows remain available.';}}
+async function recordRecent(id){if(preferences.preferencesAvailable===false)return;adoptPreferences(await api('/api/preferences',{recent:id}));renderList();}
 async function toggleFavorite(){
- if(!selected)return;const id=selected.id,enabled=!((preferences.favorites||[]).includes(id)||selected.favorite);
+ if(!selected)return;if(preferences.preferencesAvailable===false)throw new Error('Recover library preferences in Settings history before changing favorites.');const id=selected.id,enabled=!((preferences.favorites||[]).includes(id)||selected.favorite);
  adoptPreferences(await api('/api/preferences',{favorite:id,enabled}));const row=projects.find(p=>p.id===id);if(row)row.favorite=enabled;renderList();if(selected?.id===id)renderDetail();
 }
 async function refreshHub(){await api('/api/hub/refresh',{});await loadCatalog();}
@@ -499,11 +502,37 @@ function masterCapturePatch(settings,source,values){
  if(values.enabled&&!source)throw new Error('Select Violet’s visible source window before enabling capture.');
  return {mode:'live_mini',captureRect:rect,captureWindowId:source?String(source.id):'',captureWindowBounds:source?.bounds||null,captureEnabled:!!values.enabled};
 }
+function masterInboxModel(queue,filters={}){
+ const items=Array.isArray(queue?.items)?queue.items:[];
+ const rows=items.filter(item=>(!filters.project||item.projectId===filters.project)&&(!filters.kind||item.kind===filters.kind)&&
+  (filters.review==='all'||filters.review==='reviewed'&&item.acknowledged||(!filters.review||filters.review==='unreviewed')&&!item.acknowledged));
+ rows.sort((a,b)=>(a.kind==='failure'?0:1)-(b.kind==='failure'?0:1)||(Date.parse(b.observedAt)||0)-(Date.parse(a.observedAt)||0)||String(a.id).localeCompare(String(b.id)));
+ return {available:queue?.available===true,rows,items,pending:items.filter(item=>!item.acknowledged).length};
+}
+function configurationDescribe(value){
+ if(value?.available===false)return 'Current settings are unavailable. '+String(value.error||'Review a validated previous version.');
+ value=value?.value||value||{};if(value.settings)value={...value.settings,...(typeof value.lifecyclePreferencesKnown==='boolean'?{lifecyclePreferencesKnown:value.lifecyclePreferencesKnown}:{})};
+ const labels={mode:'Display mode',fps:'Target frame rate',rotationSeconds:'Detail rotation (seconds)',focusProject:'Focused project',background:'Keep running in tray',startAtLogin:'Start at login',captureEnabled:'Capture enabled',captureRect:'Capture area',captureWindowId:'Selected capture window',captureWindowBounds:'Observed source bounds',projects:'Project stations',favorites:'Favorite projects',recent:'Recent projects',lifecyclePreferencesKnown:'Startup and background choices known'};
+ const describe=item=>item===null?'Not configured':typeof item==='boolean'?(item?'Yes':'No'):String(item);
+ const lines=[];for(const [key,item]of Object.entries(value)){
+  if(!Object.prototype.hasOwnProperty.call(labels,key))continue;
+  if(key==='projects'){lines.push(labels[key]+':');for(const row of item||[])lines.push('  '+String(row.label||row.id)+' · '+String(row.root||'No source folder')+(row.activityRoot?' · Activity: '+String(row.activityRoot):''));if(!item?.length)lines.push('  None');}
+  else if(key==='favorites'||key==='recent'){lines.push(labels[key]+':');for(const row of item||[])lines.push('  '+(typeof row==='string'?row:String(row.id)+' · '+String(row.utc||'Date not recorded')));if(!item?.length)lines.push('  None');}
+  else if(typeof item==='object'&&item!==null)lines.push(labels[key]+': '+Object.entries(item).map(([name,n])=>name+' '+describe(n)).join(', '));
+  else lines.push(labels[key]+': '+describe(item));
+ }
+ return lines.join('\n')||'No saved values available.';
+}
 // END MASTER MODELS
 
 // BEGIN MASTER INTERFACE
 let masterSnapshot=null,masterVisible=false,masterBusy=false,masterSettingsLoaded=false,masterPollBusy=false,masterFrameBusy=false,masterLastFrame=0,masterFrameError='',masterFrameSequence=0,masterSourcesKey='';
 const masterEvidenceOpen=new Set();
+const masterDrafts={display:{dirty:false,revision:null},capture:{dirty:false,revision:null},projects:{dirty:false,revision:null,rows:[]}};
+let masterConflict=null,masterAttentionQueue=null,masterAttentionBusy=false,masterAttentionReading=false;
+const masterAttentionSelected=new Set();
+const masterLifecycleTouched=new Set();
+let configurationPreview=null,configurationBusy=false,configurationSequence=0;
 function masterElement(tag,className,text){const el=document.createElement(tag);if(className)el.className=className;if(text!==undefined)el.textContent=String(text);return el;}
 function masterError(error){$('master-error').textContent=String(error?.message||error);$('master-error').hidden=false;}
 function masterClearError(){$('master-error').hidden=true;}
@@ -512,7 +541,7 @@ function masterSetView(enabled){
  masterVisible=!!enabled;$('master-view').hidden=!enabled;$('library-shell').hidden=enabled;$('library-hub-bar').hidden=enabled;
  for(const [id,on] of [['master-view-tab',enabled],['library-view-tab',!enabled]]){$(id).classList.toggle('active',on);$(id).setAttribute('aria-pressed',String(on));}
  document.body.classList.toggle('master-open',enabled);
- if(enabled){masterPoll().catch(masterError);masterFetchFrame().catch(masterError);}
+ if(enabled){masterPoll().catch(masterError);masterFetchFrame().catch(masterError);masterPollAttention().catch(masterError);}
 }
 function masterRenderProjects(){
  const rows=masterSnapshot?.projects||[];$('master-project-count').textContent=String(rows.length).padStart(2,'0');$('master-projects').replaceChildren();
@@ -532,24 +561,57 @@ function masterRenderProjects(){
 }
 function masterRenderSources(){
  const sources=masterSnapshot?.captureSources||[],key=JSON.stringify(sources);if(key===masterSourcesKey)return;masterSourcesKey=key;
- const select=$('master-capture-window'),chosen=select.value||masterSnapshot?.settings?.captureWindowId||'';select.replaceChildren(masterElement('option','','Choose a visible mini window…'));select.children[0].value='';
+ const select=$('master-capture-window'),chosen=masterDrafts.capture.dirty?select.value:select.value||masterSnapshot?.settings?.captureWindowId||'';select.replaceChildren(masterElement('option','','Choose a visible mini window…'));select.children[0].value='';
  for(const source of sources){const option=masterElement('option','',String(source.title||'Untitled window')+(source.process?' · '+source.process:''));option.value=String(source.id);select.append(option);}select.value=chosen;
 }
 function masterLoadSettings(){
- if(masterSettingsLoaded)return;const s=masterSnapshot?.settings||{};
- $('master-mode').value=s.mode||'dashboard';$('master-fps-setting').value=String(s.fps||10);$('master-background').checked=!!s.background;$('master-login').checked=!!s.startAtLogin;
- for(const key of ['x','y','width','height'])$('master-capture-'+key).value=String(s.captureRect?.[key]??(['width','height'].includes(key)?240:0));
- $('master-capture-enabled').checked=!!s.captureEnabled;masterSettingsLoaded=true;
+ const s=masterSnapshot?.settings||{},valid=masterSnapshot?.settingsValid!==false;
+ if(!valid){$('master-settings-feedback').textContent='MASTER settings are unavailable. Review saved settings history to recover them.';return;}
+ for(const section of ['display','capture','projects']){
+  const draft=masterDrafts[section];if(draft.dirty)continue;draft.revision=masterSnapshot.settingsRevision??null;
+  if(section==='display'){$('master-mode').value=s.mode||'dashboard';$('master-fps-setting').value=String(s.fps||10);$('master-background').checked=!!s.background;$('master-login').checked=!!s.startAtLogin;for(const id of ['master-background','master-login'])$(id).indeterminate=masterSnapshot.lifecyclePreferencesKnown===false;masterLifecycleTouched.clear();}
+  if(section==='capture'){for(const key of ['x','y','width','height'])$('master-capture-'+key).value=String(s.captureRect?.[key]??(['width','height'].includes(key)?240:0));$('master-capture-enabled').checked=!!s.captureEnabled;}
+  if(section==='projects')draft.rows=(s.projects||[]).map(row=>({...row}));
+ }
+ $('master-lifecycle-notice').hidden=masterSnapshot.lifecyclePreferencesKnown!==false;
+ $('master-lifecycle-notice').textContent='Startup and background choices are unknown. Choose them explicitly before saving preferences.';
+ masterSettingsLoaded=true;
 }
 function masterRenderRegistered(){
  const rows=masterSnapshot?.settings?.projects||masterSnapshot?.projects||[];$('master-registered-projects').replaceChildren();
- for(const row of rows){const line=masterElement('div','master-registered-project'),content=masterElement('div');content.append(masterElement('strong','',row.label||row.name||row.id),masterElement('small','',row.root||'Source folder not configured'));const remove=masterElement('button','master-remove','Remove');remove.type='button';remove.setAttribute('aria-label','Remove '+String(row.label||row.name||row.id)+' station');remove.disabled=masterBusy;remove.addEventListener('click',()=>masterRequest(async()=>{await api('/api/master/settings',{projects:rows.filter(p=>p.id!==row.id).map(p=>({id:p.id,label:p.label||p.name||p.id,root:p.root||''}))});await masterPoll();}).catch(masterError));line.append(content,remove);$('master-registered-projects').append(line);}
+ for(const row of rows){const line=masterElement('div','master-registered-project'),content=masterElement('div');content.append(masterElement('strong','',row.label||row.name||row.id),masterElement('small','',row.root||'Source folder not configured'));const remove=masterElement('button','master-remove','Remove');remove.type='button';remove.setAttribute('aria-label','Remove '+String(row.label||row.name||row.id)+' station');remove.disabled=masterBusy||masterSnapshot?.settingsValid===false;const revision=masterSnapshot?.settingsRevision;remove.addEventListener('click',()=>masterRemoveProject(row.id,rows,revision).catch(masterError));line.append(content,remove);$('master-registered-projects').append(line);}
+}
+function masterMarkDraft(section){masterDrafts[section].dirty=true;}
+function masterShowConflict(section,attempted,current){
+ masterConflict={section,attempted,current};$('master-settings-conflict').hidden=false;
+ $('master-conflict-current').textContent=configurationDescribe(current?.settings||current?.value||{});
+ $('master-conflict-draft').textContent=configurationDescribe(attempted);
+}
+function masterReloadConflict(){
+ if(!masterConflict)return;const current=masterConflict.current;
+ if(current?.settings)masterSnapshot={...masterSnapshot,...current};
+ masterDrafts[masterConflict.section].dirty=false;masterConflict=null;$('master-settings-conflict').hidden=true;masterLoadSettings();
+ $('master-settings-feedback').textContent='Current values loaded. Review your changes, then save again.';
+}
+async function masterSavePatch(section,patch,revision=masterDrafts[section].revision){
+ if(masterSnapshot?.settingsValid===false)throw new Error('Recover the unavailable MASTER settings before editing them.');
+ if(typeof revision!=='string'||!revision)throw new Error('Settings version is unavailable. Reload the interface before saving.');
+ masterMarkDraft(section);
+ try{const saved=await api('/api/master/settings',{...patch,expectedRevision:revision});masterDrafts[section].dirty=false;
+  if(masterConflict?.section===section){masterConflict=null;$('master-settings-conflict').hidden=true;}
+  if(saved?.settings)masterSnapshot=saved;
+  await masterPoll();
+ }catch(error){const payload=error.payload||{};if(error.status===409&&payload.current){masterShowConflict(section,patch,payload.current);error.message='Settings changed in another window. Your edit is retained; review the current values before saving again.';}throw error;}
+}
+async function masterRemoveProject(id,rows,revision){
+ await masterRequest(()=>masterSavePatch('projects',{projects:rows.filter(row=>row.id!==id).map(row=>({...row}))},revision));
 }
 function masterRender(){
  const s=masterSnapshot;if(!s)return;
  const display=s.display||{},connected=!!display.connected;
  $('master-source-status').textContent=s.demo?'DEMO FEED':'LOCAL OBSERVATORY';$('master-source-status').className='master-status '+(s.demo?'attention':'active');
  $('master-observed').textContent='Snapshot '+masterWhen(s.observedAt||s.utc||s.generatedAt);$('master-demo-note').hidden=!s.demo;
+ const configurationNotice=String(s.configurationNotice||(s.restartRequired?'Restart INTERLINKED to activate the changed MASTER configuration.':''));$('master-configuration-notice').textContent=configurationNotice;$('master-configuration-notice').hidden=!configurationNotice;
  $('master-display-status').textContent=connected?'LCD connected':masterWords(display.status||'disconnected');$('master-display-message').textContent=display.message||display.error||'Close TRCC, then choose Connect display.';
  $('master-display-led').className='master-led '+(connected?'active':'');$('master-connect').disabled=masterBusy||connected||!!s.demo;$('master-disconnect').disabled=masterBusy||!connected;
  const stats=display.stats||s.stats||display;$('master-fps').textContent='LCD FPS '+(connected&&Number.isFinite(stats.deliveredFps)?stats.deliveredFps.toFixed(1):'—');$('master-dropped').textContent='DROPPED '+(Number.isFinite(stats.droppedFrames)?stats.droppedFrames:'—');
@@ -560,6 +622,8 @@ function masterRender(){
  const violet=s.violet||{};$('master-violet-status').textContent=violet.stale?'Violet’s status update is stale':violet.connected?masterWords(violet.activity||violet.status):'Waiting for Violet’s status bridge';const attention=s.attention||{};const pending=(attention.items||[]).filter(item=>!item.acknowledged);$('master-violet-message').textContent=(violet.source||'Unverified report')+' · '+(violet.message||'No fresh Violet report')+' · '+(attention.available?String(attention.pendingCount||0)+' queued for next Violet check'+(pending.length?': '+pending.slice(0,3).map(item=>item.projectId+' — '+item.summary).join('; '):''):'Attention queue unavailable');$('master-violet-freshness').textContent=violet.stale?'STALE UPDATE':violet.connected?masterWhen(violet.observedAt||violet.reportedAt):'NOT CONNECTED';$('master-violet-freshness').className='master-status '+(violet.connected&&!violet.stale?'active':'quiet');
  $('master-capture-status').textContent=s.capture?.message||s.capture?.reason||masterWords(s.capture?.status||'Live mini is not calibrated');
  masterRenderProjects();masterRenderSources();masterLoadSettings();masterRenderRegistered();
+ for(const id of ['master-save-settings','master-save-capture'])$(id).disabled=masterBusy||s.settingsValid===false;
+ if(!masterAttentionReading&&s.attention)masterAttentionQueue=s.attention;masterRenderAttention();
 }
 async function masterPoll(){
  if(masterPollBusy||stopped)return;masterPollBusy=true;
@@ -571,12 +635,14 @@ async function masterEnableSensors(){
  await masterRequest(async()=>{await api('/api/master/display',{action:'enable_sensors'});await masterPoll();});
 }
 async function masterSaveSettings(){
- await masterRequest(async()=>{await api('/api/master/settings',{mode:$('master-mode').value,fps:Number($('master-fps-setting').value),background:$('master-background').checked,startAtLogin:$('master-login').checked});await masterPoll();$('master-settings-feedback').textContent='Preferences saved. TRCC startup is unchanged.';});
+ if(masterSnapshot?.lifecyclePreferencesKnown===false&&(!masterLifecycleTouched.has('master-background')||!masterLifecycleTouched.has('master-login')))throw new Error('Choose both background and startup preferences explicitly before saving recovered settings.');
+ const patch={mode:$('master-mode').value,fps:Number($('master-fps-setting').value),background:$('master-background').checked,startAtLogin:$('master-login').checked};masterMarkDraft('display');
+ await masterRequest(async()=>{await masterSavePatch('display',patch);$('master-settings-feedback').textContent='Preferences saved. TRCC startup is unchanged.';});
 }
 async function masterSaveCapture(){
  const source=(masterSnapshot?.captureSources||[]).find(v=>String(v.id)===$('master-capture-window').value),values={enabled:$('master-capture-enabled').checked};for(const key of ['x','y','width','height'])values[key]=$('master-capture-'+key).value;
  const patch=masterCapturePatch(masterSnapshot?.settings||{},source,values);
- await masterRequest(async()=>{await api('/api/master/settings',patch);$('master-mode').value='live_mini';await masterPoll();});
+ masterMarkDraft('capture');await masterRequest(async()=>{await masterSavePatch('capture',patch);if(!masterDrafts.display.dirty)$('master-mode').value='live_mini';});
 }
 function masterOpenCapturePad(){
  const pad=$('master-capture-pad');if(!pad.open)pad.show();
@@ -588,8 +654,70 @@ function masterCloseCapturePad(){
 async function masterAddProject(event){
  event.preventDefault();const label=$('master-project-label').value.trim(),root=$('master-project-root').value.trim();if(!label||!root)throw new Error('Enter the project name and its source folder.');
  const id=label.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,48);if(!id)throw new Error('Use at least one letter or number in the project name.');
- const current=masterSnapshot?.settings?.projects||masterSnapshot?.projects||[];
- await masterRequest(async()=>{await api('/api/master/settings',{projects:[...current.map(p=>({id:p.id,label:p.label||p.name||p.id,root:p.root||'',...(p.activityRoot?{activityRoot:p.activityRoot}:{})})),{id,label,root}]});$('master-project-label').value='';$('master-project-root').value='';await masterPoll();});
+ const current=masterDrafts.projects.rows;masterMarkDraft('projects');
+ await masterRequest(async()=>{await masterSavePatch('projects',{projects:[...current.map(p=>({...p})),{id,label,root}]});$('master-project-label').value='';$('master-project-root').value='';});
+}
+function masterRenderAttention(){
+ const model=masterInboxModel(masterAttentionQueue,{project:$('master-attention-project').value,kind:$('master-attention-kind').value,review:$('master-attention-review').value||'unreviewed'});
+ const selectedProject=$('master-attention-project').value||'',labels=new Map((masterSnapshot?.projects||[]).map(row=>[row.id,row.label||row.id]));
+ const ids=[...new Set([...model.items.map(row=>row.projectId),...(selectedProject?[selectedProject]:[])])].sort();
+ $('master-attention-project').replaceChildren(masterElement('option','','All projects'));$('master-attention-project').children[0].value='';
+ for(const id of ids){const option=masterElement('option','',labels.get(id)||id);option.value=id;$('master-attention-project').append(option);}$('master-attention-project').value=selectedProject;
+ const retained=new Set(model.items.map(item=>item.id)),expired=[...masterAttentionSelected].filter(id=>!retained.has(id));
+ $('master-attention-count').textContent=model.available?String(model.pending)+' unreviewed':'Unavailable';
+ $('master-attention-notice').textContent=!model.available?'Attention records are unavailable. Existing records and selections are preserved.':expired.length?'Some selected items are no longer retained. Clear the selection and review the current list.':String(masterAttentionSelected.size)+' selected · Reviewing an observation does not resolve a project failure.';
+ $('master-attention-ack').disabled=masterAttentionBusy||!model.available||!masterAttentionSelected.size||!!expired.length;
+ $('master-attention-clear').disabled=masterAttentionBusy||!masterAttentionSelected.size;
+ $('master-attention-list').replaceChildren();
+ if(!model.available||!model.rows.length){$('master-attention-list').append(masterElement('p','master-muted',model.available?'No observations match these filters.':'The inbox will return when its records can be read safely.'));return;}
+ for(const item of model.rows){
+  const row=masterElement('article','master-attention-item'+(item.acknowledged?' reviewed':'')),choice=masterElement('input');choice.type='checkbox';choice.checked=masterAttentionSelected.has(item.id);choice.disabled=masterAttentionBusy;choice.setAttribute('aria-label','Select observation for '+(labels.get(item.projectId)||item.projectId));choice.addEventListener('change',()=>{if(choice.checked)masterAttentionSelected.add(item.id);else masterAttentionSelected.delete(item.id);masterRenderAttention();});
+  const content=masterElement('div','master-attention-content');content.append(masterElement('strong','',labels.get(item.projectId)||item.projectId),masterElement('p','',item.summary||'Historical observation'),masterElement('small','',String(item.source||'Source not recorded')+' · '+String(item.observedAt||'Observation time unavailable')),masterElement('small','',item.acknowledged?'Reviewed observation':'Unreviewed observation'));
+  const review=masterElement('button','master-secondary master-compact',item.acknowledged?'Reviewed':'Mark reviewed');review.type='button';review.disabled=masterAttentionBusy||item.acknowledged;review.addEventListener('click',()=>masterAcknowledge([item.id]).catch(masterError));row.append(choice,content,review);$('master-attention-list').append(row);
+ }
+}
+async function masterPollAttention(){
+ if(masterAttentionReading||stopped)return;masterAttentionReading=true;
+ try{const result=await api('/api/master/attention');masterAttentionQueue=result?.queue||result;}
+ catch(error){masterAttentionQueue={...masterAttentionQueue,available:false};throw error;}
+ finally{masterAttentionReading=false;masterRenderAttention();}
+}
+async function masterAcknowledge(ids=[...masterAttentionSelected]){
+ if(masterAttentionBusy)throw new Error('Please wait for the current review request.');
+ const known=new Set((masterAttentionQueue?.items||[]).map(item=>item.id));if(!ids.length||ids.some(id=>!known.has(id)))throw new Error('A selected observation is no longer retained. Refresh the inbox and review your selection.');
+ masterAttentionBusy=true;masterRenderAttention();
+ try{const result=await api('/api/master/attention/acknowledge',{ids:[...ids]});if(result?.queue){masterAttentionQueue=result.queue;if(masterSnapshot)masterSnapshot.attention=result.queue;}else await masterPollAttention();for(const id of result.acknowledged||ids)masterAttentionSelected.delete(id);}
+ catch(error){await masterPollAttention().catch(()=>{});throw error;}
+ finally{masterAttentionBusy=false;masterRenderAttention();}
+}
+function masterOpenInbox(){masterSetView(true);$('master-attention').scrollIntoView?.({behavior:'smooth',block:'start'});$('master-attention').focus?.();masterPollAttention().catch(masterError);}
+function configurationMessage(message){$('configuration-feedback').textContent=message;}
+async function configurationOpen(scope='master'){
+ $('configuration-scope').value=scope;const dialog=$('configuration-dialog');if(!dialog.open)dialog.showModal();await configurationHistory();
+}
+async function configurationHistory(){
+ const scope=$('configuration-scope').value||'master',sequence=++configurationSequence;configurationPreview=null;$('configuration-preview').hidden=true;$('configuration-restore').disabled=true;configurationMessage('Reading saved settings…');
+ try{const result=await api('/api/configuration/history?scope='+encodeURIComponent(scope));if(sequence!==configurationSequence)return;$('configuration-list').replaceChildren();
+  const items=Array.isArray(result.items)?result.items:[];configurationMessage(result.available===false?'Settings history needs review. Existing records were preserved.':result.current?.available===false?'Current settings are unavailable. Preview a valid previous version to recover them.':'Up to three previous validated versions are retained for this settings group.');
+  if(!items.length)$('configuration-list').append(masterElement('p','master-muted','No saved previous versions are available.'));
+  for(const item of items){const row=masterElement('div','configuration-history-row'),content=masterElement('div');content.append(masterElement('strong','',String(item.observedAt||item.savedAt||item.utc||'Saved time not recorded')),masterElement('small','',String(item.reason||'Settings changed')));const button=masterElement('button','master-secondary master-compact','Preview');button.type='button';button.addEventListener('click',()=>configurationShowPreview(scope,item.id).catch(error=>configurationMessage(error.message)));row.append(content,button);$('configuration-list').append(row);}
+ }catch(error){if(sequence!==configurationSequence)return;configurationMessage('Settings history is unavailable. '+String(error.message||error));$('configuration-list').replaceChildren();}
+}
+async function configurationShowPreview(scope,snapshotId){
+ const sequence=++configurationSequence;configurationPreview=null;$('configuration-restore').disabled=true;const result=await api('/api/configuration/preview',{scope,snapshotId});
+ if(sequence!==configurationSequence||scope!==($('configuration-scope').value||'master'))return;
+ configurationPreview={...result,scope};$('configuration-current').textContent=configurationDescribe(result.current||result.currentValue||{});$('configuration-proposed').textContent=configurationDescribe(result.proposed||result.value||{});$('configuration-preview').hidden=false;$('configuration-restore').disabled=!result.previewId;
+ configurationMessage('Review the proposed values. Restoring changes preferences only; project files and sessions stay intact.');
+}
+async function configurationRestore(){
+ if(configurationBusy||!configurationPreview?.previewId)throw new Error('Preview a saved version before restoring it.');
+ const chosen=configurationPreview;configurationBusy=true;$('configuration-restore').disabled=true;
+ try{const result=await api('/api/configuration/restore',{scope:chosen.scope,previewId:chosen.previewId});configurationPreview=null;
+  if(chosen.scope==='library'){const catalog=await api('/api/catalog');if(typeof adoptPreferences==='function')adoptPreferences(catalog.preferences||{});if(typeof renderList==='function')renderList();}
+  else await masterPoll();
+  $('configuration-preview').hidden=true;configurationMessage(result.restartRequired?'Settings recovered. Restart INTERLINKED to activate MASTER. Capture and startup have not been activated.':'Settings restored. Project files, the selected project and active sessions are unchanged.');
+ }catch(error){configurationPreview=null;configurationMessage('Restore was not confirmed. Review the current history before trying again. '+String(error.message||error));throw error;}
+ finally{configurationBusy=false;}
 }
 async function masterFetchFrame(){
  if(masterFrameBusy||!masterVisible||document.hidden||stopped)return;masterFrameBusy=true;const sequence=++masterFrameSequence;
@@ -609,12 +737,29 @@ if($('master-view')){
  $('master-save-settings').addEventListener('click',()=>masterSaveSettings().catch(masterError));$('master-save-capture').addEventListener('click',()=>masterSaveCapture().catch(masterError));$('master-add-project').addEventListener('submit',event=>masterAddProject(event).catch(masterError));
  $('master-refresh-sources').addEventListener('click',()=>masterRequest(async()=>{await api('/api/master/display',{action:'capture_sources'});await masterPoll();}).catch(masterError));
  $('master-enable-sensors').addEventListener('click',()=>masterEnableSensors().catch(masterError));
+ for(const id of ['master-mode','master-fps-setting','master-background','master-login'])$(id).addEventListener('input',()=>masterMarkDraft('display'));
+ for(const id of ['master-background','master-login'])$(id).addEventListener('input',()=>{masterLifecycleTouched.add(id);$(id).indeterminate=false;});
+ for(const id of ['master-capture-window','master-capture-enabled','master-capture-x','master-capture-y','master-capture-width','master-capture-height'])$(id).addEventListener('input',()=>masterMarkDraft('capture'));
+ for(const id of ['master-project-label','master-project-root'])$(id).addEventListener('input',()=>masterMarkDraft('projects'));
+ $('master-conflict-reload').addEventListener('click',masterReloadConflict);
+ $('master-inbox-link').addEventListener('click',masterOpenInbox);
+ for(const id of ['master-attention-project','master-attention-kind','master-attention-review'])$(id).addEventListener('change',masterRenderAttention);
+ $('master-attention-ack').addEventListener('click',()=>masterAcknowledge().catch(masterError));
+ $('master-attention-clear').addEventListener('click',()=>{masterAttentionSelected.clear();masterRenderAttention();});
+ $('master-attention-refresh').addEventListener('click',()=>masterPollAttention().catch(masterError));
  $('master-capture-window').addEventListener('change',()=>{const selected=(masterSnapshot?.captureSources||[]).find(v=>String(v.id)===$('master-capture-window').value);if(selected?.bounds)for(const key of ['x','y','width','height'])$('master-capture-'+key).value=String(selected.bounds[key]??0);$('master-capture-enabled').checked=false;});
  $('master-black-pad').addEventListener('click',masterOpenCapturePad);$('master-close-pad').addEventListener('click',masterCloseCapturePad);
  setInterval(()=>{if(masterVisible&&!stopped)masterPoll().catch(error=>{masterError(error);$('master-source-status').textContent='CONNECTION LOST';$('master-source-status').className='master-status danger';});},1500);
+ setInterval(()=>{if(masterVisible&&!document.hidden&&!stopped)masterPollAttention().catch(masterError);},3000);
  setInterval(()=>masterFetchFrame(),100);
  setInterval(()=>{if(masterVisible)$('master-frame-age').textContent=masterFrameAge(masterSnapshot?.display,masterLastFrame,masterFrameError);},1000);
  if(new URLSearchParams(location.search).get('view')==='master')masterSetView(true);
+}
+if($('configuration-dialog')){
+ $('configuration-open').addEventListener('click',()=>configurationOpen(masterVisible?'master':'library').catch(error=>configurationMessage(error.message)));
+ $('configuration-close').addEventListener('click',()=>{$('configuration-dialog').close();configurationSequence++;configurationPreview=null;$('configuration-restore').disabled=true;});
+ $('configuration-scope').addEventListener('change',()=>configurationHistory());$('configuration-refresh').addEventListener('click',()=>configurationHistory());
+ $('configuration-restore').addEventListener('click',()=>configurationRestore().catch(()=>{}));
 }
 if($('msi-jobs-view')){
  $('jobs-view-tab').addEventListener('click',jobsSetView);

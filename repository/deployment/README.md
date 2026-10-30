@@ -20,7 +20,7 @@ The package uses the existing MSI font files to preserve their exact version. Th
 
 ## Desktop publication on THIS-MACHINE
 
-`Publish-Interlinked-Desktop.ps1` is the local publisher for the fixed THIS-MACHINE/Jude kit. The historical MSI publisher above retains its original machine/path provenance. The current publisher takes a reviewed 28-file plan and exact plan SHA-256, checks the original 52-file Python/client seal and launcher/index pins, recognizes exact v1-v6 GUI baseline schemas and requires the prospective fourteen-file v6 seal plus desktop seal, requires unbound workspace journals, and acquires both existing GUI and workflow locks. It refuses held locks, active MW5/folder/Stats journals, and running local MAGIX/MW5/desktop/MASTER-worker processes. It does not stop editing applications on MSI.
+`Publish-Interlinked-Desktop.ps1` is the local publisher for the fixed THIS-MACHINE/Jude kit. The historical MSI publisher above retains its original machine/path provenance. The current publisher takes a reviewed 29-file plan and exact plan SHA-256, checks the original 52-file Python/client seal and launcher/index pins, recognizes exact v1-v7 GUI baseline schemas and requires the prospective fifteen-file v7 seal plus desktop seal, requires unbound workspace journals, and acquires both existing GUI and workflow locks. It refuses held locks, active MW5/folder/Stats journals, and running local MAGIX/MW5/desktop/MASTER-worker processes. It does not stop editing applications on MSI.
 
 The exact added app members are `interlinked_master.py`, `master_hook.py`, `master_bridge.py`, the read-only `interlinked_jobs.py` observer and `interlinked_buddy.py` companion; the desktop package additionally contains `INTERLINKED.Master.Worker.exe`, its configuration and the approved `Violet.png`. The desktop build requires the private approved v2 atlas through `-VioletAtlas`; its seal covers all ten package payloads. Vendor USB/sensor binaries are external installed dependencies, not publication payloads. Device pins, hook trust, telemetry, project registrations and startup preferences are outside Git and this publisher's file allowlist. Adding the observer source does not update the installed setup; publication and actual SSH/status acceptance remain separate actions.
 
@@ -32,8 +32,17 @@ The default is preflight only. Add `-Apply` to install after the [desktop tests]
 
 The Stats release adds only `interlinked_stats.py` and its atomically contained
 process helper to the application allowlist. Earlier GUI seal schemas remain
-valid baseline evidence; the current prospective seal must be exact v6. Stats source,
+valid baseline evidence; the current prospective seal must be exact v7. Stats source,
 its environment, connection metadata, MASTER registration and managed data are
 separate from app publication. The publisher refuses unfinished Stats journals
 and does not reconcile or restore them. An existing desktop binary can be
 retained byte-for-byte when only the Python/web application changes.
+
+The configuration recovery release adds `interlinked_configuration.py` alongside
+the Stats companions, yielding an exact fifteen-file v7 GUI seal and 29-member
+publication plan. Earlier v1-v6 seals remain recognized only as exact baselines.
+The package includes the tray validity fix; unavailable or unknown lifecycle
+preferences never apply startup/background defaults. Configuration history and
+attention records are owned runtime metadata and are not publication payloads.
+Publication continues to refuse active application/session locks and preserves
+all project caches, runtime ownership, device pins and historical manifests.

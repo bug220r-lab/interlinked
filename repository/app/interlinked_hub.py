@@ -9,6 +9,7 @@ import copy
 import ctypes
 import datetime as dt
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -20,6 +21,14 @@ import tempfile
 import threading
 import time
 import uuid
+
+
+def configuration_module():
+    path = Path(__file__).resolve().with_name('interlinked_configuration.py')
+    spec = importlib.util.spec_from_file_location('interlinked_hub_configuration', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 LIBRARY = r'\\MSI\ProjectLibrary'
 RETURNS = r'\\MSI\ProjectReturns'
@@ -214,6 +223,10 @@ class ProjectHub:
             write_json(marker, self.identity)
         self.snapshot_path = self.root / 'catalog.json'
         self.prefs_path = self.root / 'preferences.json'
+        config = configuration_module()
+        self.config = config.ConfigStore(self.prefs_path, 'library', self._check_preference_owner,
+            self._validate_preferences, lambda value: value,
+            dict(format='interlinked-hub-preferences-v1', favorites=[], recent=[]))
         self.projects = {}
         self.magix_ids = {p['id'] for p in runtime.index['projects']}
         self.prefs = dict(format='interlinked-hub-preferences-v1', favorites=[], recent=[])
@@ -235,8 +248,7 @@ class ProjectHub:
                  'Cached hub catalog identity/schema differs.')
             self._install_catalog(snapshot['catalog'])
             self.health.update(catalogRefreshedUtc=snapshot['refreshedUtc'], libraryStatus='CACHED_NOT_CHECKED')
-        if self.prefs_path.exists():
-            self.prefs = self._validate_preferences(read_json(self.prefs_path))
+        self._adopt_preferences(self.config.status())
         if auto_refresh and not runtime.demo:
             self.refresh()
 
@@ -508,31 +520,55 @@ class ProjectHub:
     def _known(self, uiid):
         need(isinstance(uiid,str) and (uiid in self.projects or uiid in self.magix_ids), 'Choose a known project.')
 
+    def _check_preference_owner(self):
+        ordinary(self.root)
+        need(read_json(self.root/'OWNER.json') == self.identity, 'Hub state belongs to a different installation.')
+        return self.identity
+
+    def _adopt_preferences(self, status):
+        self.preference_status = copy.deepcopy(status)
+        self.prefs = copy.deepcopy(status['value']) if status['available'] else dict(format='interlinked-hub-preferences-v1', favorites=[], recent=[])
+
+    def history(self):
+        return self.config.history()
+
+    def preview_restore(self, body):
+        need(isinstance(body,dict) and set(body)=={'snapshotId'}, 'Select one configuration snapshot.')
+        return self.config.preview(body['snapshotId'])
+
+    def restore(self, body):
+        need(isinstance(body,dict) and set(body)=={'previewId'}, 'Select one configuration restore preview.')
+        with self.lock:
+            need(not self.closed, 'Hub is closing.')
+            self._adopt_preferences(self.config.restore(body['previewId']))
+            return self.preferences()
+
     def preferences(self):
         with self.lock:
-            return copy.deepcopy(dict(favorites=self.prefs['favorites'],recent=self.prefs['recent']))
+            self._adopt_preferences(self.config.status())
+            return copy.deepcopy(dict(favorites=self.prefs['favorites'],recent=self.prefs['recent'],
+                preferencesAvailable=self.preference_status['available'], preferenceRevision=self.preference_status['revision'],
+                preferencesError=self.preference_status['error']))
 
     def set_favorite(self, uiid, enabled):
         with self.lock:
             need(not self.closed and type(enabled) is bool, 'Invalid favorite request.')
             self._known(uiid)
-            value=copy.deepcopy(self.prefs)
-            value['favorites']=[v for v in value['favorites'] if v!=uiid]
-            if enabled:
-                value['favorites'].append(uiid)
-            self._validate_preferences(value)
-            write_json(self.prefs_path,value)
-            self.prefs=value
+            def change(value):
+                value['favorites']=[v for v in value['favorites'] if v!=uiid]
+                if enabled:value['favorites'].append(uiid)
+                return self._validate_preferences(value)
+            self._adopt_preferences(self.config.update(change, reason='Favorite changed'))
             return self.preferences()
 
     def mark_recent(self, uiid):
         with self.lock:
             need(not self.closed, 'Hub is closing.')
             self._known(uiid)
-            value=copy.deepcopy(self.prefs)
-            value['recent']=([dict(id=uiid,utc=utc())]+[v for v in value['recent'] if v['id']!=uiid])[:50]
-            write_json(self.prefs_path,value)
-            self.prefs=value
+            def change(value):
+                value['recent']=([dict(id=uiid,utc=utc())]+[v for v in value['recent'] if v['id']!=uiid])[:50]
+                return self._validate_preferences(value)
+            self._adopt_preferences(self.config.update(change, reason='Recent selection changed'))
             return self.preferences()
 
     def close(self):

@@ -18,7 +18,7 @@ kit/MAGIX-All-Projects-Index.json       # private, pinned snapshot
 kit/Project-Library-Client/Runtime/python.exe
 ```
 
-The current GUI seal uses `format: interlinked-gui-checksums-v6`, an exact fourteen-member `files` object covering the Python companions (including `interlinked_stats.py` and `interlinked_stats_process.py`) and three web assets, and `auditSha256` for the unchanged private sidecar. Before importing companions, the production service checks this seal and the complete original 52-file client/runtime seal. The production kit and full sealed client must already exist. Source-only previews do not install or change system settings.
+The current GUI seal uses `format: interlinked-gui-checksums-v7`, an exact fifteen-member `files` object covering the Python companions (including Stats and `interlinked_configuration.py`) and three web assets, and `auditSha256` for the unchanged private sidecar. Before importing companions, the production service checks this seal and the complete original 52-file client/runtime seal. The production kit and full sealed client must already exist. Source-only previews do not install or change system settings.
 
 Use Prepare/Open, save and close MAGIX, then choose **I saved and closed MAGIX**. That response does not save to MSI. Use **Save to MSI + verify** afterward; Free local space requires the exact selected project ID. In background mode, closing the desktop window hides it in the tray. Explicit Exit interface retains the existing operation/session shutdown guards; with background mode disabled, closing requests that guarded exit. In browser mode, closing a tab does not close stdin, terminate the child, save, or release files. Forced service/process termination cannot preserve a process-held lock: close MAGIX and use the reviewed console Recover workflow before continuing.
 
@@ -121,6 +121,22 @@ Reports are stored outside all project caches in the owned `INTERLINKED-GUI-Stat
 For a reviewed one-time observation import, load `MissingMediaLedger(state_path, exact_gui_owner_object, indexed_project_ids)` from `interlinked_gui.py` and call `.report(project_id, literal_path, request_id=<stable UUID>, source='user_dialog', note=<evidence/uncertainty>)`. This independent ledger lock does not acquire the GUI-instance, project or MAGIX workflow locks. Import only actual observations; do not propagate one popup to other projects, similar Unicode spellings, or sidecars.
 
 `test_missing_media.py --output <fixture-folder>` uses synthetic local files only, including corrupt/torn history, hardlink rejection, UUID retries, active-session and shutdown ordering checks. `test_missing_panel.js <receipt.json>` uses a synthetic DOM. Existing `test_gui.py` covers authenticated report/export routes with fake children and a loopback fixture.
+
+## Configuration revisions and recovery
+
+MASTER settings and library favorites/recent selections use separate owned local stores. Existing v1 files remain untouched until an actual change; successful writes use a versioned envelope and an opaque revision. `GET /api/master/state` and `GET /api/master/settings` expose `settingsRevision`, `settingsValid` and `lifecyclePreferencesKnown`. Flat settings POST patches require `expectedRevision`. A stale or missing revision returns HTTP 409 with `code: CONFIGURATION_CONFLICT` and current values. The UI retains dirty drafts and their base revision during polling; reload and resubmission are deliberate. Library preference requests remain atomic server-side deltas.
+
+Each scope retains three preceding validated configurations outside project caches and Git. No-op saves do not rotate history. Snapshots retain revision, UTC observation, reason, owner and payload hash; prior state is captured before replacement and pruning follows successful readback. Read `GET /api/configuration/history?scope=master|library`, preview with `POST /api/configuration/preview {scope,snapshotId}`, then explicitly apply `POST /api/configuration/restore {scope,previewId}`. Server-issued previews expire after ten minutes and bind the exact current file, including corrupt bytes. Caller-supplied paths are refused. Corrupt records remain preserved; unsafe paths and ownership mismatches never authorize recovery.
+
+MASTER restore retains trusted current startup/background choices, clears capture calibration/activation and never connects hardware or requests sensor permission. Unknown lifecycle preferences leave the tray unchanged until an explicit preference save. Restoring unavailable MASTER requires an application restart. Library restoration preserves original recent timestamps and dormant IDs, without selecting, opening, fetching or verifying a project. Corrupt preferences show unavailable and block normal preference writes while catalog/workflow access remains usable.
+
+## MASTER review inbox
+
+The historical attention inbox is inside MASTER. It defaults to unreviewed items, with failures before input requests and newest observations first. Project/type/review filters and selections survive polling. Opening or filtering never acknowledges an observation. Mark reviewed applies only to selected retained IDs; expired selections require refresh. Review does not resolve a project failure or change health/activity.
+
+`GET /api/master/attention` and `POST /api/master/attention/acknowledge {ids}` use the existing capability, exact Host/origin and body limits. HTTP and the four unchanged MCP tools share the same bounded metadata lock and queue functions. The queue retains 100 observations, validates acknowledgment batches before writes and preserves the first review timestamp. Corruption or lock contention is unavailable, not a healthy empty inbox. No model polling, notification service or project action is added.
+
+Run configuration, MASTER/HTTP, web-interface and tray fixtures in fresh private folders. Synthetic checks do not certify installed bytes, actual Violet access, real LCD operation or editor workflows. Tray fixtures inject a simulated startup writer and never open the production registry.
 
 ## Violet data reports
 

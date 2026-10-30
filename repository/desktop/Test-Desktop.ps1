@@ -3,6 +3,7 @@ param(
     [Parameter(Mandatory=$true)][string]$PackageDirectory,
     [Parameter(Mandatory=$true)][string]$Python,
     [Parameter(Mandatory=$true)][string]$FixtureDirectory,
+    [string]$ApplicationSource,
     [switch]$PreflightOnly
 )
 $ErrorActionPreference = 'Stop'
@@ -34,6 +35,7 @@ try { if ($image.Width -ne 1536 -or $image.Height -ne 2288) { throw 'Desktop pac
 if ($PreflightOnly) { [pscustomobject]@{Status='PACKAGE_PREFLIGHT_PASS';Files=$required.Count;Scope='Exact package seal and atlas dimensions; no executable or fixture was started'} | ConvertTo-Json; return }
 New-Item -ItemType Directory -Path $fixture | Out-Null
 $app = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\app\interlinked_gui.py'))
+if ($ApplicationSource) { $app = (Resolve-Path -LiteralPath $ApplicationSource).Path }
 $receipt = Join-Path $fixture 'smoke.json'
 $arguments = @('--demo','--smoke-test','--app',('"'+$app+'"'),'--python',('"'+$pythonPath+'"'),'--demo-state',('"'+(Join-Path $fixture 'state')+'"'),'--receipt',('"'+$receipt+'"'),'--master-worker',('"'+$worker+'"'),'--master-violet',('"'+$violet+'"'))
 $process = Start-Process -FilePath $exe -ArgumentList $arguments -WindowStyle Hidden -PassThru

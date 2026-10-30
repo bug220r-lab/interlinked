@@ -46,7 +46,10 @@ class MasterTests(unittest.TestCase):
             cwd=str(self.path / 'project'), observedAt=m.utc(), **fields))
 
     def register(self):
-        self.service.settings(dict(projects=[dict(id='project', label='Fixture', root=str(self.path / 'project'))]))
+        self.settings(dict(projects=[dict(id='project', label='Fixture', root=str(self.path / 'project'))]))
+
+    def settings(self, body):
+        return self.service.settings(dict(body, expectedRevision=self.service.state()['settingsRevision']))
 
     def test_metadata_never_contains_prompt_or_tool_input(self):
         event = self.event(prompt='TOP SECRET', tool_input={'command': 'SECRET COMMAND'},
@@ -101,6 +104,9 @@ class MasterTests(unittest.TestCase):
         self.assertEqual(self.service.event_errors, 1)
         self.assertEqual(len(self.service.state()['projects']), 3)
 
+
+
+
     def test_controller_output_is_not_exported_to_dot(self):
         exported = m.bridge_snapshot(self.service.feed)
         self.assertNotIn('PRIVATE PROMPT', json.dumps(exported))
@@ -130,14 +136,14 @@ class MasterTests(unittest.TestCase):
         self.assertFalse(self.controller.state()['busy'])
 
     def test_private_transport_pins_are_not_http_settings(self):
-        with self.assertRaises(ValueError):self.service.settings({'helperPins':{'USBLCDNEW.dll':'a'*64}})
+        with self.assertRaises(ValueError):self.settings({'helperPins':{'USBLCDNEW.dll':'a'*64}})
         m.write_json(self.service.root/'device.json',dict(format='interlinked-master-device-v1',helperPins={'USBLCDNEW.dll':'a'*64}))
         self.assertEqual(self.service._worker_settings()['helperPins']['USBLCDNEW.dll'],'a'*64)
 
     def test_settings_reject_unknown_capabilities_and_network_roots(self):
         for payload in ({'executable': 'bad.exe'}, {'fps': 30}, {'mode': 'arbitrary'},
                         {'projects': [dict(id='x', label='Bad', root=r'\\MSI\ProjectLibrary')]}):
-            with self.assertRaises(ValueError): self.service.settings(payload)
+            with self.assertRaises(ValueError): self.settings(payload)
 
     def test_settings_add_project_roundtrip(self):
         self.register()
@@ -147,15 +153,152 @@ class MasterTests(unittest.TestCase):
         try: self.assertEqual(reopened.state()['settings']['projects'][0]['id'], 'project')
         finally: reopened.close()
 
+
+
+
     def test_capture_cannot_claim_live_without_window_calibration(self):
-        with self.assertRaises(ValueError): self.service.settings({'mode': 'live_mini', 'captureEnabled': True})
+        with self.assertRaises(ValueError): self.settings({'mode': 'live_mini', 'captureEnabled': True})
         self.assertFalse(self.service.state()['capture']['valid'])
 
     def test_capture_is_disabled_on_reopen(self):
-        self.service.settings(dict(mode='live_mini', captureWindowId='123', captureWindowBounds=dict(x=0,y=0,width=240,height=240), captureEnabled=True))
+        self.settings(dict(mode='live_mini', captureWindowId='123', captureWindowBounds=dict(x=0,y=0,width=240,height=240), captureEnabled=True))
         reopened = m.MasterService(self.runtime, self.controller, start=False)
         try: self.assertFalse(reopened.state()['settings']['captureEnabled'])
         finally: reopened.close()
+
+    def test_settings_revision_conflict_and_noop_preserve_history(self):
+        original = self.service.state()['settingsRevision']
+        with self.assertRaises(ValueError) as missing:
+            self.service.settings(dict(fps=5))
+        self.assertEqual(missing.exception.current['settingsRevision'], original)
+        self.settings(dict(fps=5))
+        saved = (self.service.root / 'settings.json').read_bytes()
+        revision = self.service.state()['settingsRevision']
+        self.assertNotEqual(revision, original)
+        with self.assertRaises(ValueError) as stale:
+            self.service.settings(dict(fps=15, expectedRevision=original))
+        self.assertEqual(stale.exception.current['settings']['fps'], 5)
+        self.assertEqual((self.service.root / 'settings.json').read_bytes(), saved)
+        with patch.object(self.service, '_send') as send:
+            self.settings(dict(fps=5))
+            send.assert_not_called()
+        self.assertEqual(self.service.state()['settingsRevision'], revision)
+        self.assertEqual(self.service.history()['items'], [])
+
+    def test_legacy_settings_migrate_only_on_write(self):
+        value = dict(format='interlinked-master-settings-v1', settings=dict(fps=5))
+        m.write_json(self.service.root / 'settings.json', value)
+        before = (self.service.root / 'settings.json').read_bytes()
+        reopened = m.MasterService(self.runtime, self.controller, start=False)
+        try:
+            self.assertEqual((self.service.root / 'settings.json').read_bytes(), before)
+            self.assertTrue(reopened.state()['settingsRevision'].startswith('legacy:'))
+            reopened.settings(dict(fps=15, expectedRevision=reopened.state()['settingsRevision']))
+            self.assertEqual(len(reopened.history()['items']), 1)
+            self.assertEqual(m.read_json(self.service.root / 'settings.json')['format'], 'interlinked-configuration-v2')
+        finally:
+            reopened.close()
+
+    def test_restore_retains_lifecycle_disables_capture_and_keeps_activity_root(self):
+        project = dict(id='project', label='Fixture', root=str(self.path / 'project'),
+                       activityRoot=str(self.path / 'activity'))
+        self.settings(dict(projects=[project], fps=5, background=True, startAtLogin=False,
+            captureEnabled=True, captureWindowId='123', captureWindowBounds=dict(x=0,y=0,width=240,height=240)))
+        self.settings(dict(fps=15, background=False, startAtLogin=True))
+        history = self.service.history()
+        preview = self.service.preview_restore(dict(snapshotId=history['items'][0]['id']))
+        self.assertEqual(preview['proposed']['settings']['fps'], 5)
+        with patch.object(self.service, 'display') as display:
+            result = self.service.restore(dict(previewId=preview['previewId']))
+            display.assert_not_called()
+        settings = result['state']['settings']
+        self.assertEqual(settings['projects'][0]['activityRoot'], project['activityRoot'])
+        self.assertFalse(settings['background'])
+        self.assertTrue(settings['startAtLogin'])
+        self.assertFalse(settings['captureEnabled'])
+        self.assertIsNone(settings['captureWindowId'])
+        self.assertIsNone(settings['captureWindowBounds'])
+        self.assertFalse(self.controller.state()['busy'])
+
+    def test_corrupt_settings_restore_requires_restart_and_preserves_bad_bytes(self):
+        self.settings(dict(fps=5))
+        self.settings(dict(fps=15))
+        bad = b'{corrupt settings fixture'
+        (self.service.root / 'settings.json').write_bytes(bad)
+        fallback = m.safe_service(self.runtime, self.controller, start=False)
+        state = fallback.state()
+        self.assertFalse(state['settingsValid'])
+        self.assertNotIn('startAtLogin', state['settings'])
+        self.assertNotIn('background', state['settings'])
+        snapshot = fallback.history()['items'][0]['id']
+        preview = fallback.preview_restore(dict(snapshotId=snapshot))
+        self.assertFalse(preview['proposed']['lifecyclePreferencesKnown'])
+        result = fallback.restore(dict(previewId=preview['previewId']))
+        self.assertTrue(result['restartRequired'])
+        self.assertFalse(result['state']['settingsValid'])
+        preserved = list(fallback.configuration.history_root.glob('corrupt-*.bin'))
+        self.assertEqual(len(preserved), 1)
+        self.assertEqual(preserved[0].read_bytes(), bad)
+        reopened = m.MasterService(self.runtime, self.controller, start=False)
+        try:
+            self.assertTrue(reopened.state()['settingsValid'])
+            self.assertFalse(reopened.state()['lifecyclePreferencesKnown'])
+            self.assertFalse(reopened.state()['settings']['captureEnabled'])
+        finally:
+            reopened.close()
+
+    def test_restore_preview_refuses_intervening_save_and_history_is_bounded(self):
+        for fps in (5, 15, 10, 5, 15):
+            self.settings(dict(fps=fps))
+        self.assertEqual(len(self.service.history()['items']), 3)
+        preview = self.service.preview_restore(dict(snapshotId=self.service.history()['items'][0]['id']))
+        self.settings(dict(fps=10))
+        before = (self.service.root / 'settings.json').read_bytes()
+        with self.assertRaises(ValueError):
+            self.service.restore(dict(previewId=preview['previewId']))
+        self.assertEqual((self.service.root / 'settings.json').read_bytes(), before)
+
+    def test_settings_merge_uses_current_disk_revision_not_stale_service_values(self):
+        self.settings(dict(fps=5))
+        external = self.service.configuration.status()
+        external['value']['settings']['projects'] = [dict(id='external', label='External fixture',
+            root=str(self.path / 'external'), activityRoot=str(self.path / 'other-activity'))]
+        saved = self.service.configuration.save(external['value'], expected_revision=external['revision'])
+        observed = self.service.state()
+        self.assertEqual(observed['settingsRevision'], saved['revision'])
+        self.assertEqual(observed['settings']['projects'][0]['id'], 'external')
+        self.assertFalse(observed['lifecyclePreferencesKnown'])
+        self.assertTrue(observed['restartRequired'])
+        self.service.settings(dict(fps=15, expectedRevision=saved['revision']))
+        settings = self.service.state()['settings']
+        self.assertEqual(settings['fps'], 15)
+        self.assertEqual(settings['projects'][0]['id'], 'external')
+        self.assertIn('activityRoot', settings['projects'][0])
+
+    def test_midrun_corruption_is_not_an_actionable_settings_snapshot(self):
+        self.settings(dict(fps=5, startAtLogin=True, background=True))
+        (self.service.root / 'settings.json').write_bytes(b'{midrun corruption')
+        with patch.object(self.service, '_send') as send:
+            state = self.service.state()
+            send.assert_not_called()
+        self.assertFalse(state['settingsValid'])
+        self.assertFalse(state['lifecyclePreferencesKnown'])
+        self.assertIsNone(state['settingsRevision'])
+        self.assertNotIn('startAtLogin', state['settings'])
+        self.assertNotIn('background', state['settings'])
+        self.assertFalse(state['settings']['captureEnabled'])
+
+    def test_wrong_owner_never_acquires_configuration_recovery(self):
+        self.settings(dict(fps=5))
+        self.settings(dict(fps=15))
+        marker = self.service.root / 'OWNER.json'
+        m.write_json(marker, dict(format='foreign-fixture'))
+        before = marker.read_bytes()
+        fallback = m.safe_service(self.runtime, self.controller, start=False)
+        self.assertFalse(fallback.state()['settingsValid'])
+        with self.assertRaises(ValueError):
+            fallback.history()
+        self.assertEqual(marker.read_bytes(), before)
 
     def test_build_receipt_requires_matching_clean_revision(self):
         head = 'a'*40
@@ -185,6 +328,10 @@ class MasterTests(unittest.TestCase):
 
     def test_violet_cannot_request_project_operations(self):
         with self.assertRaises(ValueError): m.publish_violet(self.service.feed,dict(status='working', command='release'))
+
+
+
+
 
     def test_sensor_validation_requires_fresh_verified_value(self):
         self.service.accept_worker_status(dict(type='sensors',temperatures=dict(cpu=dict(value=55,status='available',observedAt=m.utc()),gpu=dict(value=900,status='available',observedAt=m.utc()))))
@@ -323,6 +470,100 @@ class MasterTests(unittest.TestCase):
         with self.assertRaises(ValueError): m.acknowledge_attention(self.service.feed, dict(ids=['unknown']))
         with self.assertRaises(ValueError): m.acknowledge_attention(self.service.feed, dict(ids=['../escape']))
         with self.assertRaises(ValueError): m.acknowledge_attention(self.service.feed, dict(ids=[], command='release'))
+
+    def test_attention_ack_is_idempotent_and_bad_batch_writes_nothing(self):
+        first = m.collect_attention(self.service.feed, [self.attention_project()])
+        identifier = first['items'][0]['id']
+        with self.assertRaises(ValueError):
+            m.acknowledge_attention(self.service.feed, dict(ids=[identifier, 'unknown']))
+        self.assertFalse(m.master_attention(self.service.feed)['items'][0]['acknowledged'])
+        m.acknowledge_attention(self.service.feed, dict(ids=[identifier]))
+        path = self.service.feed / 'attention-acks' / (identifier + '.json')
+        before = path.read_bytes()
+        m.acknowledge_attention(self.service.feed, dict(ids=[identifier, identifier]))
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(m.master_attention(self.service.feed)['items'][0]['acknowledgedAt'], json.loads(before)['acknowledgedAt'])
+
+    def test_corrupt_ack_is_preserved_and_reports_unavailable(self):
+        item = m.collect_attention(self.service.feed, [self.attention_project()])['items'][0]
+        directory = self.service.feed / 'attention-acks'
+        directory.mkdir(exist_ok=True)
+        path = directory / (item['id'] + '.json')
+        path.write_bytes(b'{corrupt acknowledgment')
+        with self.assertRaises(ValueError):
+            m.acknowledge_attention(self.service.feed, dict(ids=[item['id']]))
+        self.assertFalse(self.service.attention()['available'])
+        self.assertEqual(path.read_bytes(), b'{corrupt acknowledgment')
+
+    def test_missing_queue_or_orphan_corruption_never_prunes_acknowledgments(self):
+        item = m.collect_attention(self.service.feed, [self.attention_project()])['items'][0]
+        m.acknowledge_attention(self.service.feed, dict(ids=[item['id']]))
+        queue_path = self.service.feed / 'attention.json'
+        queue_bytes = queue_path.read_bytes()
+        ack = self.service.feed / 'attention-acks' / (item['id'] + '.json')
+        ack_bytes = ack.read_bytes()
+        queue_path.unlink()
+        with self.assertRaises(ValueError):
+            m.collect_attention(self.service.feed, [])
+        self.assertEqual(ack.read_bytes(), ack_bytes)
+        queue_path.write_bytes(queue_bytes)
+        orphan = ack.with_name('orphan.json')
+        orphan.write_bytes(b'{orphan corrupt fixture')
+        with self.assertRaises(ValueError):
+            m.collect_attention(self.service.feed, [])
+        self.assertEqual(orphan.read_bytes(), b'{orphan corrupt fixture')
+        self.assertEqual(queue_path.read_bytes(), queue_bytes)
+
+    def test_duplicate_attention_queue_identity_is_corruption(self):
+        item = m.collect_attention(self.service.feed, [self.attention_project()])['items'][0]
+        raw = {k: v for k, v in item.items() if k not in {'acknowledged', 'acknowledgedAt'}}
+        m.write_json(self.service.feed / 'attention.json', dict(format='interlinked-master-attention-v1', items=[raw, raw]))
+        self.assertFalse(self.service.attention()['available'])
+
+    def test_attention_lock_is_bounded_and_never_touches_project_locks(self):
+        before = set(self.path.rglob('*'))
+        with m.attention_guard(self.service.feed):
+            started = time.monotonic()
+            with self.assertRaises(OSError):
+                m.master_attention(self.service.feed)
+            self.assertLess(time.monotonic() - started, 2)
+        created = set(self.path.rglob('*')) - before
+        self.assertTrue((self.service.feed / '.attention.lock').is_file())
+        self.assertTrue({p.name for p in created} <= {'.attention.lock'})
+
+    def test_concurrent_process_attention_collection_and_review(self):
+        initial = m.collect_attention(self.service.feed, [self.attention_project()])['items'][0]
+        wrapper = """import importlib.util,json,sys
+from pathlib import Path
+spec=importlib.util.spec_from_file_location('queue_fixture',sys.argv[1]);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+root=Path(sys.argv[2]);action=sys.argv[3]
+import time
+for i in range(8):
+ for attempt in range(10):
+  try:
+   if action=='ack':m.acknowledge_attention(root,dict(ids=[sys.argv[4]]))
+   else:m.collect_attention(root,[dict(id='process-'+action,health=dict(status='failed',observedAt='2026-01-01T00:00:%02d+00:00'%i,source='Fixture'),activity=dict(status='unknown'))])
+   break
+  except OSError:
+   if attempt==9:raise
+   time.sleep(.02)
+print('ok')
+"""
+        processes = [subprocess.Popen([sys.executable, '-I', '-B', '-c', wrapper,
+            str(ROOT / 'interlinked_master.py'), str(self.service.feed), action, initial['id']],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE) for action in ('one', 'two', 'ack', 'ack')]
+        try:
+            for process in processes:
+                stdout, stderr = process.communicate(timeout=30)
+                self.assertEqual(process.returncode, 0, stderr.decode('utf-8', errors='replace'))
+                self.assertEqual(stdout.strip(), b'ok')
+        finally:
+            for process in processes:
+                if process.poll() is None:
+                    process.kill(); process.wait(timeout=5)
+        queue = m.master_attention(self.service.feed)
+        self.assertEqual(len(queue['items']), 17)
+        self.assertTrue(next(row for row in queue['items'] if row['id'] == initial['id'])['acknowledged'])
 
     def test_attention_capacity_and_ack_retention(self):
         for i in range(105):

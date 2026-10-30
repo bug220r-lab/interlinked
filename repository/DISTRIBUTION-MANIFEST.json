@@ -1,8 +1,8 @@
 {
   "format": "interlinked-distribution-manifest-v1",
-  "createdUtc": "2026-10-30T20:18:31.967683+00:00",
-  "scope": "Reviewed project hub, MW5, read-only MSI Jobs, MASTER observatory and restricted local Violet bridge, Windows rendering/capture/sensor worker, desktop host and guarded publication; private telemetry, payloads, credentials and binaries excluded. Additive Buddy companion, lock-owner media ingestion and authenticated project work report. Independent Stats workspace, contained native process lifecycle and guarded v6 application publication.",
-  "previousManifestSha256": "1a86372282d365dd39c1a1fe8bbb157e39a5e5dbe67308064da56eb130aa271c",
+  "createdUtc": "2026-10-30T20:20:42.155118+00:00",
+  "scope": "Reviewed project hub, MW5, read-only MSI Jobs, MASTER observatory and restricted local Violet bridge, Windows rendering/capture/sensor worker, desktop host and guarded publication; private telemetry, payloads, credentials and binaries excluded. Additive Buddy companion, lock-owner media ingestion and authenticated project work report. Independent Stats workspace, contained native process lifecycle and guarded v6 application publication. Revision-checked settings, separate local recovery histories, MASTER review inbox and lifecycle validity guards.",
+  "previousManifestSha256": "6ad55dcaa6dc856f6512c5ecafde7d2526cba2d077db33ed457358b98a389a4d",
   "files": [
     {
       "path": ".gitattributes",
@@ -67,14 +67,20 @@
     {
       "path": "repository/app/README.md",
       "origin": "GUI and source-library audit addition",
-      "bytes": 22168,
-      "sha256": "e9e11b1f96f419222cd78a56d9fc9359f543188d0107845a064c6a922233c086"
+      "bytes": 25406,
+      "sha256": "ff384b670d5b84a913a3b2508a6b731b4ffa6f126bb2a496cc92c980a2a62595"
     },
     {
       "path": "repository/app/interlinked_buddy.py",
       "bytes": 39815,
       "sha256": "001d5f04fb69c7e12ec7538f1843ad572cd497447d09c381e237c1c757dfba4d",
       "origin": "Buddy companion integration reviewed source"
+    },
+    {
+      "path": "repository/app/interlinked_configuration.py",
+      "origin": "Local versioned configuration and recovery source",
+      "bytes": 20725,
+      "sha256": "6e4844ee7b44a4d9118f821aa89287dd2eff95f339faf56ce873a13bb5ea50ec"
     },
     {
       "path": "repository/app/interlinked_controller.py",
@@ -85,14 +91,14 @@
     {
       "path": "repository/app/interlinked_gui.py",
       "origin": "Buddy companion integration reviewed source",
-      "bytes": 53890,
-      "sha256": "fe0f3f6135d03752cf8d3ac9109e1f40fd81980c9e4c5e1dc33c57022f0195bf"
+      "bytes": 55703,
+      "sha256": "1084ae060023fee3b4376ba7d2ace5e9f90db2a89fc398643ae0495d3c3740d2"
     },
     {
       "path": "repository/app/interlinked_hub.py",
       "origin": "reviewed unified hub and MW5 orchestration or synthetic validation",
-      "bytes": 27480,
-      "sha256": "97593c04c1df9bb0026350175e542b6de0a3242e7704c17019ab76bd78e91e11"
+      "bytes": 29405,
+      "sha256": "6abbf4e66f4df9b17f8d0bd7a7eb40372e905a9b117554355eaeb4ffd5ddec2b"
     },
     {
       "path": "repository/app/interlinked_jobs.py",
@@ -103,8 +109,8 @@
     {
       "path": "repository/app/interlinked_master.py",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 53070,
-      "sha256": "4efbb8f867777b455e3c78c077ca4bed1524c24bff12a52dcb8d22c945801ba0"
+      "bytes": 67855,
+      "sha256": "8cef411c3f8e01a2f6565506cb449d18d1bd27a6eb1675d4366daa0faf326443"
     },
     {
       "path": "repository/app/interlinked_mw5.py",
@@ -137,6 +143,18 @@
       "sha256": "b4b97f179dd0b2a87502216b47a0244d6423eb41c6cefb835c4cdca8167781fe"
     },
     {
+      "path": "repository/app/test_configuration.py",
+      "origin": "Synthetic configuration durability and ownership fixtures",
+      "bytes": 10237,
+      "sha256": "b2b86a8b1760f4593e35f49609841304a369fd52becddfba132d80f500c210bf"
+    },
+    {
+      "path": "repository/app/test_configuration_ui.js",
+      "origin": "Synthetic settings draft, inbox and recovery UI fixtures",
+      "bytes": 14055,
+      "sha256": "4fe78e0575121d667200212b6b03f21c1a75f4e906bae5a3c833480b48be6912"
+    },
+    {
       "path": "repository/app/test_desktop_startup.py",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
       "bytes": 7821,
@@ -151,8 +169,8 @@
     {
       "path": "repository/app/test_hub.py",
       "origin": "reviewed unified hub and MW5 orchestration or synthetic validation",
-      "bytes": 14464,
-      "sha256": "d6e6ac8551f8216813405358b5bd5784a25243e5183e7c65ce4d85fbadb8a243"
+      "bytes": 16983,
+      "sha256": "40491c227c9b0dc2d9034f5e47146e642b104be4b12fec52a74379469914e98c"
     },
     {
       "path": "repository/app/test_hub_integration.py",
@@ -187,8 +205,8 @@
     {
       "path": "repository/app/test_master.py",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 25507,
-      "sha256": "5462a0ad3016ea6402f7e7b2b75fbcbfeef189a3a501ce9bf9d2bafb37b245dd"
+      "bytes": 38731,
+      "sha256": "8f2a06800c9d48bfec507dae8858785a9042bd788cc7a57aa2f125c487cd695d"
     },
     {
       "path": "repository/app/test_master_hook_launch.py",
@@ -199,14 +217,14 @@
     {
       "path": "repository/app/test_master_http.py",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 8291,
-      "sha256": "5a348164de5503806c6936b485a0db414734437b75a105675635d8851242f19d"
+      "bytes": 14604,
+      "sha256": "a0314230e6db9bd08f5a1ce0247723526308073ae34b04d19a6148708ca138f8"
     },
     {
       "path": "repository/app/test_master_ui.js",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 13400,
-      "sha256": "4accbed5c861cba3b3da6f53f0fd244a794220e1b771d89ed2f1fa34734f9e7f"
+      "bytes": 14119,
+      "sha256": "d7374d9022b82915af10612c8925ca08995271b68bdd771649d8e72a270f5503"
     },
     {
       "path": "repository/app/test_missing_media.py",
@@ -247,20 +265,20 @@
     {
       "path": "repository/app/web/app.js",
       "origin": "Buddy companion integration reviewed source",
-      "bytes": 77096,
-      "sha256": "8673fb4b3e0f469cfb9e266067e6672bcb30e95d320ad7d82153f101976fce7f"
+      "bytes": 94853,
+      "sha256": "ba8ebeeef6b6587207c2cbd07eecf353edd5778f34835149173b8f839f842787"
     },
     {
       "path": "repository/app/web/index.html",
       "origin": "Buddy companion integration reviewed source",
-      "bytes": 25293,
-      "sha256": "bb8aec13699b924133adc91c17d65e8ddf12643beeb6fed915d7a34264e860d9"
+      "bytes": 29233,
+      "sha256": "8a97e1cc6fecf61e36a1dede98f3993ef8ea1c015b73f73f109bcf431fa9e6e4"
     },
     {
       "path": "repository/app/web/style.css",
       "origin": "Buddy companion integration reviewed source",
-      "bytes": 39248,
-      "sha256": "72ed4f1e1e003aa069990810cdb33b4d1f7a3f257a5a6faceb30f122d8ee6817"
+      "bytes": 42400,
+      "sha256": "bcdab2eb903c9d1167fc1e3e84a940d43c99e71702abf28bb8a0c0f0be45cfa7"
     },
     {
       "path": "repository/assemble_source_snapshot.py",
@@ -319,14 +337,14 @@
     {
       "path": "repository/deployment/Interlinked-Desktop-Publication.psm1",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 17821,
-      "sha256": "73c77a290d7d614609dc57ae4f1c2558ab3de01f0c848266ed3ddad023e6a543"
+      "bytes": 18129,
+      "sha256": "bd81d9028718568140ae606ecd65c9aa823d542ed97cbb709f974821b61e87da"
     },
     {
       "path": "repository/deployment/Publish-Interlinked-Desktop.ps1",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 4658,
-      "sha256": "18cf787cffa2c7b16666330318ed8dd42fe818f3f2b2ae224b63130c6301b29f"
+      "bytes": 4707,
+      "sha256": "13858fbafc65ed2a4414f7f9c8f6d4c5191a196d103737ac2b10a5435b739a80"
     },
     {
       "path": "repository/deployment/Publish-Interlinked-GUI.ps1",
@@ -343,14 +361,14 @@
     {
       "path": "repository/deployment/README.md",
       "origin": "GUI and source-library audit addition",
-      "bytes": 5887,
-      "sha256": "6d351ad39332dce6b067917a15cc947a366541a8245998baa6d868a6dd1c8d6e"
+      "bytes": 6519,
+      "sha256": "3809c4b182f16eb0b47625c67cc433893e53c69c53193bb6935892ec1752df66"
     },
     {
       "path": "repository/deployment/Test-Interlinked-Desktop-Publication.ps1",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 24190,
-      "sha256": "7843402b385115b6e662c91a85dacd2e85e29e032a6f58c2e49238ce041d0b9d"
+      "bytes": 25355,
+      "sha256": "9c5c91a371ad5a91adae8f5cb19981dba68b45e3446d841abf58e33e038ac4f4"
     },
     {
       "path": "repository/deployment/import_magix_presets.py",
@@ -397,14 +415,14 @@
     {
       "path": "repository/desktop/MasterTray.cs",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 5009,
-      "sha256": "ce8ab003901d8fc61ebc522873da84f7040dd6087de2ab4b8ad763fdc914b859"
+      "bytes": 5585,
+      "sha256": "f7b84ed4cf43bb661547ad7eacafae3aef65a87791371d55d0748a92646fa516"
     },
     {
       "path": "repository/desktop/MasterTrayTests.cs",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 4855,
-      "sha256": "d64a0f48ff1e3503f932660367d673a52c61d9d7f4bb7f8b69b1bd5555036db7"
+      "bytes": 6314,
+      "sha256": "c2e99e85f9071ba4dba6d963c701108e6cf4b5efbde275a987635dd9452dd091"
     },
     {
       "path": "repository/desktop/MasterWorker.cs",
@@ -415,8 +433,8 @@
     {
       "path": "repository/desktop/README.md",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 15062,
-      "sha256": "65a4bf037a6a1665a15c2d33b3a23936e771c70679d51caa657362e5bcca7c42"
+      "bytes": 15478,
+      "sha256": "f3b1ee9f7f4b22566836d4f408287f5cb2658f2321fd05395040c54919054e46"
     },
     {
       "path": "repository/desktop/Test-Desktop-Package.ps1",
@@ -427,8 +445,8 @@
     {
       "path": "repository/desktop/Test-Desktop.ps1",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 5649,
-      "sha256": "09c7c21addec96a0da2b7a0efa75eacdc833cb76755281930b7b9e1033d3d869"
+      "bytes": 5768,
+      "sha256": "37fb9c7bf99b5b818063d465d2689949b3cc203cf5f5a841bd47a425404078cc"
     },
     {
       "path": "repository/desktop/Test-MasterTray.ps1",
@@ -1183,9 +1201,9 @@
     }
   ],
   "summary": {
-    "files": 181,
-    "bytes": 2072381,
-    "pythonSourcesParsed": 70
+    "files": 184,
+    "bytes": 2191507,
+    "pythonSourcesParsed": 72
   },
   "preservedBaseline": "Original SOURCE-MANIFEST, MAGIX-EXTENSION-MANIFEST, frozen workspace base and original launcher source remain exact. Buddy launcher is a separate current source addition.",
   "privacy": "No personal catalog, media audit report, deployment seal, source media, cache, credential or runtime binary is included.",
@@ -1204,5 +1222,22 @@
     "publicationChecks": 95,
     "nativeDesktopChecks": 39,
     "scope": "Earlier isolated and installed v6 acceptance; private connection, data, seals and receipts excluded."
+  },
+  "configurationRecovery": {
+    "scope": "Local revision-checked MASTER settings, separate MASTER/library recovery histories, historical MASTER review inbox and tray validity guards.",
+    "privacy": "History, attention metadata, settings, personal catalogs, deployment seals and receipts stay outside Git.",
+    "acceptance": "Agent-operated installed v7 checks verified migration, draft retention, stale-write refusal, preview/restore and read-only inbox filters. The installed package also contains separately reviewed concurrent work; this source commit isolates the requested features.",
+    "hardwareTested": false,
+    "actualUserAcceptance": false,
+    "configurationTests": 12,
+    "masterTests": 56,
+    "masterNativePreviewSkipped": 1,
+    "httpChecks": 85,
+    "configurationUiChecks": 35,
+    "masterUiChecks": 48,
+    "hubChecks": 75,
+    "hubIntegrationChecks": 105,
+    "trayChecks": 16,
+    "publicationChecks": 97
   }
 }

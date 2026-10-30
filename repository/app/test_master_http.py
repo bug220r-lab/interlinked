@@ -51,6 +51,10 @@ def main():
                 response=connection.getresponse();return response.status,dict(response.getheaders()),response.read()
             finally:connection.close()
 
+        def settings(body):
+            current=json.loads(request('GET','/api/master/state')[2])
+            return request('POST','/api/master/settings',dict(body,expectedRevision=current['settingsRevision']))
+
         long_directory=root/('metadata-'+('x'*70))/('level-'+('y'*55))
         os.makedirs(g.fs(long_directory))
         long_record=long_directory/('record-'+('z'*35)+'.json')
@@ -60,7 +64,7 @@ def main():
 
         check(request('GET','/api/state')[0]==200,'Core project API is available before MASTER operations')
         until(lambda:request('GET','/api/master/frame')[0]==200,'Real native preview did not arrive')
-        for path in ('/api/master/state','/api/master/settings','/api/master/frame'):
+        for path in ('/api/master/state','/api/master/settings','/api/master/frame','/api/master/attention'):
             check(request('GET',path,token=False)[0]==403,path+' requires capability token')
             check(request('GET',path,headers={'Host':'foreign.invalid'})[0]==403,path+' rejects foreign Host')
             check(request('GET',path,headers={'Origin':'https://foreign.invalid'})[0]==403,path+' rejects foreign Origin')
@@ -77,12 +81,60 @@ def main():
             check(request('POST',path,body,token=False)[0]==409,path+' requires capability token')
             check(request('POST',path,body,headers={'Origin':'https://foreign.invalid'})[0]==409,path+' rejects foreign write origin')
             check(request('POST',path,body,headers={'Origin':''})[0]==409,path+' requires exact write origin')
-        check(request('POST','/api/master/settings',{'fps':5})[0]==200,'Valid MASTER preference changes are accepted')
+        revision=snapshot['settingsRevision']
+        check(request('POST','/api/master/settings',{'fps':5})[0]==409,'MASTER writes require an expected settings revision')
+        check(settings({'fps':5})[0]==200,'Valid MASTER preference changes are accepted')
         check(json.loads(request('GET','/api/master/settings')[2])['fps']==5,'MASTER settings roundtrip uses authenticated endpoint')
+        conflict=request('POST','/api/master/settings',{'fps':10,'expectedRevision':revision})
+        conflict_value=json.loads(conflict[2])
+        check(conflict[0]==409 and conflict_value['code']=='CONFIGURATION_CONFLICT' and conflict_value['current']['settings']['fps']==5,
+              'Stale settings writes return the current settings without overwriting them')
         for body in ({'helperPins':{'USBLCDNEW.dll':'a'*64}},{'executable':'cmd.exe'}, {'requireHelperPins':False},
                      {'projects':[{'id':'bad','label':'Bad','root':r'\\MSI\ProjectLibrary'}]},
-                     {'captureEnabled':True}, {'fps':30}):
-            check(request('POST','/api/master/settings',body)[0]==409,'Untrusted MASTER configuration capability is rejected: '+str(next(iter(body))))
+                     {'captureEnabled':True}, {'fps':30}, {'fps':45}, {'fps':60}):
+            check(settings(body)[0]==409,'Untrusted MASTER configuration capability is rejected: '+str(next(iter(body))))
+        check(settings({'fps':10})[0]==200,'Second configuration commit creates a recoverable prior version')
+        for scope in ('master','library'):
+            route='/api/configuration/history?scope='+scope
+            check(request('GET',route,token=False)[0]==403,'Configuration history requires capability: '+scope)
+            check(request('GET',route,headers={'Origin':'https://foreign.invalid'})[0]==403,'Configuration history rejects foreign origin: '+scope)
+            check(request('GET',route)[0]==200,'Owned configuration history is readable: '+scope)
+        history=json.loads(request('GET','/api/configuration/history?scope=master')[2])
+        check(history['items'] and len(history['items'])<=3,'MASTER exposes bounded previous configurations')
+        snapshot_id=history['items'][0]['id']
+        preview=json.loads(request('POST','/api/configuration/preview',{'scope':'master','snapshotId':snapshot_id})[2])
+        check('previewId' in preview and 'proposed' in preview,'Restore preview exposes proposed metadata and an opaque capability')
+        check(settings({'fps':15})[0]==200,'A concurrent change invalidates an earlier restore preview')
+        check(request('POST','/api/configuration/restore',{'scope':'master','previewId':preview['previewId']})[0]==409,'Stale restore previews cannot overwrite intervening configuration')
+        check(request('POST','/api/configuration/preview',{'scope':'master','snapshotId':'../outside'})[0]==409,'Recovery refuses arbitrary filesystem paths')
+        check(request('POST','/api/configuration/restore',{'scope':'library','previewId':'unknown','path':'settings.json'})[0]==409,'Recovery refuses extra caller-supplied paths')
+        m=g.load_companion('interlinked_master')
+        observed=m.utc()
+        m.collect_attention(server.master.feed,[dict(id='fixture',health=dict(status='failed',observedAt=observed,source='Synthetic test'),activity=dict(status='unknown'))])
+        queue=json.loads(request('GET','/api/master/attention')[2])
+        attention_id=queue['items'][-1]['id']
+        def project_evidence():
+            return [(row['id'],row['health'],row['activity']) for row in json.loads(request('GET','/api/master/state')[2])['projects']]
+        before_health=project_evidence()
+        check(not queue['items'][-1]['acknowledged'],'Reading attention does not acknowledge it')
+        for body in ({'ids':[attention_id,'unknown']},{'ids':[attention_id],'action':'release'}):
+            check(request('POST','/api/master/attention/acknowledge',body)[0]==409,'Attention rejects invalid whole batches and action fields')
+        check(request('POST','/api/master/attention/acknowledge',{'ids':[attention_id]},token=False)[0]==409,'Attention acknowledgment requires capability')
+        acknowledged=json.loads(request('POST','/api/master/attention/acknowledge',{'ids':[attention_id]})[2])
+        check(acknowledged['resolvesProjectFailure'] is False and acknowledged['queue']['items'][-1]['acknowledged'],'Reviewing exact attention IDs updates only review state')
+        check(project_evidence()==before_health,'Attention review leaves project health and activity untouched')
+        fixture_project=json.loads(request('GET','/api/catalog')[2])['projects'][0]['id']
+        check(request('POST','/api/preferences',{'favorite':fixture_project,'enabled':True})[0]==200,'Library favorite changes remain server-side deltas')
+        check(request('POST','/api/preferences',{'recent':fixture_project})[0]==200,'Recent changes retain their own configuration history')
+        library_history=json.loads(request('GET','/api/configuration/history?scope=library')[2])
+        check(library_history['items'],'Library exposes its separate recovery history')
+        controller.hub.prefs_path.write_bytes(b'{corrupt-library-fixture')
+        unavailable_preferences=json.loads(request('GET','/api/catalog')[2])['preferences']
+        check(unavailable_preferences['preferencesAvailable'] is False and request('GET','/api/state')[0]==200,'Corrupt preferences do not stop catalog or workflow API access')
+        check(request('POST','/api/preferences',{'favorite':fixture_project,'enabled':False})[0]==409,'Ordinary preference edits cannot overwrite corrupt content')
+        library_preview=json.loads(request('POST','/api/configuration/preview',{'scope':'library','snapshotId':library_history['items'][0]['id']})[2])
+        restored_preferences=json.loads(request('POST','/api/configuration/restore',{'scope':'library','previewId':library_preview['previewId']})[2])
+        check(restored_preferences['preferencesAvailable'] and request('GET','/api/state')[0]==200,'Explicit library recovery restores metadata without creating a project action')
         check(request('POST','/api/master/display',{'connect':False})[0]==200,'Display-only disconnect command is accepted without project effects')
         check(request('POST','/api/master/display',{'action':'release','project':'anything'})[0]==409,'Display route cannot dispatch project operations')
         check(request('POST','/api/master/display',{'connect':True,'executable':'bad.exe'})[0]==409,'Display route cannot launch arbitrary executables')
@@ -107,6 +159,12 @@ def main():
         check(request('GET','/api/master/frame')[0]==503,'Broken MASTER has no fabricated preview frame')
         check(request('POST','/api/master/settings',{'fps':10})[0]==409,'Broken MASTER preserves configuration rather than silently overwriting it')
         check(request('GET','/api/master/state',token=False)[0]==403,'Fallback state remains capability-protected')
+        check(fallback['settingsValid'] is False and not fallback['lifecyclePreferencesKnown'],'Fallback settings have no startup/background authority')
+        saved_history=json.loads(request('GET','/api/configuration/history?scope=master')[2])
+        recovery_preview=json.loads(request('POST','/api/configuration/preview',{'scope':'master','snapshotId':saved_history['items'][0]['id']})[2])
+        recovered=json.loads(request('POST','/api/configuration/restore',{'scope':'master','previewId':recovery_preview['previewId']})[2])
+        check(recovered['restartRequired'] and not recovered['state']['lifecyclePreferencesKnown'],'Unavailable MASTER recovery requires restart and preserves unknown startup preferences')
+        check(request('GET','/api/master/frame')[0]==503,'Recovery does not start a renderer or connect hardware')
         report=dict(format='interlinked-master-http-tests-v1',ok=True,checks=checks,count=len(checks),hardwareConnected=False,productionModified=False)
         (root/'receipt.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
         print(json.dumps({'ok':True,'checks':len(checks),'receipt':str(root/'receipt.json')}))
