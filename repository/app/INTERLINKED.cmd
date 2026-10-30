@@ -1,7 +1,9 @@
 @echo off
 setlocal
-"%~dp0Project-Library-Client\Runtime\python.exe" -I -B -X utf8 "%~dp0INTERLINKED-App\interlinked_gui.py"
-set "taskExit=%errorlevel%"
-echo.
-if not "%taskExit%"=="0" pause
-exit /b %taskExit%
+if not exist "%~dp0INTERLINKED-Desktop\INTERLINKED.exe" (
+  echo INTERLINKED desktop application is missing. Use the reviewed installer.
+  pause
+  exit /b 2
+)
+start "" "%~dp0INTERLINKED-Desktop\INTERLINKED.exe"
+exit /b %errorlevel%

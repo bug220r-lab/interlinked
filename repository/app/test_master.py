@@ -1,0 +1,412 @@
+"""Synthetic MASTER tests. No hardware writes, MSI access, or project actions."""
+from __future__ import annotations
+import argparse
+from datetime import datetime, timezone, timedelta
+import importlib.util
+import io
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+from types import SimpleNamespace
+import unittest
+from unittest.mock import patch
+
+ROOT = Path(__file__).resolve().parent
+spec = importlib.util.spec_from_file_location('master_under_test', ROOT / 'interlinked_master.py')
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+OUT = None
+WORKER = None
+
+
+class Controller:
+    def __init__(self): self.busy = False
+    def state(self):
+        return dict(busy=self.busy, output=['PRIVATE PROMPT AND COMMAND'], activeSession=None)
+
+
+class MasterTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix='fixture-', dir=OUT)
+        self.path = Path(self.temp.name)
+        self.runtime = SimpleNamespace(state=self.path / 'state', kit=self.path / 'kit', demo=True)
+        self.controller = Controller()
+        self.service = m.MasterService(self.runtime, self.controller, start=False)
+
+    def tearDown(self):
+        self.service.close()
+        self.temp.cleanup()
+
+    def event(self, event='UserPromptSubmit', **fields):
+        return m.sanitize_hook(dict(hook_event_name=event, session_id='session1', turn_id='turn1',
+            cwd=str(self.path / 'project'), observedAt=m.utc(), **fields))
+
+    def register(self):
+        self.service.settings(dict(projects=[dict(id='project', label='Fixture', root=str(self.path / 'project'))]))
+
+    def test_metadata_never_contains_prompt_or_tool_input(self):
+        event = self.event(prompt='TOP SECRET', tool_input={'command': 'SECRET COMMAND'},
+            tool_response='PRIVATE RESULT', transcript_path='private-transcript')
+        text = json.dumps(event)
+        for secret in ('TOP SECRET', 'SECRET COMMAND', 'PRIVATE RESULT', 'private-transcript', 'tool_input'):
+            self.assertNotIn(secret, text)
+
+    def test_duplicate_event_does_not_change_state(self):
+        event = self.event()
+        self.assertTrue(self.service.events.accept(event))
+        self.assertFalse(self.service.events.accept(event))
+
+    def test_out_of_order_event_does_not_revert_terminal(self):
+        start = self.event()
+        terminal = dict(start, id='terminal', event='Stop')
+        self.service.events.accept(terminal)
+        self.assertFalse(self.service.events.accept(dict(start, id='late-start')))
+        self.assertEqual(self.service.events.activity([str(self.path / 'project')])['status'], 'turn_finished')
+
+    def test_new_turn_can_follow_terminal(self):
+        event = self.event('Stop')
+        self.service.events.accept(event)
+        self.service.events.accept(dict(event, id='next', event='UserPromptSubmit', turnId='turn2'))
+        self.assertEqual(self.service.events.activity([str(self.path / 'project')])['status'], 'working')
+
+    def test_stale_activity_is_unknown_not_completed(self):
+        event = self.event()
+        self.service.events.accept(event)
+        result = self.service.events.activity([str(self.path / 'project')], now=time.time()+181)
+        self.assertEqual(result['status'], 'unknown')
+        self.assertTrue(result['stale'])
+
+    def test_parallel_waiting_agent_remains_visible(self):
+        self.service.events.accept(self.event())
+        child = self.event('PermissionRequest', agent_id='child')
+        self.service.events.accept(child)
+        result = self.service.events.activity([str(self.path / 'project')])
+        self.assertEqual(result['status'], 'waiting')
+        self.assertEqual(len(result['agents']), 2)
+
+    def test_event_spool_drained_without_project_actions(self):
+        self.register()
+        m.publish_event(self.service.feed, self.event())
+        self.service.refresh(collect_git=False)
+        self.assertEqual(self.service.state()['projects'][0]['activity']['status'], 'working')
+        self.assertEqual(list((self.service.feed / 'events').glob('*.json')), [])
+
+    def test_corrupt_event_is_isolated(self):
+        (self.service.feed / 'events' / 'bad.json').write_text('{', encoding='utf-8')
+        self.service.refresh(collect_git=False)
+        self.assertEqual(self.service.event_errors, 1)
+        self.assertEqual(len(self.service.state()['projects']), 3)
+
+    def test_controller_output_is_not_exported_to_dot(self):
+        exported = m.bridge_snapshot(self.service.feed)
+        self.assertNotIn('PRIVATE PROMPT', json.dumps(exported))
+        self.assertNotIn('settings', exported)
+        self.assertNotIn('captureSources', exported)
+
+    def test_missing_controller_observation_is_not_reported_idle(self):
+        with patch.object(self.controller,'state',side_effect=OSError('Fixture observation unavailable')):
+            self.service.refresh(collect_git=False)
+        row=next(row for row in self.service.state()['projects'] if row['id']=='interlinked')
+        self.assertEqual(row['workspace']['status'],'unknown')
+        self.assertIsNone(row['workspace']['observedAt'])
+
+    def test_owner_mismatch_preserves_existing_content(self):
+        root = self.path / 'other'; root.mkdir()
+        (root / 'precious.txt').write_text('keep')
+        with self.assertRaises(ValueError): m.owned_directory(root, 'application')
+        self.assertEqual((root / 'precious.txt').read_text(), 'keep')
+
+    def test_corrupt_master_configuration_does_not_block_library(self):
+        m.write_json(self.service.root/'settings.json',dict(format='unsupported',settings={}))
+        before=(self.service.root/'settings.json').read_bytes()
+        fallback=m.safe_service(self.runtime,self.controller,start=False)
+        self.assertEqual(fallback.state()['display']['status'],'configuration_error')
+        self.assertFalse(fallback.state()['display']['connected'])
+        self.assertEqual(before,(self.service.root/'settings.json').read_bytes())
+        self.assertFalse(self.controller.state()['busy'])
+
+    def test_private_transport_pins_are_not_http_settings(self):
+        with self.assertRaises(ValueError):self.service.settings({'helperPins':{'USBLCDNEW.dll':'a'*64}})
+        m.write_json(self.service.root/'device.json',dict(format='interlinked-master-device-v1',helperPins={'USBLCDNEW.dll':'a'*64}))
+        self.assertEqual(self.service._worker_settings()['helperPins']['USBLCDNEW.dll'],'a'*64)
+
+    def test_settings_reject_unknown_capabilities_and_network_roots(self):
+        for payload in ({'executable': 'bad.exe'}, {'fps': 30}, {'mode': 'arbitrary'},
+                        {'projects': [dict(id='x', label='Bad', root=r'\\MSI\ProjectLibrary')]}):
+            with self.assertRaises(ValueError): self.service.settings(payload)
+
+    def test_settings_add_project_roundtrip(self):
+        self.register()
+        result = self.service.state()
+        self.assertEqual(result['settings']['projects'][0]['label'], 'Fixture')
+        reopened = m.MasterService(self.runtime, self.controller, start=False)
+        try: self.assertEqual(reopened.state()['settings']['projects'][0]['id'], 'project')
+        finally: reopened.close()
+
+    def test_capture_cannot_claim_live_without_window_calibration(self):
+        with self.assertRaises(ValueError): self.service.settings({'mode': 'live_mini', 'captureEnabled': True})
+        self.assertFalse(self.service.state()['capture']['valid'])
+
+    def test_capture_is_disabled_on_reopen(self):
+        self.service.settings(dict(mode='live_mini', captureWindowId='123', captureWindowBounds=dict(x=0,y=0,width=240,height=240), captureEnabled=True))
+        reopened = m.MasterService(self.runtime, self.controller, start=False)
+        try: self.assertFalse(reopened.state()['settings']['captureEnabled'])
+        finally: reopened.close()
+
+    def test_build_receipt_requires_matching_clean_revision(self):
+        head = 'a'*40
+        receipt = dict(format='interlinked-master-result-v1', kind='test', result='passed', observedAt=m.utc(), baseline=dict(head=head, clean=True))
+        for git in (dict(status='available',head='b'*40,dirty=False), dict(status='available',head=head,dirty=True)):
+            self.assertEqual(m.receipt_health(receipt, git)['status'], 'unknown')
+        self.assertEqual(m.receipt_health(receipt, dict(status='available',head=head,dirty=False))['status'], 'passed')
+
+    def test_turn_finished_is_not_build_success(self):
+        self.register();m.publish_event(self.service.feed, self.event('Stop'));self.service.refresh(collect_git=False)
+        row = self.service.state()['projects'][0]
+        self.assertEqual(row['activity']['status'], 'turn_finished')
+        self.assertEqual(row['health']['status'], 'unknown')
+
+    def test_violet_real_report_is_labelled_and_expires(self):
+        self.assertFalse(self.service.state()['violet']['connected'])
+        m.publish_violet(self.service.feed, dict(status='working', reporter='dot', message='Reviewing project status'))
+        self.service.refresh(collect_git=False)
+        self.assertTrue(self.service.state()['violet']['connected'])
+        self.assertEqual(self.service.state()['violet']['source'], 'Dot-reported')
+        record = m.read_json(self.service.feed/'violet.json')
+        record['observedAt']=(datetime.now(timezone.utc)-timedelta(seconds=121)).isoformat()
+        m.write_json(self.service.feed/'violet.json',record)
+        self.service.refresh(collect_git=False)
+        self.assertFalse(self.service.state()['violet']['connected'])
+        self.assertTrue(self.service.state()['violet']['stale'])
+
+    def test_violet_cannot_request_project_operations(self):
+        with self.assertRaises(ValueError): m.publish_violet(self.service.feed,dict(status='working', command='release'))
+
+    def test_sensor_validation_requires_fresh_verified_value(self):
+        self.service.accept_worker_status(dict(type='sensors',temperatures=dict(cpu=dict(value=55,status='available',observedAt=m.utc()),gpu=dict(value=900,status='available',observedAt=m.utc()))))
+        self.assertEqual(self.service.state()['temperatures']['cpu']['value'],55)
+        self.assertIsNone(self.service.state()['temperatures']['gpu']['value'])
+
+    def test_sensor_payload_timestamp_is_retained_per_reading(self):
+        observed=m.utc()
+        self.service.accept_worker_status(dict(type='sensors',temperatures=dict(observedAt=observed,
+            cpu=dict(value=55,status='live'),gpu=dict(value=42,status='live'),reason='Fixture publisher')))
+        value=self.service.state()['temperatures']
+        self.assertEqual(value['cpu']['observedAt'],observed)
+        self.assertEqual(value['gpu']['value'],42)
+        self.assertEqual(value['reason'],'Fixture publisher')
+        self.service.accept_worker_status(dict(type='sensors',temperatures=dict(observedAt=m.utc(),
+            cpu=dict(value=55,status='live'))))
+        self.assertNotIn('reason',self.service.state()['temperatures'])
+
+    def test_sensor_permission_status_is_separate_from_readings(self):
+        self.service.accept_worker_status(dict(type='sensor_permission',status='canceled',message='Setup canceled'))
+        self.assertEqual(self.service.state()['sensorPermission']['status'],'canceled')
+        self.assertIsNone(self.service.state()['temperatures']['cpu']['value'])
+
+    def test_sensor_setup_requires_production_and_connected_lcd(self):
+        with patch.object(self.service,'_ensure_worker') as ensure, patch.object(self.service,'_send') as send:
+            with self.assertRaises(ValueError):self.service.display({'action':'enable_sensors'})
+            self.runtime.demo=False
+            try:
+                with self.assertRaises(ValueError):self.service.display({'action':'enable_sensors'})
+                ensure.assert_not_called();send.assert_not_called()
+                self.service._state['display']['connected']=True
+                self.service.display({'action':'enable_sensors'})
+                ensure.assert_called_once();send.assert_called_once_with({'op':'sensors','enable':True})
+            finally:self.runtime.demo=True
+
+    def test_sensor_staleness_clears_value(self):
+        self.service.accept_worker_status(dict(type='sensors',verified=True,cpu=dict(value=55,observedAt=m.utc())))
+        self.service._state['temperatures']['observedAt']=(datetime.now(timezone.utc)-timedelta(seconds=6)).isoformat()
+        self.service.refresh(collect_git=False)
+        self.assertIsNone(self.service.state()['temperatures']['cpu']['value'])
+
+    def test_frame_parser_rejects_truncated_input(self):
+        with self.assertRaises(EOFError): m.MasterService._read_exact(io.BytesIO(b'12'),4)
+
+    def test_isolated_hook_invocation_discards_sensitive_fields(self):
+        self.register()
+        payload=dict(hook_event_name='UserPromptSubmit',session_id='hook-session',turn_id='turn',cwd=str(self.path/'project'),prompt='SECRET PROMPT')
+        process=subprocess.run([sys.executable,'-I','-B',str(ROOT/'master_hook.py'),'--state-root',str(self.service.feed)],input=json.dumps(payload).encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        self.assertEqual(process.returncode,0);self.assertEqual(process.stdout,b'')
+        files=list((self.service.feed/'events').glob('*.json'))
+        self.assertEqual(len(files),1);self.assertNotIn('SECRET PROMPT',files[0].read_text())
+
+    def test_global_hook_drops_unregistered_chat(self):
+        self.register()
+        payload=dict(hook_event_name='UserPromptSubmit',session_id='unrelated',turn_id='turn',cwd=str(self.path/'unrelated'),prompt='PRIVATE')
+        process=subprocess.run([sys.executable,'-I','-B',str(ROOT/'master_hook.py'),'--state-root',str(self.service.feed)],input=json.dumps(payload).encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        self.assertEqual(process.returncode,0)
+        self.assertEqual(list((self.service.feed/'events').glob('*.json')),[])
+
+    def test_hook_merge_preserves_unrelated_definitions_and_is_idempotent(self):
+        hook_spec=importlib.util.spec_from_file_location('hook_under_test',ROOT/'master_hook.py')
+        hook=importlib.util.module_from_spec(hook_spec);hook_spec.loader.exec_module(hook)
+        original=dict(description='Keep this description',hooks=dict(Stop=[dict(hooks=[dict(type='command',command='existing-policy')])]))
+        merged=hook.merged_config(original)
+        self.assertEqual(merged['hooks']['Stop'][0],original['hooks']['Stop'][0])
+        self.assertEqual(merged['description'],original['description'])
+        self.assertEqual(hook.merged_config(merged),merged)
+
+    def test_passive_buddy_status_is_fresh_and_does_not_change_agent_health(self):
+        m.write_json(self.service.feed/'ed-it-buddy.json',dict(format='interlinked-buddy-status-v1',host='MSI',online=True,observedAt=m.utc(),current_job=dict(status='running',current_step=2)))
+        self.service.refresh(collect_git=False)
+        project=next(p for p in self.service.state()['projects'] if p['id']=='ed-it-buddy')
+        self.assertEqual(project['workspace']['status'],'running')
+        self.assertEqual(project['activity']['status'],'unknown')
+        self.assertEqual(project['health']['status'],'unknown')
+
+    def test_mcp_initialize_list_and_real_fixture_tools(self):
+        requests=[dict(jsonrpc='2.0',id=1,method='initialize',params={'protocolVersion':'2025-03-26'}),
+            dict(jsonrpc='2.0',id=2,method='tools/list'),
+            dict(jsonrpc='2.0',id=3,method='tools/call',params={'name':'get_master_status','arguments':{}}),
+            dict(jsonrpc='2.0',id=4,method='tools/call',params={'name':'publish_violet_status','arguments':{'status':'waiting','reporter':'demo','message':'Fixture only'}})]
+        process=subprocess.run([sys.executable,'-I','-B',str(ROOT/'master_bridge.py'),'--state-root',str(self.service.feed)],
+            input=('\n'.join(json.dumps(r) for r in requests)+'\n').encode(),stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        self.assertEqual(process.returncode,0)
+        responses=[json.loads(line) for line in process.stdout.splitlines()]
+        self.assertEqual([r['id'] for r in responses],[1,2,3,4])
+        self.assertEqual([tool['name'] for tool in responses[1]['result']['tools']],['get_master_status','publish_violet_status','get_master_attention','acknowledge_master_attention'])
+        self.assertFalse(responses[2]['result']['isError']);self.assertFalse(responses[3]['result']['isError'])
+        self.service.refresh(collect_git=False);self.assertEqual(self.service.state()['violet']['status'],'waiting')
+
+    def test_missing_worker_is_honest_and_cannot_run_project(self):
+        with self.assertRaises(ValueError): self.service.display({'connect':True})
+        self.assertEqual(self.service.state()['display']['status'],'unavailable')
+        self.assertFalse(self.service.state()['display']['connected'])
+
+    def test_replaced_worker_cannot_take_new_worker_commands(self):
+        old = SimpleNamespace(poll=lambda:None, stdin=io.BytesIO())
+        self.service._worker = object()
+        self.service.commands.append(dict(op='display', connect=False))
+        self.service._write_worker(old)
+        self.assertEqual(list(self.service.commands), [dict(op='display', connect=False)])
+        self.assertEqual(old.stdin.getvalue(), b'')
+        self.service._worker = None
+
+    def test_reporter_defaults_legacy_and_demo_never_claim_dot_connection(self):
+        for reporter in (None, 'demo', 'local_task', 'dot'):
+            body = dict(status='working')
+            if reporter: body['reporter'] = reporter
+            m.publish_violet(self.service.feed, body)
+            self.service.refresh(collect_git=False)
+            report = self.service.state()['violet']
+            self.assertEqual(report['reporter'], reporter or 'unverified')
+            self.assertEqual(report['connected'], reporter in ('dot', 'local_task'))
+        m.write_json(self.service.feed/'violet.json', dict(format='interlinked-violet-status-v1', status='working', observedAt=m.utc()))
+        self.service.refresh(collect_git=False)
+        self.assertEqual(self.service.state()['violet']['source'], 'Unverified report')
+        self.assertFalse(self.service.state()['violet']['connected'])
+        for reporter in ('invalid', [], {}):
+            with self.assertRaises(ValueError): m.publish_violet(self.service.feed, dict(status='working', reporter=reporter))
+
+    def attention_project(self, observed=None, status='waiting'):
+        return dict(id='project', activity=dict(status=status, observedAt=observed or m.utc(), source='Codex hook'),
+                    health=dict(status='unknown', observedAt=None))
+
+    def test_attention_dedup_acknowledgment_and_restart(self):
+        projects = [self.attention_project()]
+        first = m.collect_attention(self.service.feed, projects)
+        self.assertEqual(first['pendingCount'], 1)
+        self.assertEqual(m.collect_attention(self.service.feed, projects)['pendingCount'], 1)
+        identifier = first['items'][0]['id']
+        result = m.acknowledge_attention(self.service.feed, dict(ids=[identifier]))
+        self.assertFalse(result['resolvesProjectFailure'])
+        self.assertEqual(m.collect_attention(self.service.feed, projects)['pendingCount'], 0)
+        self.assertEqual(m.master_attention(self.service.feed)['pendingCount'], 0)
+        self.assertEqual(projects[0]['activity']['status'], 'waiting')
+        with self.assertRaises(ValueError): m.acknowledge_attention(self.service.feed, dict(ids=['unknown']))
+        with self.assertRaises(ValueError): m.acknowledge_attention(self.service.feed, dict(ids=['../escape']))
+        with self.assertRaises(ValueError): m.acknowledge_attention(self.service.feed, dict(ids=[], command='release'))
+
+    def test_attention_capacity_and_ack_retention(self):
+        for i in range(105):
+            observed = (datetime.now(timezone.utc) - timedelta(seconds=105-i)).isoformat()
+            queue = m.collect_attention(self.service.feed, [self.attention_project(observed=observed)])
+            m.acknowledge_attention(self.service.feed, dict(ids=[queue['items'][-1]['id']]))
+        self.assertEqual(len(m.master_attention(self.service.feed)['items']), 100)
+        self.assertEqual(len(list((self.service.feed/'attention-acks').glob('*.json'))), 100)
+
+    def test_attention_only_evidenced_failures_and_input(self):
+        project = self.attention_project(status='unknown')
+        self.assertEqual(m.collect_attention(self.service.feed, [project])['pendingCount'], 0)
+        project['health'] = dict(status='failed', observedAt=m.utc(), source='Test receipt')
+        first = m.collect_attention(self.service.feed, [project])
+        self.assertEqual(first['items'][0]['kind'], 'failure')
+        m.acknowledge_attention(self.service.feed, dict(ids=[first['items'][0]['id']]))
+        self.assertEqual(project['health']['status'], 'failed')
+        project['health']['status'] = 'unknown'
+        self.assertEqual(m.collect_attention(self.service.feed, [project])['pendingCount'], 0)
+
+    def test_corrupt_queue_does_not_interrupt_project_collection(self):
+        m.write_json(self.service.feed/'attention.json', dict(format='wrong', items=[]))
+        self.service.refresh(collect_git=False)
+        self.assertFalse(self.service.state()['attention']['available'])
+        self.assertTrue(self.service.state()['projects'])
+
+    def test_attention_tools_roundtrip_on_private_fixture(self):
+        spec = importlib.util.spec_from_file_location('bridge_fixture', ROOT/'master_bridge.py')
+        bridge = importlib.util.module_from_spec(spec); spec.loader.exec_module(bridge)
+        queued = m.collect_attention(self.service.feed, [self.attention_project()])
+        def call(name, arguments):
+            return bridge.handle(dict(jsonrpc='2.0', id=1, method='tools/call', params=dict(name=name, arguments=arguments)), m, self.service.feed)
+        read = call('get_master_attention', {})
+        self.assertEqual(json.loads(read['content'][0]['text'])['pendingCount'], 1)
+        self.assertFalse(call('acknowledge_master_attention', dict(ids=[queued['items'][0]['id']]))['isError'])
+        self.assertTrue(call('get_master_attention', dict(command='release'))['isError'])
+        self.assertEqual(m.master_attention(self.service.feed)['pendingCount'], 0)
+
+    def test_mcp_metadata_uses_utf8_even_with_ascii_console(self):
+        snapshot = m.bridge_snapshot(self.service.feed)
+        snapshot['projects'][0]['label'] = 'Violet — 日本語 💜'
+        m.write_json(self.service.feed/'snapshot.json', snapshot)
+        request = dict(jsonrpc='2.0', id=1, method='tools/call', params=dict(name='get_master_status', arguments={}))
+        wrapper = "import sys,runpy;sys.stdout.reconfigure(encoding='ascii');sys.argv=" + repr([str(ROOT/'master_bridge.py'), '--state-root', str(self.service.feed)]) + ";runpy.run_path(sys.argv[0],run_name='__main__')"
+        process = subprocess.run([sys.executable, '-I', '-B', '-c', wrapper],
+            input=(json.dumps(request)+'\n').encode(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10)
+        self.assertEqual(process.returncode, 0)
+        self.assertFalse(process.stderr)
+        reply = json.loads(process.stdout.decode('utf-8'))
+        result = json.loads(reply['result']['content'][0]['text'])
+        self.assertEqual(result['projects'][0]['label'], snapshot['projects'][0]['label'])
+
+    def test_real_native_worker_preview_only(self):
+        if not WORKER:
+            self.skipTest('Pass --worker for the native preview integration check')
+        service=m.MasterService(self.runtime,self.controller,worker_path=WORKER,start=False)
+        try:
+            barrier=threading.Barrier(8)
+            def start():
+                barrier.wait()
+                service._start_worker()
+            with patch.object(m.subprocess,'Popen',wraps=subprocess.Popen) as launch:
+                starts=[threading.Thread(target=start) for _ in range(8)]
+                for thread in starts:thread.start()
+                for thread in starts:thread.join(timeout=5)
+                self.assertTrue(all(not thread.is_alive() for thread in starts))
+                self.assertEqual(launch.call_count,1,'Concurrent HTTP restart requests must create only one owned renderer')
+            deadline=time.time()+8
+            while time.time()<deadline and not service.frame():time.sleep(.05)
+            self.assertTrue(service.frame().startswith(b'\xff\xd8'))
+            self.assertFalse(service.state()['display']['connected'])
+        finally:service.close()
+
+
+def main():
+    global OUT, WORKER
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--worker',type=Path)
+    args=parser.parse_args();OUT=args.output.absolute();WORKER=args.worker
+    if OUT.exists() and any(OUT.iterdir()):raise SystemExit('Use a new empty private fixture directory.')
+    OUT.mkdir(parents=True,exist_ok=True)
+    suite=unittest.defaultTestLoader.loadTestsFromTestCase(MasterTests)
+    result=unittest.TextTestRunner(verbosity=2).run(suite)
+    (OUT/'master-tests.json').write_text(json.dumps(dict(format='interlinked-master-tests-v1',tests=result.testsRun,failures=len(result.failures),errors=len(result.errors),skipped=len(result.skipped),ok=result.wasSuccessful()),indent=2))
+    return 0 if result.wasSuccessful() else 1
+
+
+if __name__=='__main__':raise SystemExit(main())

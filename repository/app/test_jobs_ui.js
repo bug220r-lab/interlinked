@@ -1,0 +1,55 @@
+'use strict';
+// Synthetic DOM and mocked local API only; no SSH, personal projects or installed kit.
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync(path.join(__dirname,'web/app.js'),'utf8'),html=fs.readFileSync(path.join(__dirname,'web/index.html'),'utf8');
+const models=source.split('// BEGIN MSI JOB MODELS\n')[1].split('// END MSI JOB MODELS')[0];
+const ui=source.split('// BEGIN MSI JOB INTERFACE\n')[1].split('// END MSI JOB INTERFACE')[0];
+const elements={},requests=[],checks=[];
+function element(){return {hidden:false,disabled:false,textContent:'',value:'',children:[],attributes:{},listeners:{},className:'',classList:{toggle(){}},append(...v){this.children.push(...v);},replaceChildren(...v){this.children=v;},setAttribute(k,v){this.attributes[k]=v;},addEventListener(k,fn){this.listeners[k]=fn;}};}
+const now=new Date().toISOString(),id='a'.repeat(32),second='b'.repeat(32);
+const firstJob={jobId:id,projectId:'Synthetic analysis',status:'RUNNING',updatedUtc:now,startedUtc:now,finishedUtc:null,exitCode:null,taskState:'Unknown',lastTaskResult:null,warning:'',logs:{stdout:{available:true},stderr:{available:true}}};
+let snapshot={readOnly:true,demo:false,refreshing:false,connection:{ssh:'not_checked',worker:'unknown',message:'Choose Refresh from MSI.'},observedAt:null,stale:true,error:null,jobs:[],truncated:false,rejected:0};
+let log={readOnly:true,jobId:id,stream:'stdout',available:true,text:'<script>alert(1)</script>\n',observedAt:now,stale:false,truncated:false};
+let failedStatus=false,pendingLog=null;
+const context={document:{createElement:()=>element(),body:{classList:{toggle(){}}},hidden:false},$:key=>elements[key]??=element(),stopped:false,masterSetView:()=>{},api:async(route,body)=>{requests.push({route,body});if(route==='/api/msi/jobs/refresh')return {refreshing:true};if(route.startsWith('/api/msi/jobs/log?')){if(pendingLog)return await pendingLog;const params=new URLSearchParams(route.split('?')[1]);return {...log,jobId:params.get('job'),stream:params.get('stream')};}if(failedStatus)throw new Error('Local status disconnected');return snapshot;}};
+vm.createContext(context);vm.runInContext(models+'\n'+ui,context);
+function check(ok,label){assert.ok(ok,label);checks.push(label);}
+(async()=>{
+ const unknown=context.jobsModel(firstJob);check(unknown.exit==='Not recorded'&&unknown.taskExit==='Not recorded','Unknown runner and scheduler exit codes never become zero');
+ check(context.jobsModel({...firstJob,status:'COMPLETED',exitCode:null}).tone!=='good','A completed label without exit evidence is not presented as success');
+ const completed={...firstJob,status:'COMPLETED',exitCode:0,taskState:'Ready',lastTaskResult:0,finishedUtc:now};
+ check(context.jobsModel(completed).tone==='good','Success requires a consistent runner exit, scheduler result and completion timestamp');
+ check(context.jobsModel({...completed,taskState:'Unknown'}).tone!=='good'&&context.jobsModel({...completed,lastTaskResult:null}).tone!=='good'&&context.jobsModel({...completed,finishedUtc:null}).tone!=='good','Unknown scheduler or completion evidence cannot become a success tone');
+ check(context.jobsModel({...completed,warning:'Reconciliation required.'}).tone!=='good'&&context.jobsModel(completed,true).tone!=='good','Warnings and stale observations cannot retain a success tone');
+ check(context.jobsModel(firstJob,true).status==='Last observed: Running','A stale running receipt is explicitly historical');
+ await context.jobsPoll();check(elements['msi-jobs-connection'].textContent==='Not refreshed'&&elements['msi-jobs-empty'].textContent.includes('No job observation'),'No data has an honest initial state');
+ check(!requests.some(r=>r.body!==undefined),'Opening status never starts a remote refresh');
+ snapshot={...snapshot,connection:{ssh:'connected',worker:'observed',message:'Read-only snapshot received.'},observedAt:now,stale:false,jobs:[firstJob]};await context.jobsPoll();
+ check(elements['msi-jobs-connection'].textContent==='SSH observed','A snapshot does not claim persistent SSH connectivity or worker readiness');
+ check(elements['msi-jobs-worker'].textContent.includes('not checked'),'Observed job records do not imply worker readiness');
+ check(elements['msi-jobs-list'].children.length===1&&elements['msi-jobs-stream'].disabled===false,'Observed jobs populate selectable records and log streams');
+ check(elements['msi-jobs-facts'].children[3].textContent==='Not recorded','The selected job preserves an unknown runner exit code');
+ check(elements['msi-jobs-facts'].children[5].textContent==='Unknown','Task Scheduler state remains separate from runner status');
+ check(elements['msi-jobs-log'].textContent==='<script>alert(1)</script>\n','Log markup renders literally as text');
+ const beforePoll=requests.length;await context.jobsPoll();check(!requests.slice(beforePoll).some(r=>r.route.includes('/log?')),'Repeated local status polling does not reload an unchanged log snapshot');
+ elements['msi-jobs-stream'].value='stderr';log={...log,text:'Synthetic error output'};await context.jobsReadLog();check(requests.at(-1).route.endsWith('stream=stderr')&&elements['msi-jobs-log'].textContent==='Synthetic error output','Selecting stderr reads the selected stream without a remote refresh');
+ log={...log,available:false,text:'Do not show unavailable output'};await context.jobsReadLog();check(elements['msi-jobs-log'].textContent===''&&elements['msi-jobs-log-note'].textContent.includes('unavailable'),'An unavailable log is distinct from an empty log');
+ const empty=context.jobsLogModel({...log,available:true,text:''});check(empty.note.includes('empty at the observation'),'An observed empty log is labeled accurately');
+ const tail=context.jobsLogModel({...log,available:true,text:'tail',truncated:true,stale:true});check(tail.note.includes('Stale observation')&&tail.note.includes('earlier output remains on MSI'),'Stale and truncated log tails retain both qualifications');
+ snapshot={...snapshot,stale:true,jobs:[{...firstJob,projectId:'<img onerror=alert(1)>',warning:'Runner/task mismatch: review required.'}]};await context.jobsPoll();
+ check(elements['msi-jobs-list'].children[0].children[0].textContent==='<img onerror=alert(1)>','Untrusted project labels render literally as text');
+ check(elements['msi-jobs-list'].children[0].children[1].textContent==='Last observed: Running'&&elements['msi-jobs-observed'].textContent.includes('STALE'),'A retained running receipt is visibly stale in the list and connection area');
+ check(elements['msi-jobs-log-note'].textContent.startsWith('Stale observation.'),'A retained log inherits snapshot staleness without another network request');
+ check(!elements['msi-jobs-review'].hidden&&elements['msi-jobs-review'].textContent.includes('mismatch'),'Runner and scheduler reconciliation warnings remain visible');
+ snapshot={...snapshot,truncated:true,rejected:2,notice:'Synthetic receipt inventory.'};await context.jobsPoll();check(elements['msi-jobs-limits'].textContent.includes('50')&&elements['msi-jobs-limits'].textContent.includes('2 record(s)'),'Bounded lists and unreadable records are disclosed');
+ failedStatus=true;let rejected=false;try{await context.jobsPoll();}catch(_){rejected=true;}check(rejected&&elements['msi-jobs-connection'].textContent==='Local status unavailable'&&elements['msi-jobs-list'].children.length===1,'Connection loss retains previous observations without claiming freshness');failedStatus=false;
+ snapshot={...snapshot,stale:false,jobs:[firstJob,{...firstJob,jobId:second,projectId:'Second job'}]};await context.jobsPoll();
+ let resolveOld;pendingLog=new Promise(resolve=>{resolveOld=resolve;});const oldRead=context.jobsReadLog();elements['msi-jobs-list'].children[1].listeners.click();pendingLog=null;log={...log,available:true,text:'Second job log'};await context.jobsReadLog();resolveOld({...log,jobId:id,stream:'stderr',text:'Old selection'});await oldRead;check(elements['msi-jobs-log'].textContent==='Second job log','A delayed log response cannot overwrite the newly selected job');
+ await context.jobsRefresh();check(requests.filter(r=>r.body!==undefined).length===1&&requests.find(r=>r.body!==undefined).route==='/api/msi/jobs/refresh','The sole POST is an explicit read-only refresh');
+ snapshot={...snapshot,refreshing:true};await context.jobsPoll();const beforeRefresh=requests.length;await context.jobsRefresh();check(elements['msi-jobs-refresh'].disabled&&requests.length===beforeRefresh,'A refresh in progress disables duplicate refresh requests');
+ snapshot={...snapshot,refreshing:false,demo:true,jobs:[]};await context.jobsPoll();check(!elements['msi-jobs-demo'].hidden&&elements['msi-jobs-stream'].disabled&&elements['msi-jobs-log'].textContent==='','Synthetic data is labeled and empty selections clear retained output');
+ check(!ui.includes('innerHTML')&&!ui.includes('eval('),'Job metadata and logs are never interpreted as HTML or code');
+ check(html.includes('id="jobs-view-tab"')&&html.includes('id="msi-jobs-view"')&&html.includes('password only at its prompt'),'The distinct Jobs view explains the native credential prompt');
+ check(!requests.some(r=>/^\/api\/(action|session|mw5|master\/display)/.test(r.route)),'Jobs observations never dispatch editing, display or job mutation actions');
+ console.log(JSON.stringify({status:'PASS',count:checks.length,checks,scope:'Synthetic DOM, read-only status models and mocked local APIs only'},null,2));
+})().catch(error=>{console.error(error);process.exitCode=1;});

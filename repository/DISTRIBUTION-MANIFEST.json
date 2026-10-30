@@ -1,8 +1,8 @@
 {
   "format": "interlinked-distribution-manifest-v1",
-  "createdUtc": "2026-10-30T01:19:21.176016+00:00",
-  "scope": "Reviewed source plus Matrix GUI, media/preset/font inventories and guarded preset import; private reports, payloads and this manifest excluded.",
-  "previousManifestSha256": "caeed7a6e23aa992df7cf5fd4114317c629c8feb7cfe81a58131f03c26652bfe",
+  "createdUtc": "2026-10-30T05:30:09.017169+00:00",
+  "scope": "Reviewed project hub, MW5, read-only MSI Jobs, MASTER observatory and restricted local Violet bridge, Windows rendering/capture/sensor worker, desktop host and guarded publication; private telemetry, payloads, credentials and binaries excluded.",
+  "previousManifestSha256": "bdf1b0c55e9aa7efd00f617106cf3f9cd96f85aab26c3b4cf3ff09b17c2b7821",
   "files": [
     {
       "path": ".gitattributes",
@@ -24,8 +24,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 6837,
-      "sha256": "de9675ef5dd75530382c97f816d28a3ce6b927de7211d4bb51f84bd16d4e78e3",
+      "bytes": 8394,
+      "sha256": "6104da42aa4998f04ad694c7dafb019735915ccbd11f981eb4b32902e793605f",
       "origin": "authored documentation or packaging metadata"
     },
     {
@@ -36,8 +36,8 @@
     },
     {
       "path": "repository/README.md",
-      "bytes": 13089,
-      "sha256": "c73e1d9570f4b327432fe423f3abb6f0d778cb9a83e854eafa72bd45c3c94d14",
+      "bytes": 13920,
+      "sha256": "6fb42c70af44d1b93011f269d56d3a566158acdee2239132baa8d956b4af2b4f",
       "origin": "authored documentation or packaging metadata"
     },
     {
@@ -45,6 +45,12 @@
       "bytes": 53300,
       "sha256": "0204d94dac4baba841606750859909376832478a627a3ea9e11a31ac805da631",
       "origin": "authored documentation or packaging metadata"
+    },
+    {
+      "path": "repository/app/INTERLINKED-Browser.cmd",
+      "origin": "reviewed WebView2 desktop host, tests and guarded publication",
+      "bytes": 208,
+      "sha256": "3e95ed732d1c399aa71709c97cb56c423705da6137ebfcdb53548cb439c91ff3"
     },
     {
       "path": "repository/app/INTERLINKED-START-HERE.txt",
@@ -55,26 +61,128 @@
     {
       "path": "repository/app/INTERLINKED.cmd",
       "origin": "GUI and source-library audit addition",
-      "bytes": 208,
-      "sha256": "3e95ed732d1c399aa71709c97cb56c423705da6137ebfcdb53548cb439c91ff3"
+      "bytes": 251,
+      "sha256": "308e68aaaaecd8c6d008bf8a15e304fa3f4429eca5602d94e2bf04b7087a5ef3"
     },
     {
       "path": "repository/app/README.md",
       "origin": "GUI and source-library audit addition",
-      "bytes": 5911,
-      "sha256": "99c93b44f69c00f4c0890aed33acaaeecdaab99d688efc3fc08c94936377b20d"
+      "bytes": 19655,
+      "sha256": "2c9329c193976034cc6b102ec729f9c13b1295b636f30dfdbff393e417da53ec"
+    },
+    {
+      "path": "repository/app/interlinked_controller.py",
+      "origin": "reviewed unified hub and MW5 orchestration or synthetic validation",
+      "bytes": 27105,
+      "sha256": "e08d357aec6d470d5df29e3e810f1e1b54ff6830fd768bedb3e9082e324d4958"
     },
     {
       "path": "repository/app/interlinked_gui.py",
       "origin": "GUI and source-library audit addition",
-      "bytes": 46709,
-      "sha256": "8a7760edc1f2f22749fe078ea91e243cb53db573208151536d39cad3a0ef8dc7"
+      "bytes": 53239,
+      "sha256": "dd830e8ee31a2f79d0bbc21758c76cc66d2b230bbe7bf30d0c63be04ca876de5"
+    },
+    {
+      "path": "repository/app/interlinked_hub.py",
+      "origin": "reviewed unified hub and MW5 orchestration or synthetic validation",
+      "bytes": 27480,
+      "sha256": "97593c04c1df9bb0026350175e542b6de0a3242e7704c17019ab76bd78e91e11"
+    },
+    {
+      "path": "repository/app/interlinked_jobs.py",
+      "origin": "Read-only MSI job observer and synthetic checks",
+      "bytes": 34688,
+      "sha256": "16a3ecf9294605d14fac86d89dbccc678cbc64568fcdf16a892160e35009af86"
+    },
+    {
+      "path": "repository/app/interlinked_master.py",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 52741,
+      "sha256": "446a9ec115a6053c05d9a3300aaa36d7e3d467c83221d7120e08ef86dc195192"
+    },
+    {
+      "path": "repository/app/interlinked_mw5.py",
+      "origin": "reviewed unified hub and MW5 orchestration or synthetic validation",
+      "bytes": 36856,
+      "sha256": "a2fc965b482b629eeef6ab60ff8c2814f646d64622e98ef12ed37b14c16fa57a"
+    },
+    {
+      "path": "repository/app/master_bridge.py",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 6329,
+      "sha256": "07ff05796b67227dd6163af563e4cab3a0b4c9cd147857f8b443840730dde8d5"
+    },
+    {
+      "path": "repository/app/master_hook.py",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 4117,
+      "sha256": "e20583d565b155b9d798f4e7859c2cbca370241b314561cf7a11424bf09bb06d"
+    },
+    {
+      "path": "repository/app/test_desktop_startup.py",
+      "origin": "reviewed WebView2 desktop host, tests and guarded publication",
+      "bytes": 7821,
+      "sha256": "f2e1cd70595afce20687986743138a926b267a07bedfbb2d11a47c01e8f492a9"
     },
     {
       "path": "repository/app/test_gui.py",
       "origin": "GUI and source-library audit addition",
       "bytes": 12493,
       "sha256": "f26ce937ccd939c3cd7e00c2651f09d9248c0da6a335ef2e2bed1a2a4f377513"
+    },
+    {
+      "path": "repository/app/test_hub.py",
+      "origin": "reviewed unified hub and MW5 orchestration or synthetic validation",
+      "bytes": 14464,
+      "sha256": "d6e6ac8551f8216813405358b5bd5784a25243e5183e7c65ce4d85fbadb8a243"
+    },
+    {
+      "path": "repository/app/test_hub_integration.py",
+      "origin": "reviewed unified hub and MW5 orchestration or synthetic validation",
+      "bytes": 26780,
+      "sha256": "4a9a21fd25b0b23b598ac6894e86629931bbac2466c34a8d50b49e86c6f718b6"
+    },
+    {
+      "path": "repository/app/test_hub_ui.js",
+      "origin": "reviewed unified hub and MW5 orchestration or synthetic validation",
+      "bytes": 10262,
+      "sha256": "ff6b6278b44a90a17a3eb8492769cd7cf77a9127530ef6eb8ffd7d9db1d1014c"
+    },
+    {
+      "path": "repository/app/test_jobs.py",
+      "origin": "Read-only MSI job observer and synthetic checks",
+      "bytes": 17802,
+      "sha256": "3976f5a705cc58997fee4f1b925376f7719952e060e67cdb9f4649435fca0d18"
+    },
+    {
+      "path": "repository/app/test_jobs_http.py",
+      "origin": "Read-only MSI job observer and synthetic checks",
+      "bytes": 7263,
+      "sha256": "92261555468e35d60bfe0651ec30bbebdba0a4a1aac6ad392d3c564a5eefbdee"
+    },
+    {
+      "path": "repository/app/test_jobs_ui.js",
+      "origin": "Read-only MSI job observer and synthetic checks",
+      "bytes": 9566,
+      "sha256": "96db9ceb752bf58cd5d172ed797768f45c03ec7c5f306f346b0aa42aefce37bc"
+    },
+    {
+      "path": "repository/app/test_master.py",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 25507,
+      "sha256": "5462a0ad3016ea6402f7e7b2b75fbcbfeef189a3a501ce9bf9d2bafb37b245dd"
+    },
+    {
+      "path": "repository/app/test_master_http.py",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 8291,
+      "sha256": "5a348164de5503806c6936b485a0db414734437b75a105675635d8851242f19d"
+    },
+    {
+      "path": "repository/app/test_master_ui.js",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 13400,
+      "sha256": "4accbed5c861cba3b3da6f53f0fd244a794220e1b771d89ed2f1fa34734f9e7f"
     },
     {
       "path": "repository/app/test_missing_media.py",
@@ -89,28 +197,40 @@
       "sha256": "6d9eb4fd33199c3198873ea13e72eea4a084f8c352de3ef805a459ecf0c5b572"
     },
     {
+      "path": "repository/app/test_mw5.py",
+      "origin": "reviewed unified hub and MW5 orchestration or synthetic validation",
+      "bytes": 18772,
+      "sha256": "371dcb5b2536be3e340c267540a8a113b505c931dd065cb32a395b11102f57db"
+    },
+    {
       "path": "repository/app/test_open_feedback.js",
       "origin": "GUI and source-library audit addition",
       "bytes": 5535,
       "sha256": "208943a1b9e52beb9780642eb5a1d41d007a73d70e459d02bb13096e628ecfa0"
     },
     {
+      "path": "repository/app/test_path_attributes.py",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 4642,
+      "sha256": "2466131550e2f862abae335d22ff34b2b8745365ca9707312e267b71547cb3c4"
+    },
+    {
       "path": "repository/app/web/app.js",
       "origin": "GUI and source-library audit addition",
-      "bytes": 26283,
-      "sha256": "9edb2f01a25a435871fcf8fe3e4bf9ec4784a65a524734742a0b70ed5c4430b8"
+      "bytes": 68943,
+      "sha256": "1e154819788c764e88193fbb54c748e995fa6a725f8fa58347bb74d59cc7a8f7"
     },
     {
       "path": "repository/app/web/index.html",
       "origin": "GUI and source-library audit addition",
-      "bytes": 8741,
-      "sha256": "74e8f5b6f3f8658577026c6323808fc2098b21bd80fffb3ce9c177be705e2aa4"
+      "bytes": 22785,
+      "sha256": "a00f89ac88271af95ecc7c7fd13d331537e075e115c7a087e36000426033156e"
     },
     {
       "path": "repository/app/web/style.css",
       "origin": "GUI and source-library audit addition",
-      "bytes": 15174,
-      "sha256": "332237ce6c02dd056c3442bdd2edd6cbff46ced534ac57c62947bed9f6e0da16"
+      "bytes": 37643,
+      "sha256": "b7c25ed07dbf19fbaf4654e131bf3191869df17a49632c9287be9a61000f1e59"
     },
     {
       "path": "repository/assemble_source_snapshot.py",
@@ -167,22 +287,154 @@
       "sha256": "c0508360dc92063500ef25b0d300ac6c1b2b4c64f3345fd75dbcc808c47c25e0"
     },
     {
+      "path": "repository/deployment/Interlinked-Desktop-Publication.psm1",
+      "origin": "reviewed WebView2 desktop host, tests and guarded publication",
+      "bytes": 17040,
+      "sha256": "788e8c20ec3b94f4a0fda976dc233f144b79af1a75fb3dcf67b7e746509f1d7e"
+    },
+    {
+      "path": "repository/deployment/Publish-Interlinked-Desktop.ps1",
+      "origin": "reviewed WebView2 desktop host, tests and guarded publication",
+      "bytes": 4531,
+      "sha256": "9e24fc81d34f911c91e25a11fd4030b448f4346420d382e121e553c9e48405fc"
+    },
+    {
       "path": "repository/deployment/Publish-Interlinked-GUI.ps1",
       "origin": "GUI and source-library audit addition",
       "bytes": 6130,
       "sha256": "d20962d9982bbac54b0e869b4911b6c0f49f653eff48707cf8549386b8bc0128"
     },
     {
+      "path": "repository/deployment/Publish-Interlinked-Hub-Maintenance.ps1",
+      "origin": "reviewed exact-plan maintenance publisher; separate existing MW5 work",
+      "bytes": 6048,
+      "sha256": "04b1b7be534ccf9a6955dcd6d174f469072dd76334692e102d4f18a4063cf899"
+    },
+    {
       "path": "repository/deployment/README.md",
       "origin": "GUI and source-library audit addition",
-      "bytes": 2651,
-      "sha256": "d995ab89a589e7a0608eab8797610a02308b3b7e16b4d8729c82779568d3291e"
+      "bytes": 4923,
+      "sha256": "334012b722e4a15d07d68730c8818b68f305760277905dbe934e655dc4610b41"
+    },
+    {
+      "path": "repository/deployment/Test-Interlinked-Desktop-Publication.ps1",
+      "origin": "reviewed WebView2 desktop host, tests and guarded publication",
+      "bytes": 21291,
+      "sha256": "11876516c1b90f502811665338e495d0d1f7db8b4dd045f338b705ca2f3740a0"
     },
     {
       "path": "repository/deployment/import_magix_presets.py",
       "origin": "GUI and source-library audit addition",
       "bytes": 16482,
       "sha256": "d1714a746432d560c9732633fa8ba042fc94f9634210e98b896872ec8085ef44"
+    },
+    {
+      "path": "repository/desktop/Build-Desktop.ps1",
+      "origin": "reviewed WebView2 desktop host, tests and guarded publication",
+      "bytes": 6168,
+      "sha256": "edfffa43210f1ae36c3f503ac3b082814b24aa2e9431ab3bbc034a7b1efe2859"
+    },
+    {
+      "path": "repository/desktop/Build-MasterWorker.ps1",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 1412,
+      "sha256": "9138132adc7a8ddc035fcc59ad94f77f7524b3d5d6ec2673bc0d79c30ab3d64f"
+    },
+    {
+      "path": "repository/desktop/INTERLINKED.exe.config",
+      "origin": "reviewed WebView2 desktop host, tests and guarded publication",
+      "bytes": 212,
+      "sha256": "5d4cd327e430b0139d55bb5204d25e3944214cbeaa75a3790bb6771ed04dc26d"
+    },
+    {
+      "path": "repository/desktop/Interlinked.cs",
+      "origin": "reviewed WebView2 desktop host, tests and guarded publication",
+      "bytes": 48954,
+      "sha256": "8487ffdc0f416d910111b450220018b1ecbf8801882d06fb55f10b9b9ddc9aff"
+    },
+    {
+      "path": "repository/desktop/MasterCaptureFixture.cs",
+      "origin": "isolated Windows capture acceptance fixture",
+      "bytes": 11202,
+      "sha256": "504d5a55f5f66b4e59fd7338e5c22f76c94e87711ad96c5c407694700a33962c"
+    },
+    {
+      "path": "repository/desktop/MasterEncodingFixture.cs",
+      "origin": "owned Unicode-caption encoding regression fixture",
+      "bytes": 1598,
+      "sha256": "5300c3a5d01c2d94359dfc6907c7763a2462e2a0abce6a7ff3b0d11248faa3e6"
+    },
+    {
+      "path": "repository/desktop/MasterTray.cs",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 5009,
+      "sha256": "ce8ab003901d8fc61ebc522873da84f7040dd6087de2ab4b8ad763fdc914b859"
+    },
+    {
+      "path": "repository/desktop/MasterTrayTests.cs",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 4855,
+      "sha256": "d64a0f48ff1e3503f932660367d673a52c61d9d7f4bb7f8b69b1bd5555036db7"
+    },
+    {
+      "path": "repository/desktop/MasterWorker.cs",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 58519,
+      "sha256": "dc9a26d63721fa54b30d912bd6d5cd9e4a8278e8020fb67c62a9d932f2b1e430"
+    },
+    {
+      "path": "repository/desktop/README.md",
+      "origin": "reviewed WebView2 desktop host, tests and guarded publication",
+      "bytes": 13916,
+      "sha256": "cccdf9206f79b1b523054d889963bbedee8402d8b2ba63686568c60c5679c912"
+    },
+    {
+      "path": "repository/desktop/Test-Desktop-Package.ps1",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 4712,
+      "sha256": "8c2d30c6eeb439407f042e281fe5131d5bb10903a310f2906141c49187abc711"
+    },
+    {
+      "path": "repository/desktop/Test-Desktop.ps1",
+      "origin": "reviewed WebView2 desktop host, tests and guarded publication",
+      "bytes": 5649,
+      "sha256": "09c7c21addec96a0da2b7a0efa75eacdc833cb76755281930b7b9e1033d3d869"
+    },
+    {
+      "path": "repository/desktop/Test-MasterTray.ps1",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 1132,
+      "sha256": "e86b2bd31462a5095e23343b155ae1e876e293788b0dfe59237f18ec25d3c7ef"
+    },
+    {
+      "path": "repository/desktop/master_resource_probe.py",
+      "origin": "read-only owned-process resource metadata sampler",
+      "bytes": 10371,
+      "sha256": "f0e1354511524d5e2ff38ac196dffa5a2f485aa692578f8ab693522486581dd0"
+    },
+    {
+      "path": "repository/desktop/test_master_capture.py",
+      "origin": "isolated Windows capture acceptance harness",
+      "bytes": 2505,
+      "sha256": "5f3aa2455eee53f270d00bedc7ae5a7d2cae97de9e77fc8e4ca1d18e5ed48700"
+    },
+    {
+      "path": "repository/desktop/test_master_encoding.py",
+      "origin": "UTF-8 source-event regression harness with private fixture-only output",
+      "bytes": 6621,
+      "sha256": "0ff89a0b7ff5d36f8e805847e042f5c62fe5c9c7a6f74604c8e0f8b489c0ad5c"
+    },
+    {
+      "path": "repository/desktop/test_master_hardware.py",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 8880,
+      "sha256": "88559697771418b8669e9ea5dc1abdf34f34b213561771036cf24d61f8e2ad1a"
+    },
+    {
+      "path": "repository/desktop/test_master_worker.py",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 6825,
+      "sha256": "ed77dd49a591590b26018ae7c4292ca4728c3743ccc3538214519ec86090d89d"
     },
     {
       "path": "repository/docs/MAGIX-WORKSPACE-START-HERE.txt",
@@ -208,6 +460,36 @@
       "origin": "GUI and source-library audit addition",
       "bytes": 6029,
       "sha256": "957a143ca9af92c3ba2cf6cad6142979b2664b7d17ec8b5d5ddacd1dad1e622c"
+    },
+    {
+      "path": "repository/master-plugin/.codex-plugin/plugin.json",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 451,
+      "sha256": "c94bbfa588b80d91948386e6bc755bce5fee84a5dd945e8f19816931c4ff0226"
+    },
+    {
+      "path": "repository/master-plugin/Build-MasterPlugin.ps1",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 1397,
+      "sha256": "414678f948e5e62be43d734d8ca732511743b95be880d32dfaa3883f124c15fd"
+    },
+    {
+      "path": "repository/master-plugin/README.md",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 7622,
+      "sha256": "4d67f826aebf1854c29c405cd19bc31fbd526c59569d7bb3e481b9b35dadacc7"
+    },
+    {
+      "path": "repository/master-plugin/skills/master-status/SKILL.md",
+      "origin": "Existing pending application source retained during MSI observer integration",
+      "bytes": 2338,
+      "sha256": "f0c30472dffc9c2b2c9cfa4f4c3d67e7cdbdbe600ae63ea90a96d78d6b148848"
+    },
+    {
+      "path": "repository/master-plugin/test_master_plugin.py",
+      "origin": "restricted local bridge packaging and read-only live MCP validation",
+      "bytes": 10241,
+      "sha256": "ac827a26e880a249f412bd0ad10567cd81b16289270b4f5206234cbdbda9ad24"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Check-MSI-Connection.cmd",
@@ -853,11 +1135,11 @@
     }
   ],
   "summary": {
-    "files": 126,
-    "bytes": 1176306,
-    "pythonSourcesParsed": 42
+    "files": 173,
+    "bytes": 1904049,
+    "pythonSourcesParsed": 64
   },
   "preservedBaseline": "Original SOURCE-MANIFEST and MAGIX-EXTENSION-MANIFEST remain exact; accepted launcher and client bytes unchanged.",
   "privacy": "No personal catalog, media audit report, deployment seal, source media, cache, credential or runtime binary is included.",
-  "validationScope": "See app/README and audit/README for isolated tests. Source inventory is not all-project playback verification."
+  "validationScope": "Sourced Violet v2 reports and legacy migration, four restricted MCP tools, bounded persistent attention queue and acknowledgments, native expression/source display and pending-count UI. Synthetic MASTER backend/API/UI, native changing frames/UTF-8, hub/MW5/Jobs/tray and guarded publisher regressions; source integrity verified separately. Prepared 25-file guarded update, not installed. Current production dashboard and sensors preserved. Actual Violet read/publish acceptance and plugin activation remain unverified; live-mini capture optional, long stability/boot/reconnect deferred. Private reports and payloads excluded."
 }

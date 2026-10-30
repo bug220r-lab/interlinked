@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import datetime as dt
 import hashlib
 import hmac
+import importlib.util
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import io
@@ -32,6 +33,7 @@ import webbrowser
 MAGIX_SHA='6c2ea58d9ac89a20c4b2bb42347b79f5802b049b2c81812314e09412578de1bf'
 BASE_SHA='c60fb2559a90a2301aa3d741c1d2e676e5ed90559fb40a63e27ef83d75f697aa'
 INDEX_SHA='bccb71983d23a3baa88926aca4d14fe6ce95d003e46e1d3d696350e47b746a83'
+CLIENT_SEAL_SHA='362517385124df2ad6d55363fc0b39d072b4378c11e3f468b1bfebf8bc21f3fc'
 KIT=Path(r'C:\Users\Jude\Documents\MSI-Project-Library')
 CACHE=Path(r'C:\Users\Jude\AppData\Local\ProjectLibrary\Cache')
 STATIC={'/':('index.html','text/html; charset=utf-8'),'/app.js':('app.js','text/javascript; charset=utf-8'),'/style.css':('style.css','text/css; charset=utf-8')}
@@ -54,6 +56,21 @@ def exists(path):
     try:os.lstat(fs(path));return True
     except FileNotFoundError:return False
 
+def path_attributes(path,info):
+    """Disambiguate lstat's EA bit from directory-only RECALL_ON_OPEN."""
+    attrs=getattr(info,'st_file_attributes',0)
+    if os.name=='nt' and attrs&0x40000:
+        # Windows aliases FILE_ATTRIBUTE_EA and RECALL_ON_OPEN. Python's
+        # lstat can report EA; GetFileAttributesW supplies path attributes
+        # without interpreting an extended-attribute record as a placeholder.
+        kernel=ctypes.WinDLL('kernel32',use_last_error=True)
+        kernel.GetFileAttributesW.argtypes=[ctypes.c_wchar_p]
+        kernel.GetFileAttributesW.restype=ctypes.c_uint32
+        current=kernel.GetFileAttributesW(fs(path))
+        if current==0xffffffff:raise ctypes.WinError(ctypes.get_last_error())
+        return (attrs&~0x40000)|current
+    return attrs
+
 def ordinary(path,allow_missing=False):
     """Metadata only: no links, junctions, recall or offline paths."""
     path=Path(path)
@@ -63,7 +80,7 @@ def ordinary(path,allow_missing=False):
         except FileNotFoundError:
             if allow_missing:continue
             raise
-        need(not stat.S_ISLNK(s.st_mode) and not getattr(s,'st_file_attributes',0)&(0x400|0x1000|0x40000|0x400000),'Link/cloud placeholder not accepted: '+str(p))
+        need(not stat.S_ISLNK(s.st_mode) and not path_attributes(p,s)&(0x400|0x1000|0x40000|0x400000),'Link/cloud placeholder not accepted: '+str(p))
     return path
 
 def read_json(path,limit=32*1024*1024):
@@ -76,13 +93,34 @@ def read_json(path,limit=32*1024*1024):
 def write_json(path,value):
     ordinary(path.parent);ordinary(path,allow_missing=True)
     temporary=path.with_name(path.name+'.'+uuid.uuid4().hex+'.tmp')
-    with open(temporary,'x',encoding='utf-8',newline='\n') as stream:
+    with open(fs(temporary),'x',encoding='utf-8',newline='\n') as stream:
         json.dump(value,stream,ensure_ascii=False,indent=2);stream.write('\n');stream.flush();os.fsync(stream.fileno())
-    os.replace(temporary,path)
+    os.replace(fs(temporary),fs(path))
 
 def identifier(value):
     need(isinstance(value,str) and re.fullmatch(r'[a-z0-9][a-z0-9-]{0,159}',value),'Invalid project identifier.')
     return value
+
+def load_companion(name):
+    need(name in ('interlinked_controller','interlinked_hub','interlinked_mw5','interlinked_master','interlinked_jobs'),'Unknown companion module.')
+    if name in sys.modules:return sys.modules[name]
+    path=Path(__file__).resolve().parent/(name+'.py')
+    spec=importlib.util.spec_from_file_location(name,ordinary(path))
+    module=importlib.util.module_from_spec(spec);sys.modules[name]=module
+    try:spec.loader.exec_module(module)
+    except BaseException:
+        sys.modules.pop(name,None);raise
+    return module
+
+def client_engine(runtime):
+    """Import only the original sealed engine; never install into its runtime."""
+    path=ordinary(runtime.kit/'Project-Library-Client/project_library.py')
+    name='interlinked_reviewed_client'
+    if name not in sys.modules:
+        spec=importlib.util.spec_from_file_location(name,path)
+        module=importlib.util.module_from_spec(spec);sys.modules[name]=module
+        spec.loader.exec_module(module)
+    return sys.modules[name]
 
 class MissingMediaLedger:
     """User reports only. Reported paths are never opened or resolved.
@@ -137,7 +175,7 @@ class MissingMediaLedger:
         else:stream=open(path,'x+b' if create else 'r+b')
         try:
             s=os.fstat(stream.fileno());now=os.lstat(fs(path))
-            need(stat.S_ISREG(s.st_mode) and s.st_nlink==1 and now.st_nlink==1 and (s.st_dev,s.st_ino)==(now.st_dev,now.st_ino) and not (getattr(s,'st_file_attributes',0)|getattr(now,'st_file_attributes',0))&(0x400|0x1000|0x40000|0x400000),'Ledger leaf changed, is hardlinked or is not an ordinary local file.')
+            need(stat.S_ISREG(s.st_mode) and s.st_nlink==1 and now.st_nlink==1 and (s.st_dev,s.st_ino)==(now.st_dev,now.st_ino) and not (path_attributes(path,s)|path_attributes(path,now))&(0x400|0x1000|0x40000|0x400000),'Ledger leaf changed, is hardlinked or is not an ordinary local file.')
             yield stream
         finally:stream.close()
 
@@ -271,8 +309,8 @@ def production_runtime():
     need(app==KIT/'INTERLINKED-App','Use the local deployed INTERLINKED kit.')
     ordinary(app);ordinary(KIT)
     seal=read_json(app/'GUI-CHECKSUMS.json',1024*1024)
-    expected={'interlinked_gui.py','web/index.html','web/app.js','web/style.css'}
-    need(seal.get('format')=='interlinked-gui-checksums-v1' and set(seal.get('files',{}))==expected,'GUI seal is missing or incomplete.')
+    expected={'interlinked_gui.py','interlinked_controller.py','interlinked_hub.py','interlinked_mw5.py','interlinked_master.py','master_hook.py','master_bridge.py','interlinked_jobs.py','web/index.html','web/app.js','web/style.css'}
+    need(seal.get('format')=='interlinked-gui-checksums-v4' and set(seal.get('files',{}))==expected,'GUI seal is missing or incomplete.')
     for rel,sha in seal['files'].items():
         path=ordinary(app/rel);need(digest(path)==sha,'GUI file differs: '+rel)
     for name,sha in (('magix_projects.py',MAGIX_SHA),('magix_workspace.py',BASE_SHA),('MAGIX-All-Projects-Index.json',INDEX_SHA)):
@@ -286,6 +324,16 @@ def production_runtime():
         audit=read_json(path)
         need(audit.get('format')=='magix-media-audit-gui-v1','Unknown reviewed media audit format.')
     python=ordinary(KIT/'Project-Library-Client/Runtime/python.exe')
+    client=ordinary(KIT/'Project-Library-Client')
+    seal_path=ordinary(client/'HELPER-CHECKSUMS.json')
+    need(digest(seal_path)==CLIENT_SEAL_SHA,'Original reviewed client seal differs.')
+    client_seal=read_json(seal_path)
+    need(client_seal.get('format')=='project-library-client-checksums-v1' and len(client_seal.get('files',[]))==52,'Original client seal is incomplete.')
+    seen=set()
+    for row in client_seal['files']:
+        rel=row['path'];need(isinstance(rel,str) and rel not in seen and not rel.startswith(('/','\\')) and '\\' not in rel and ':' not in rel and all(p not in ('','.','..') for p in rel.split('/')),'Unsafe original client seal path.')
+        seen.add(rel);path=ordinary(client/rel)
+        need(path.stat().st_size==row['bytes'] and digest(path)==row['sha256'],'Reviewed client file differs: '+rel)
     return Runtime(KIT,CACHE,KIT/'INTERLINKED-GUI-State',app/'web',index,audit,False,python)
 
 class Controller:
@@ -579,6 +627,16 @@ class Server(ThreadingHTTPServer):
         super().__init__(('127.0.0.1',port),Handler)
         self.controller=controller;self.token=token or secrets.token_urlsafe(32)
         self.host='127.0.0.1:'+str(self.server_port);self.origin='http://'+self.host
+        self.master=load_companion('interlinked_master').safe_service(controller.r,controller,
+            violet_asset=getattr(controller.r,'master_violet',None) if controller.r.demo else None)
+        self.jobs=load_companion('interlinked_jobs').safe_service(controller.r)
+
+    def server_close(self):
+        jobs=getattr(self,'jobs',None)
+        if jobs is not None:jobs.close()
+        master=getattr(self,'master',None)
+        if master is not None:master.close()
+        super().server_close()
 
 class Handler(BaseHTTPRequestHandler):
     protocol_version='HTTP/1.1'
@@ -609,7 +667,7 @@ class Handler(BaseHTTPRequestHandler):
             parsed=urlsplit(self.path);path=parsed.path
             self.gate(api=path.startswith('/api/'))
             if path in STATIC:
-                need(not parsed.query,'Unexpected query.')
+                need(not parsed.query or path=='/' and parsed.query in ('view=master','view=jobs'),'Unexpected query.')
                 name,mime=STATIC[path];self.respond(200,ordinary(self.server.controller.r.web/name).read_bytes(),mime)
             elif path=='/audit':
                 query=parse_qs(parsed.query,strict_parsing=True)
@@ -617,7 +675,22 @@ class Handler(BaseHTTPRequestHandler):
                 identifier(query['project'][0])
                 self.respond(200,ordinary(self.server.controller.r.web/'index.html').read_bytes(),'text/html; charset=utf-8')
             elif path=='/api/state' and not parsed.query:self.respond(200,self.server.controller.state())
+            elif path=='/api/msi/jobs' and not parsed.query:self.respond(200,self.server.jobs.view())
+            elif path=='/api/msi/jobs/log':
+                query=parse_qs(parsed.query,strict_parsing=True)
+                need(set(query)=={'job','stream'} and all(len(v)==1 for v in query.values()),'Select one job and log stream.')
+                self.respond(200,self.server.jobs.log(query['job'][0],query['stream'][0]))
+            elif path=='/api/master/state' and not parsed.query:self.respond(200,self.server.master.state())
+            elif path=='/api/master/settings' and not parsed.query:self.respond(200,self.server.master.state()['settings'])
+            elif path=='/api/master/frame' and not parsed.query:
+                picture=self.server.master.frame()
+                if picture:self.respond(200,picture,'image/jpeg')
+                else:self.respond(503,dict(error='MASTER preview is not available yet.'))
             elif path=='/api/catalog' and not parsed.query:self.respond(200,self.server.controller.catalog())
+            elif path=='/api/mw5':
+                query=parse_qs(parsed.query,strict_parsing=True)
+                need(set(query)=={'project'} and len(query['project'])==1,'Select one MW5 project.')
+                self.respond(200,self.server.controller.mw5_view(query['project'][0]))
             elif path=='/api/entries':
                 query=parse_qs(parsed.query,strict_parsing=True)
                 need(set(query)=={'project'} and len(query['project'])==1,'Select one project.')
@@ -637,7 +710,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             self.gate(api=True,write=True)
-            need(self.path in ('/api/action','/api/session','/api/quit','/api/missing/report','/api/missing/status'),'Unknown action route.')
+            need(self.path in ('/api/action','/api/session','/api/quit','/api/missing/report','/api/missing/status','/api/preferences','/api/hub/refresh','/api/mw5/check','/api/mw5/preview','/api/mw5/apply','/api/mw5/finish','/api/master/settings','/api/master/display','/api/msi/jobs/refresh'),'Unknown action route.')
             need(self.headers.get('Content-Type','').split(';')[0]=='application/json','JSON content type required.')
             need(self.headers.get('Transfer-Encoding') is None,'Chunked request bodies are not accepted.')
             length=int(self.headers.get('Content-Length','-1'));need(0<=length<=MAX_BODY,'Request too large or missing length.')
@@ -649,6 +722,14 @@ class Handler(BaseHTTPRequestHandler):
                 need(set(body)=={'response','operationId','promptGeneration'},'Unexpected session fields.');result=self.server.controller.session_input(body['response'],body['operationId'],body['promptGeneration'])
             elif self.path=='/api/missing/report':result=self.server.controller.report_missing(body)
             elif self.path=='/api/missing/status':result=self.server.controller.status_missing(body)
+            elif self.path=='/api/preferences':result=self.server.controller.preferences(body)
+            elif self.path=='/api/hub/refresh':result=self.server.controller.refresh_hub(body)
+            elif self.path=='/api/msi/jobs/refresh':
+                need(body=={},'Job refresh takes no parameters.')
+                result=self.server.jobs.refresh()
+            elif self.path=='/api/master/settings':result=self.server.master.settings(body)
+            elif self.path=='/api/master/display':result=self.server.master.display(body)
+            elif self.path.startswith('/api/mw5/'):result=self.server.controller.mw5_request(self.path.rsplit('/',1)[1],body)
             else:
                 need(body=={},'Quit takes no parameters.')
                 self.server.controller.request_quit()
@@ -659,16 +740,27 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--demo',action='store_true');parser.add_argument('--no-browser',action='store_true');parser.add_argument('--port',type=int,default=0)
+    parser.add_argument('--desktop',action='store_true',help='Private startup handshake for the INTERLINKED desktop host; never opens a browser.')
     parser.add_argument('--demo-state',type=Path)
+    parser.add_argument('--master-worker',type=Path,help='Explicit display worker for isolated demo acceptance only.')
+    parser.add_argument('--master-violet',type=Path,help='Approved private Violet artwork for isolated demo acceptance only.')
     args=parser.parse_args()
     need(0<=args.port<=65535,'Invalid loopback port.')
     need(args.demo or args.demo_state is None,'--demo-state is available only in synthetic demo mode.')
+    need(args.demo or (args.master_worker is None and args.master_violet is None),'Custom MASTER paths are available only in synthetic demo mode.')
     runtime=demo_runtime(args.demo_state or Path(os.environ.get('TEMP','.'))/('INTERLINKED-Demo-'+uuid.uuid4().hex)) if args.demo else production_runtime()
-    controller=Controller(runtime);server=Server(controller,args.port)
+    if args.demo:
+        runtime.master_worker=args.master_worker;runtime.master_violet=args.master_violet
+    controller=load_companion('interlinked_controller').controller_class(sys.modules[__name__])(runtime);server=Server(controller,args.port)
     write_json(controller.run/'startup.json',dict(format='interlinked-gui-startup-v1',utc=utc(),mode='DEMO' if args.demo else 'PRODUCTION',projectCount=len(controller.projects),appSha256=digest(Path(__file__)),webSha256={name:digest(runtime.web/name) for name in ('index.html','app.js','style.css')},auditSha256=digest(KIT/'MAGIX-Media-Audit.json') if runtime.audit is not None else None,loopbackOnly=True,port=server.server_port,busy=False,canQuit=True,tokenRecorded=False))
     url=server.origin+'/#'+server.token
-    print(('SYNTHETIC DEMO — ' if args.demo else '')+'INTERLINKED\n'+url+'\nKeep this service window open. Browser tabs may be closed without stopping work.',flush=True)
-    if not args.no_browser:webbrowser.open(url)
+    if args.desktop:
+        # The host captures this pipe in memory. Never persist the capability URL
+        # in receipts, command-line arguments, WebView profiles, or logs.
+        print(json.dumps(dict(format='interlinked-desktop-startup-v1',url=url)),flush=True)
+    else:
+        print(('SYNTHETIC DEMO — ' if args.demo else '')+'INTERLINKED\n'+url+'\nKeep this service window open. Browser tabs may be closed without stopping work.',flush=True)
+    if not args.no_browser and not args.desktop:webbrowser.open(url)
     try:
         while True:
             try:server.serve_forever(poll_interval=.25);break

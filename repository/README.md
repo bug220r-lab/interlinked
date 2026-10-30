@@ -21,6 +21,10 @@ The directory structure intentionally retains the original `outputs/` and `work/
 | `MAGIX-EXTENSION-MANIFEST.json` | Final extension provenance, including the two path-only test adaptations |
 | `docs/MAGIX-WORKSPACE-START-HERE.txt` | Current all-project workflow guide |
 | `app` | Matrix-themed loopback GUI and isolated tests; wraps the unchanged accepted launcher |
+| `app/interlinked_jobs.py` | Read-only MSI job receipts, scheduler observations and bounded log tails through an explicit pinned native SSH query |
+| `desktop` | Windows WebView2 host, pinned SDK build and isolated UI smoke test |
+| `app/interlinked_master.py`, `app/master_hook.py`, `app/master_bridge.py`, `master-plugin` | MASTER monitoring, metadata-only lifecycle observation and restricted local Violet status tools; connection and trust remain explicit |
+| `app/interlinked_hub.py`, `app/interlinked_controller.py`, `app/interlinked_mw5.py` | Unified library orchestration and explicit reviewed MW5 plugin transfers; original client and MAGIX engines remain pinned |
 | `audit` | Source-library media audit code; generated personal reports are supplied separately |
 | `deployment/Publish-Interlinked-GUI.ps1` | Hash-guarded additive GUI publication to the existing client kit |
 
@@ -54,7 +58,7 @@ kit/
 
 The source locations differ from that deployment layout. Use the current command wrappers from `work/magix-all-projects/candidate`, and place the exact baseline, Stage1 and Access helpers next to the launcher. Ownership receipts, an unbound legacy Windows profile, the selected cache, private index, host catalog and share configuration must also satisfy the current guards. This repository does not include those live inputs.
 
-The GUI adds `INTERLINKED.cmd`, `INTERLINKED-App/` and a private `MAGIX-Media-Audit.json` snapshot beside that existing installation. It does not replace the accepted launcher or alter workspace ownership. Its checksummed static assets and private report are installed with a generated `GUI-CHECKSUMS.json`; the report and deployment seal are not reusable substitutes for new audits. Run normally on the configured client. `--demo` is an isolated synthetic preview and is safe for source-level UI testing on the host PC. Browser closure does not end a session; the local service must remain running until the operation finishes.
+The interface adds `INTERLINKED.cmd`, `INTERLINKED-App/`, `INTERLINKED-Desktop/` and a private `MAGIX-Media-Audit.json` snapshot beside that existing installation. The desktop host requires .NET Framework 4.8 and the WebView2 Evergreen Runtime, and uses the existing sealed Python runtime. It does not replace the accepted launcher or alter workspace ownership. Its checksummed static assets and private report are installed with a generated `GUI-CHECKSUMS.json`; desktop binaries have a separate `DESKTOP-CHECKSUMS.json`. These seals are not reusable substitutes for new reviews. Run normally on the configured client. `--demo` is an isolated synthetic preview. Closing the desktop window negotiates guarded shutdown; browser fallback tabs remain independent of service lifetime.
 
 ## Bootstrap order
 
