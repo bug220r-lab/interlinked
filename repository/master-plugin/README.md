@@ -68,6 +68,14 @@ After the installed MASTER service is running, `python -B repository/master-plug
 
 Official references: [plugin packaging](https://developers.openai.com/plugins/build/plugins), [desktop-only MCP plugins](https://developers.openai.com/plugins/deploy/desktop-only), and [Codex hooks](https://learn.chatgpt.com/docs/hooks).
 
+## Authorized lifecycle reporting (v1.1.1)
+
+The skill treats the user's standing reporting instruction as authorization for Violet's meaningful start, input-wait, interruption and turn-finish updates. Violet must carry that responsibility into each delegated task. Read-only project inspection may still send the separately authorized, bounded MASTER metadata record; an explicit instruction not to publish MASTER status always wins. A read request itself remains read-only and never impersonates Violet. Ordinary Codex lifecycle observations are not converted into Violet reports.
+
+This is an instruction-only plugin update. It adds no tools, permissions, native hooks, timers or model polling, and requires no application replacement. Update the registered local package, then use `codex plugin add interlinked-master@interlinked-local --json` to install the reviewed version through the normal plugin manager. Verify the installed version and skill bytes; do not edit the plugin cache or hook trust records manually. Existing chats may retain earlier context, so include the corrected reporting contract when continuing work with Violet or delegating a new task.
+
+For actual automatic-report acceptance, ask Violet to delegate a harmless read-only project check **with MASTER metadata writes expressly allowed**. Independently observe fresh `local_task` working and turn_finished reports, with no project mutation or alert acknowledgment. Keep a task with explicit no-publish instructions as a negative control. A successful bridge smoke test or general project hook does not establish this actual Violet behavior. New delegated tasks receive task-specific context rather than every Dot conversation; see [Tasks and memory](https://learn.chatgpt.com/docs/dots/tasks-and-memory).
+
 ## Sourced reports and attention (v1.1)
 
 Set `reporter` to `dot` for a report made by the actual Dot, `local_task` for a delegated local task, or `demo` for synthetic work. Omitted reporters and legacy v1 records are unverified and cannot establish a connected feed. These labels are self-reported provenance, not identity authentication or an account-connection test. A fresh local-task report establishes only a delegated route. New reports use `interlinked-violet-status-v2`; the public snapshot remains v1 with additive reporter/connection-route and attention fields.

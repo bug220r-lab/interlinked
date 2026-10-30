@@ -1,8 +1,8 @@
 {
   "format": "interlinked-distribution-manifest-v1",
-  "createdUtc": "2026-10-30T15:38:50.722604+00:00",
+  "createdUtc": "2026-10-30T17:36:20.320419+00:00",
   "scope": "Reviewed project hub, MW5, read-only MSI Jobs, MASTER observatory and restricted local Violet bridge, Windows rendering/capture/sensor worker, desktop host and guarded publication; private telemetry, payloads, credentials and binaries excluded. Additive Buddy companion, lock-owner media ingestion and authenticated project work report.",
-  "previousManifestSha256": "fcd3ff8892d425a48946aa4de2f8ab9e7ed88c01dc94648ac3be4b08504275e3",
+  "previousManifestSha256": "65f3d7c046b43bf5610f8f8701a19e32759c89ee40c3dda4eba2052cd5ae0b38",
   "files": [
     {
       "path": ".gitattributes",
@@ -476,8 +476,8 @@
     {
       "path": "repository/master-plugin/.codex-plugin/plugin.json",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 451,
-      "sha256": "c94bbfa588b80d91948386e6bc755bce5fee84a5dd945e8f19816931c4ff0226"
+      "bytes": 459,
+      "sha256": "a6549d3cb9c0449610c1a45004f81f13f65d30926ae8009bc09109d7ac529451"
     },
     {
       "path": "repository/master-plugin/Build-MasterPlugin.ps1",
@@ -488,20 +488,20 @@
     {
       "path": "repository/master-plugin/README.md",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 7622,
-      "sha256": "4d67f826aebf1854c29c405cd19bc31fbd526c59569d7bb3e481b9b35dadacc7"
+      "bytes": 9405,
+      "sha256": "6731c98120264ea89aa1cc91924aaa0edb3b863882e2df80da12926739bde430"
     },
     {
       "path": "repository/master-plugin/skills/master-status/SKILL.md",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 2338,
-      "sha256": "f0c30472dffc9c2b2c9cfa4f4c3d67e7cdbdbe600ae63ea90a96d78d6b148848"
+      "bytes": 4281,
+      "sha256": "6de38fc2c357ed200e9f0c60b018025dc5aecab7709b28bdd27c1db45bb287cc"
     },
     {
       "path": "repository/master-plugin/test_master_plugin.py",
       "origin": "restricted local bridge packaging and read-only live MCP validation",
       "bytes": 10623,
-      "sha256": "c1ff983a0b752f9211281d4c16c1c2d07b1961ee650ba4e1ee7d3799cd9f209f"
+      "sha256": "f7f94323bce8ee6df21d01a652ebb7279f3ff7f2177bef1ec363bf3b4b7c0f8f"
     },
     {
       "path": "repository/outputs/Project-Library-2026-10-29/Check-MSI-Connection.cmd",
