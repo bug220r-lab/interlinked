@@ -22,6 +22,12 @@ internal static partial class SensorStartup
             throw new IOException("Reviewed vendor bytes changed."); return file;}
         catch{file.Dispose();throw;}
     }
+    internal static MemoryMappedFileSecurity SensorMapSecurity() {
+        // SECTION_ALL_ACCESS includes SECTION_EXTEND_SIZE, omitted by .NET FullControl.
+        var security=new MemoryMappedFileSecurity();
+        security.SetSecurityDescriptorSddlForm("D:P(A;;GA;;;"+UserSid+")");
+        return security;
+    }
     [STAThread] private static int Main(string[] args) {
         if(args.Length!=0)return 2;
         if(Environment.MachineName!="THIS-MACHINE" || WindowsIdentity.GetCurrent().User.Value!=UserSid ||
@@ -32,8 +38,7 @@ internal static partial class SensorStartup
         if(Exists("TRCC")||Exists("HWINFO"))return 4;
         try {
             using(var exe=Pin("HWINFO.exe",ExeHash))using(var dll=Pin("HWiNFO64.dll",DllHash)) {
-                var security=new MemoryMappedFileSecurity();
-                security.AddAccessRule(new AccessRule<MemoryMappedFileRights>(new SecurityIdentifier(UserSid),MemoryMappedFileRights.FullControl,AccessControlType.Allow));
+                var security=SensorMapSecurity();
                 using(var map=MemoryMappedFile.CreateNew("shareMemory_SysInfo",2097152,MemoryMappedFileAccess.ReadWrite,MemoryMappedFileOptions.None,security,HandleInheritability.None)) {
                     IntPtr job=NewHelperJob(); Process child=null;
                     try {

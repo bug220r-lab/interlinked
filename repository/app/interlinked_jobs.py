@@ -25,6 +25,7 @@ import uuid
 import zlib
 
 KIT = Path(r'C:\Users\Jude\Documents\MSI-Project-Library')
+SYSTEM_SSH = Path(r'C:\Windows\System32\OpenSSH\ssh.exe')
 MSI_SID = 'S-1-5-21-3086848077-1833151167-136462239-1001'
 PUBLIC_KEY = 'AAAAC3NzaC1lZDI1NTE5AAAAIM2hEErQIByIkaxhMwupU08Pjy2bcyNwl4pvWMyEpyAz'
 FINGERPRINT = 'SHA256:oJliv6DyXoZZERIXw7FSD7ekI/PqxSLU5YPv5d5ApiA'
@@ -36,6 +37,7 @@ LOG_BYTES = 32768
 MAX_RESPONSE = 5 * 1024 * 1024
 STALE_SECONDS = 60
 QUERY_TIMEOUT = 180
+FAILURE_DISPLAY_SECONDS = 60
 JOB_ID = re.compile(r'[0-9a-f]{32}\Z')
 PROJECT_ID = re.compile(r'[A-Za-z0-9][A-Za-z0-9_-]{0,95}\Z')
 DEVICE = re.compile(r'(CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|COM[1-9¹²³]|LPT[1-9¹²³])(?:\..*)?\Z', re.I)
@@ -84,6 +86,22 @@ def ordinary(path, missing=False):
              'Linked or cloud jobs paths are refused.')
         need(not stat.S_ISREG(info.st_mode) or info.st_nlink == 1,
              'Hardlinked job metadata is refused.')
+    return path
+
+
+def system_ssh(path):
+    """Validate the fixed Windows client, separately from single-link metadata.
+
+    Windows servicing hardlinks this OS binary into WinSxS. That is valid for
+    this exact System32 executable; job metadata still requires one hardlink.
+    """
+    path = Path(path)
+    need(path == SYSTEM_SSH, 'Use the reviewed Windows SSH client.')
+    ordinary(path.parent)
+    info = path.lstat()
+    attrs = getattr(info, 'st_file_attributes', 0)
+    need(stat.S_ISREG(info.st_mode) and not stat.S_ISLNK(info.st_mode)
+         and not attrs & 0x441400, 'The Windows SSH client must be an ordinary local executable.')
     return path
 
 
@@ -331,7 +349,7 @@ def ssh_arguments(query_id, known_hosts):
                    'ClearAllForwardings=yes', 'ConnectionAttempts=1', 'ConnectTimeout=10',
                    'ServerAliveInterval=10', 'ServerAliveCountMax=3', 'LogLevel=ERROR'):
         options += ['-o', option]
-    return [r'C:\Windows\System32\OpenSSH\ssh.exe', *options, 'jlewi@MSI', remote_command(query_id)]
+    return [str(SYSTEM_SSH), *options, 'jlewi@MSI', remote_command(query_id)]
 
 
 def native_query(query_id, run):
@@ -343,7 +361,7 @@ def native_query(query_id, run):
         stream.flush()
         os.fsync(stream.fileno())
     args = ssh_arguments(query_id, known)
-    ordinary(Path(args[0]))
+    system_ssh(Path(args[0]))
     environment = os.environ.copy()
     for key in ('SSH_ASKPASS', 'SSH_ASKPASS_REQUIRE', 'DISPLAY'):
         environment.pop(key, None)
@@ -511,7 +529,7 @@ class JobsMonitor:
         process = self.launcher([str(python), '-I', '-B', str(Path(__file__)), '--worker', query_id],
                                 cwd=str(run), shell=False, creationflags=subprocess.CREATE_NEW_CONSOLE)
         try:
-            code = process.wait(timeout=QUERY_TIMEOUT + 30)
+            code = process.wait(timeout=QUERY_TIMEOUT + FAILURE_DISPLAY_SECONDS + 30)
         except subprocess.TimeoutExpired:
             process.terminate()  # local read-only helper only, never MSI jobs
             raise ValueError('Local MSI observation helper timed out.') from None
@@ -603,6 +621,29 @@ def worker(query_id):
     write_json(run / 'result.json', snapshot)
 
 
+def failure_display():
+    """Keep native errors visible briefly; never read/store SSH stderr or secrets."""
+    print('MSI read-only refresh did not complete. Existing observations and all remote jobs were preserved.',
+          file=sys.stderr, flush=True)
+    if os.name != 'nt':
+        return
+    try:
+        import msvcrt
+        # The worker already owns a native console. Opening its output explicitly
+        # keeps this prompt out of any parent-service stdout/stderr redirection.
+        with open('CONOUT$', 'w', encoding='utf-8') as console:
+            console.write('Review the native error above. Press Enter to close; this window closes automatically in '
+                          + str(FAILURE_DISPLAY_SECONDS) + ' seconds.\n')
+            console.flush()
+            deadline = time.monotonic() + FAILURE_DISPLAY_SECONDS
+            while time.monotonic() < deadline:
+                if msvcrt.kbhit() and msvcrt.getwch() in ('\r', '\n'):
+                    break
+                time.sleep(.05)
+    except OSError:
+        pass
+
+
 def main():
     parser = argparse.ArgumentParser(description='Read-only MSI job observation helper.')
     parser.add_argument('--worker', required=True)
@@ -611,7 +652,7 @@ def main():
         worker(args.worker)
         return 0
     except Exception:
-        print('MSI read-only refresh did not complete. Existing observations and all remote jobs were preserved.', file=sys.stderr)
+        failure_display()
         return 2
 
 

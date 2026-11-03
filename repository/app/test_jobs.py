@@ -5,6 +5,7 @@ import argparse
 import base64
 import copy
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -15,6 +16,7 @@ import threading
 import time
 from types import SimpleNamespace
 import unittest
+from unittest import mock
 import uuid
 import zlib
 
@@ -286,6 +288,49 @@ class ObserverTests(unittest.TestCase):
         self.assertNotIn('accept-new', args)
         with self.assertRaises(ValueError):
             jobs.remote_command("';write-anything")
+
+    def test_serviced_ssh_hardlink_reaches_transport_but_metadata_stays_guarded(self):
+        client = self.root / 'synthetic-system-ssh.exe'
+        client.write_bytes(b'never executed: synthetic Windows servicing fixture')
+        os.link(client, self.root / 'synthetic-winsxs-hardlink.exe')
+        self.assertEqual(client.stat().st_nlink, 2)
+        with self.assertRaisesRegex(ValueError, 'Hardlinked job metadata'):
+            jobs.ordinary(client)
+        query_id = 'f' * 32
+        process = mock.Mock()
+        process.stdout = io.BytesIO(json.dumps(jobs.demo_snapshot(query_id)).encode('utf-8'))
+        process.wait.return_value = 0
+        with mock.patch.object(jobs, 'SYSTEM_SSH', client), mock.patch.object(jobs.subprocess, 'Popen', return_value=process) as launch:
+            snapshot = jobs.native_query(query_id, self.root)
+        self.assertEqual(snapshot['queryId'], query_id)
+        launch.assert_called_once()
+        self.assertEqual(launch.call_args.args[0][0], str(client))
+        self.assertIsNone(launch.call_args.kwargs['stdin'])
+        self.assertIsNone(launch.call_args.kwargs['stderr'])
+        self.assertEqual(launch.call_args.kwargs['stdout'], subprocess.PIPE)
+
+    def test_system_ssh_does_not_admit_an_alternate_client_or_directory(self):
+        client = self.root / 'fixed-client.exe'
+        client.write_bytes(b'synthetic client; never executed')
+        alternate = self.root / 'alternate.exe'
+        alternate.write_bytes(b'synthetic alternate; never executed')
+        with mock.patch.object(jobs, 'SYSTEM_SSH', client):
+            with self.assertRaisesRegex(ValueError, 'reviewed Windows SSH client'):
+                jobs.system_ssh(alternate)
+        with mock.patch.object(jobs, 'SYSTEM_SSH', self.root):
+            with self.assertRaisesRegex(ValueError, 'ordinary local executable'):
+                jobs.system_ssh(self.root)
+
+    @unittest.skipUnless(os.name == 'nt', 'Native Windows failure display')
+    def test_failure_window_pause_is_bounded_without_capturing_native_errors(self):
+        import msvcrt
+        with mock.patch('builtins.open', mock.mock_open()) as console, mock.patch.object(msvcrt, 'kbhit', return_value=False), \
+             mock.patch.object(msvcrt, 'getwch') as read_key, mock.patch.object(jobs.time, 'sleep'), \
+             mock.patch.object(jobs.time, 'monotonic', side_effect=[0, 1, jobs.FAILURE_DISPLAY_SECONDS + 1]):
+            jobs.failure_display()
+        console.assert_called_once_with('CONOUT$', 'w', encoding='utf-8')
+        read_key.assert_not_called()
+        self.assertIn('closes automatically', console().write.call_args.args[0])
 
     def test_remote_collect_only_literal_owned_files_not_record_paths(self):
         root = self.remote_root()

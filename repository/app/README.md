@@ -1,5 +1,12 @@
 # INTERLINKED interface and local service
 
+The current source requires the exact twenty-six-member v10 GUI seal, including
+the AI workspace, restricted local AI plugin transport, and five history modules.
+The v7 seal described below is historical baseline evidence. See
+[AI workspace operations and acceptance](AI-WORKSPACE.md) and
+[history operations](HISTORY.md). Source verification and a GitHub push do not
+install this version or migrate existing private state.
+
 This standard-library Python service wraps the unchanged reviewed MAGIX CLI. It binds only to `127.0.0.1`. The [WebView2 desktop host](../desktop/README.md) starts it with `--desktop`, receives its private startup URL through a captured pipe, and displays the existing interface in its own window. `INTERLINKED.cmd` launches the desktop host. `INTERLINKED-Browser.cmd` preserves the previous browser/service-window entry point for explicit fallback use; keep that service window open during work.
 
 Production layout is additive:
@@ -18,7 +25,7 @@ kit/MAGIX-All-Projects-Index.json       # private, pinned snapshot
 kit/Project-Library-Client/Runtime/python.exe
 ```
 
-The current GUI seal uses `format: interlinked-gui-checksums-v7`, an exact fifteen-member `files` object covering the Python companions (including Stats and `interlinked_configuration.py`) and three web assets, and `auditSha256` for the unchanged private sidecar. Before importing companions, the production service checks this seal and the complete original 52-file client/runtime seal. The production kit and full sealed client must already exist. Source-only previews do not install or change system settings.
+The historical v7 GUI seal used `format: interlinked-gui-checksums-v7`, an exact fifteen-member `files` object covering the Python companions (including Stats and `interlinked_configuration.py`) and three web assets, and `auditSha256` for the unchanged private sidecar. Before importing companions, the production service checks this seal and the complete original 52-file client/runtime seal. The production kit and full sealed client must already exist. Source-only previews do not install or change system settings.
 
 Use Prepare/Open, save and close MAGIX, then choose **I saved and closed MAGIX**. That response does not save to MSI. Use **Save to MSI + verify** afterward; Free local space requires the exact selected project ID. In background mode, closing the desktop window hides it in the tray. Explicit Exit interface retains the existing operation/session shutdown guards; with background mode disabled, closing requests that guarded exit. In browser mode, closing a tab does not close stdin, terminate the child, save, or release files. Forced service/process termination cannot preserve a process-held lock: close MAGIX and use the reviewed console Recover workflow before continuing.
 
@@ -48,6 +55,30 @@ A network-restricted sandbox may block even loopback fixture connections. Do not
 
 ## MASTER command deck
 
+Cooler preferences add an independent `layout` choice: `command_deck` (the
+default for both new and existing settings) or `violet_web`. The Violet image
+source remains `dashboard` or the separately calibrated `live_mini`. Both layouts
+use the same native 480 × 480 frames for the desktop preview and physical output.
+The deck retains project stations and adds bounded local/MSI model activity; the
+web pages through loaded/busy models, individual observed agents and projects.
+
+AI observations are metadata only. Model request/response pulses, assigned worker
+and reviewer stages, result readiness and first bridge-result retrieval have
+separate meanings. A result read is not project acceptance or a passing check.
+Only confirmed Codex parent/child relationships receive graph edges; Codex hooks
+do not establish which model an agent uses or that Violet controls that agent.
+Missing or stale evidence stops animation. Reading MASTER never starts inference,
+refreshes model inventory, loads models or calibrates capabilities.
+
+Display commands carry attempt identities. Pending connection and recovery keep
+Disconnect available and reject duplicate Connect requests. Initial failures
+offer manual Retry. After acknowledged delivery, transient drops allow at most
+three recovery attempts (2, 5 and 10 second backoffs) within 75 seconds. Explicit
+Disconnect cancels recovery; conflicts and invalid dependencies do not retry.
+The 12-second native handshake has a 20-second service watchdog and bounded
+cleanup. Preview production and helper-consumed delivery rates are shown
+separately; neither measures optical panel refresh.
+
 MASTER adds the project command deck and the exact 480 × 480 cooler-frame preview. Its passive collector never starts a project job or acquires a project/workflow lease. The separate native worker renders and encodes frames independently of window visibility. It retains one latest frame, drops obsolete snapshots, and starts without LCD ownership. **Connect display** requests the cooler. A separately installed, hash-bound automatic-startup opt-in can also make bounded connection attempts after verified local startup; capture remains disabled. The separate optional setup described in the desktop notes explicitly manages only its reviewed competing TRCC startup task; ordinary MASTER settings never change that task. Production worker executable/configuration and vendor dependencies must match their reviewed private seals. HTTP settings cannot provide executable paths, disable pins or launch project actions.
 
 `GET /api/master/state`, `GET /api/master/frame`, `GET /api/master/settings`, `POST /api/master/settings` and `POST /api/master/display` reuse the per-run token, exact Host and origin checks. Frame responses are private JPEGs with `no-store`; no frame or a stopped worker returns503. A corrupt MASTER configuration produces an explicit unavailable MASTER service while the library APIs remain usable. Display failures cannot finish, save or release projects.
@@ -58,7 +89,7 @@ The display preference is a target rate: 5, 10, 15 or 30 FPS. New settings defau
 
 The bounded metadata feed is `%LOCALAPPDATA%/INTERLINKED/MASTER-status`; demo feeds are isolated beneath the requested fixture state. Lifecycle hooks retain session/project identity, event type and observation time, discarding prompts, transcripts, tool arguments and results. Unregistered roots are dropped before spooling. Duplicate/out-of-order events cannot reverse a terminal event; quiet/stale sources become unknown. Git reads are local and disable optional locks. Turn completion never establishes a passing build/test: explicit receipts require the exact tested clean revision. The passive ED-IT Buddy feed reads its existing coordinator publisher without another connection or lease.
 
-Optional `subagents` summaries on each project and the overall snapshot contain `workingCount`, `status` (`observed`, `partial`, `unavailable`), `observedAt` and `source`. They count confirmed child lifecycle identities, not the mixed main/child `activity.agents` list. Counts are computed before its 32-row display limit. Known waiting/stopped children are excluded; an unattributed parent permission request makes affected working children uncertain. Only attributable child updates restore confidence. Child evidence expires after 180 seconds; future observations, restart without new evidence, corrupt events and bounded-state eviction cannot establish zero. Partial values display `N?`, unavailable values `—`, and fresh observed stops may establish zero. These are observed working counts, not a complete live inventory. Summaries use the existing collector/worker/API/MCP path; no new polling or agent-control capability is added.
+Optional `subagents` summaries on each project and the overall snapshot contain `workingCount`, `status` (`observed`, `partial`, `unavailable`), `observedAt` and `source`. They count confirmed child lifecycle identities, not the mixed main/child `activity.agents` list. Counts are computed before its 32-row display limit. Known waiting/stopped children are excluded; an unattributed parent permission request makes affected working children uncertain. Only attributable child updates restore confidence. Child evidence expires after 180 seconds; future observations, restart without new evidence, corrupt events and bounded-state eviction cannot establish zero. Partial values display the numerical count, with incomplete coverage explained in hover/source details; unavailable values display `—`, and fresh observed stops may establish zero. These are observed working counts, not a complete live inventory. Summaries use the existing collector/worker/API/MCP path; no new polling or agent-control capability is added.
 
 Run `python -B repository/app/test_master_subagents.py` for isolated lifecycle/count checks in addition to the MASTER service, HTTP, UI and native rendering suites below. Tests never read Codex transcripts or modify hooks/trust. Actual child waiting/resume delivery and physical LCD readability require separate live acceptance after guarded publication.
 
@@ -79,6 +110,17 @@ node repository/app/test_master_ui.js
 These checks cover metadata privacy, hook merging, MCP under isolated Python, explicit health baselines, timestamps, worker restart isolation, native preview and all authenticated MASTER routes. They never request USB ownership or elevated setup. Physical changing-video cadence, sensor independence, actual Dot access, real mini capture, a continuous-use soak and installed-byte verification are distinct acceptance evidence. Use Windows extended paths or a short absolute test root for existing long-path fixtures.
 
 ## ED-IT Buddy project reports
+
+Buddy's native AI facade reuses the running AI coordinator through
+`/api/buddy/ai/{models,refresh,submit,job,cancel}`. Its separate native capability
+requires an exact local Host and rejects browser origins. Only supplied text and
+validated `buddy_read` tool history reach inference; the facade cannot search
+project files, execute workers or apply model tool requests. Receipts retain model
+digest and submission-time settings; repeated IDs cannot repeat inference. A
+damaged receipt disables this optional facade without preventing core startup.
+Model metadata reports the exact current input byte budget so Buddy can bound
+context without weakening the coordinator's admission checks. Run
+`python -B repository/app/test_buddy_ai.py` for isolated source coverage.
 
 The selected project's Buddy report distinguishes media stored on MSI, searchable media, prepared outputs and delivery into the project. A completed local import is counted as stored rather than prepared; indexing failures remain attention items even after storage succeeds. Report refresh reads the existing authenticated local endpoint and never starts MSI work. Failed refreshes retain the previous observation with a historical label, and task messages and output references render as bounded text.
 
@@ -153,6 +195,33 @@ The historical attention inbox is inside MASTER. It defaults to unreviewed items
 Run configuration, MASTER/HTTP, web-interface and tray fixtures in fresh private folders. Synthetic checks do not certify installed bytes, actual Violet access, real LCD operation or editor workflows. Tray fixtures inject a simulated startup writer and never open the production registry.
 
 ## Violet data reports
+
+### Private Violet Web display metadata
+
+The native worker receives a separate allowlisted `coolerDisplay` enrichment.
+It is absent from MASTER state, persisted lifecycle snapshots and plugin exports.
+Active registered-project session IDs may resolve a visible Codex chat name
+through a read-only exact-ID metadata query, cached in memory for ten seconds
+and bounded to 64 names of 160 cleaned characters. The supported desktop schema
+stores the visible name in `threads.name`; its legacy `title` column can contain
+the initial prompt and is deliberately never read. Missing, archived, locked or
+changed-schema metadata falls back to **CODEX CHAT**. Message, preview, rollout
+and transcript fields are never consulted. Name changes cannot renew activity.
+
+The same private enrichment carries cached per-field hardware readings for
+THIS-MACHINE and MSI. The sampler is separate from model inventory and cooler
+polling never requests inference, loading or calibration. Missing or older-than-
+five-second fields remain unavailable. MSI's separately reviewed fixed sensor
+publisher supplies its CPU-package reading; NVIDIA telemetry identifies one GPU
+for temperature, load and VRAM. Installation and real sensor availability are
+separate acceptance checks; see the desktop MSI sensor notes.
+
+Remote telemetry projects each source timestamp onto the receiver's clock using
+the authenticated HTTP Date upper bound and the local request start. This
+conservatively includes rounding and the full request duration; it preserves the
+five-second expiry without changing either machine's clock. Missing or invalid
+Date headers leave telemetry unavailable. This client correction is compatible
+with the separately reviewed MSI server package and requires no server restart.
 
 MASTER distinguishes self-reported Dot activity, delegated local-task observations, demos and unverified legacy reports. Reporter labels are not account authentication; an actual Violet roundtrip remains a separate acceptance gate. Reports expire after two minutes. The independently rendered avatar prioritizes evidenced failures, input requests and working activity, otherwise displaying a neutral unknown state with the source visible. MASTER queues up to 100 historical attention items for the next requested Violet check; reading does not acknowledge them, and acknowledgment never changes project health. No automatic Dot wake-up or continuous model polling is configured. See the MASTER plugin README for the four restricted tools and migration behavior.
 

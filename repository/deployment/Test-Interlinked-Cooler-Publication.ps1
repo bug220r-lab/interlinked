@@ -43,10 +43,13 @@ $allowed=@('INTERLINKED.cmd','INTERLINKED-Browser.cmd','INTERLINKED-App/interlin
  'INTERLINKED-Desktop/WebView2Loader.dll','INTERLINKED-Desktop/WebView2-LICENSE.txt','INTERLINKED-Desktop/WebView2-NOTICE.txt','INTERLINKED-Desktop/DESKTOP-CHECKSUMS.json')
 $worker='INTERLINKED-Desktop/INTERLINKED.Master.Worker.exe';$sealKey='INTERLINKED-Desktop/DESKTOP-CHECKSUMS.json'
 function Fixture {
- param([ValidateSet('v5','v6','v7')][string]$Schema='v7')
+ param([ValidateSet('v5','v6','v7','v8','v9','v10')][string]$Schema='v7')
  $allowed=@($script:allowed)
  if($Schema-ceq 'v5'){$allowed=@($allowed|Where-Object {$_-cnotin @('INTERLINKED-App/interlinked_stats.py','INTERLINKED-App/interlinked_stats_process.py','INTERLINKED-App/interlinked_configuration.py')})}
  elseif($Schema-ceq 'v6'){$allowed=@($allowed|Where-Object {$_-cne 'INTERLINKED-App/interlinked_configuration.py'})}
+ if($Schema-cin @('v8','v9','v10')){$allowed+=@('INTERLINKED-App/interlinked_ai.py','INTERLINKED-App/interlinked_ai_node.py','INTERLINKED-App/interlinked_ai_workspaces.py')}
+ if($Schema-cin @('v9','v10')){$allowed+=@('INTERLINKED-App/interlinked_ai_bridge.py','INTERLINKED-App/interlinked_ai_ipc.py','INTERLINKED-App/ai_bridge.py')}
+ if($Schema-ceq 'v10'){$allowed+=@('INTERLINKED-App/interlinked_history_import.py','INTERLINKED-App/interlinked_history_store.py','INTERLINKED-App/interlinked_history_service.py','INTERLINKED-App/interlinked_history_runtime.py','INTERLINKED-App/interlinked_history_gateway.py')}
  $workspace=Join-Path $output ([guid]::NewGuid().ToString('N'))
  $kit=Join-Path $workspace 'kit';$source=Join-Path $workspace 'source';$receipts=Join-Path $workspace 'receipts'
  foreach($dir in @($kit,$source,$receipts)){[void][IO.Directory]::CreateDirectory($dir)}
@@ -88,12 +91,48 @@ foreach($row in $receipt.files){Check ((Digest $row.backup)-ceq $row.beforeSha25
 Check ($receipt.approvedVioletUnchanged-and $receipt.guiAndLaunchersUnchanged-and -not $receipt.projectFilesWritten-and -not $receipt.workspaceStateWritten) 'Receipt records preserved artwork, GUI, launchers and workspaces'
 Check ([bool](& $guard {$script:GuardReadLocked})) 'Shared guard module is read-locked during transaction checks'
 
-foreach($schema in @('v5','v6','v7')){
+foreach($schema in @('v5','v6','v7','v8','v9','v10')){
  $f=Fixture -Schema $schema;$guiBefore=Digest (Join-Path $f.Context.Kit 'INTERLINKED-App/GUI-CHECKSUMS.json');$result=Invoke $f -Apply
- $expected=if($schema-ceq 'v5'){26}elseif($schema-ceq 'v6'){28}else{29}
+ $expected=@{v5=26;v6=28;v7=29;v8=32;v9=35;v10=40}[$schema]
  Check ($result.status-ceq 'COOLER_PUBLISHED_HASH_VERIFIED'-and $result.files-eq 2-and $result.verifiedPlanFiles-eq $expected) ('Complete '+$schema+' baseline preserves its schema with exact plan coverage')
  Check ((Digest (Join-Path $f.Context.Kit 'INTERLINKED-App/GUI-CHECKSUMS.json'))-ceq $guiBefore) ('Cooler publication preserves '+$schema+' GUI seal bytes')
 }
+foreach($schema in @('v8','v9','v10')){
+ $f=Fixture -Schema $schema;$result=Invoke $f;$expected=@{v8=32;v9=35;v10=40}[$schema]
+ Check ($result.status-ceq 'PREFLIGHT_PASSED'-and$result.files-eq0-and$result.verifiedPlanFiles-eq$expected) ('Dry-run validates exact '+$schema+' plan without writes')
+ $unchanged=$true;foreach($row in $f.Rows){if((Digest (Join-Path $f.Context.Kit $row.path))-cne$row.beforeSha256){$unchanged=$false}}
+ Check $unchanged ('Dry-run preserves every '+$schema+' payload byte')
+ $companions=@('interlinked_ai.py','interlinked_ai_node.py','interlinked_ai_workspaces.py')
+ if($schema-cin@('v9','v10')){$companions+=@('interlinked_ai_bridge.py','interlinked_ai_ipc.py','ai_bridge.py')}
+ if($schema-ceq'v10'){$companions+=@('interlinked_history_import.py','interlinked_history_store.py','interlinked_history_service.py','interlinked_history_runtime.py','interlinked_history_gateway.py')}
+ foreach($companion in $companions){
+  $f=Fixture -Schema $schema;$plan=Get-Content $f.Plan -Raw|ConvertFrom-Json;$plan.files=@($plan.files|Where-Object path -cne ('INTERLINKED-App/'+$companion));Json $f.Plan $plan
+  Reject {Invoke $f -Apply} ($schema+' plan cannot omit AI companion: '+$companion)
+  Check ((Digest (Join-Path $f.Context.Kit $worker))-ceq($f.Rows|Where-Object path -ceq $worker).beforeSha256) ($schema+' incomplete plan leaves worker unchanged: '+$companion)
+  $f=Fixture -Schema $schema;Put (Join-Path $f.Context.Kit ('INTERLINKED-App/'+$companion)) 'tampered sealed AI companion'
+  Reject {Invoke $f -Apply} ($schema+' installed AI companion hash is checked: '+$companion)
+ }
+ # A changed AI row is forbidden even when its source hash is reviewed; this
+ # path preserves the entire installed GUI rather than publishing a new one.
+ $f=Fixture -Schema $schema;Put (Join-Path $f.Source 'INTERLINKED-App/interlinked_ai.py') 'changed AI candidate';Refresh-Plan $f
+ Reject {Invoke $f -Apply} ($schema+' cannot change an otherwise hash-valid AI GUI row')
+ # Keep before/after seal bytes identical, but remove a sealed AI name from
+ # both. The shared baseline validator must still reject that closed schema.
+ $f=Fixture -Schema $schema;$guiPath=Join-Path $f.Context.Kit 'INTERLINKED-App/GUI-CHECKSUMS.json';$gui=Get-Content $guiPath -Raw|ConvertFrom-Json
+ $gui.files.PSObject.Properties.Remove('interlinked_ai.py');Json $guiPath $gui;[IO.File]::Copy($guiPath,(Join-Path $f.Source 'INTERLINKED-App/GUI-CHECKSUMS.json'),$true)
+ ($f.Rows|Where-Object path -ceq 'INTERLINKED-App/GUI-CHECKSUMS.json').beforeSha256=Digest $guiPath;Refresh-Plan $f
+ Reject {Invoke $f -Apply} ($schema+' installed GUI seal cannot omit a named AI companion')
+ foreach($lock in @('INTERLINKED-GUI-State/.gui-instance.lock','MAGIX-Workspace-State/.workflow.lock')){
+  $f=Fixture -Schema $schema;$handle=[IO.File]::Open((Join-Path $f.Context.Kit $lock),[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::None)
+  try{Reject {Invoke $f -Apply} ($schema+' held lock refuses publication: '+$lock)}finally{$handle.Dispose()}
+ }
+ $f=Fixture -Schema $schema;$result=Invoke $f -Apply;$receipt=Get-Content $result.receipt -Raw|ConvertFrom-Json
+ $preserved=$true;foreach($row in $f.Rows){if($row.path-cnotin@($worker,$sealKey)-and(Digest (Join-Path $f.Context.Kit $row.path))-cne$row.beforeSha256){$preserved=$false}}
+ Check ($preserved-and@($receipt.files).Count-eq2-and$receipt.guiSealFormat-ceq('interlinked-gui-checksums-'+$schema)) ($schema+' apply changes only worker/seal and preserves all GUI/artwork/launcher/dependency bytes')
+}
+# Later GUI schemas are deliberately not inferred from matching row counts.
+$f=Fixture -Schema v10;$guiPath=Join-Path $f.Context.Kit 'INTERLINKED-App/GUI-CHECKSUMS.json';$gui=Get-Content $guiPath -Raw|ConvertFrom-Json;$gui.format='interlinked-gui-checksums-v11';Json $guiPath $gui
+Reject {Invoke $f -Apply} 'Cooler baseline schema set remains closed; v11 requires a separate review'
 foreach($companion in @('interlinked_stats.py','interlinked_stats_process.py','interlinked_configuration.py')){
  $f=Fixture;$plan=Get-Content $f.Plan -Raw|ConvertFrom-Json;$plan.files=@($plan.files|Where-Object path -cne ('INTERLINKED-App/'+$companion));Json $f.Plan $plan
  Reject {Invoke $f -Apply} ('V7 plan cannot omit sealed companion: '+$companion)

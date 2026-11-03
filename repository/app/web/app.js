@@ -4,6 +4,8 @@ let token=location.hash.slice(1)||sessionStorage.getItem('interlinked-token')||'
 if(token){sessionStorage.setItem('interlinked-token',token);history.replaceState(null,'',location.pathname+location.search);}
 let projects=[], selected=null, state={busy:false,revision:0}, filter='all', auditLoaded=null, releaseTarget=null, lastCompleted=null, stopped=false;
 let mutation=false,pollSequence=0,appliedPoll=0,entrySequence=0,auditSequence=0;
+let pollPending=null,pollAgain=false,pollTimer=null,catalogPending=null,catalogAgain=false;
+const entryRefreshTimes=new Map();
 let requestedAction=null;
 let statsSnapshot=null,statsSequence=0;
 let missingSequence=0,notePending=false,missingRecords=[];
@@ -162,13 +164,30 @@ function renderDetail(){
  updateEntry();renderState();
 }
 function select(id,record=false){const previous=selected?.id;selected=projects.find(p=>p.id===id)||projects[0];auditLoaded=null;auditSequence++;if(previous!==selected?.id){mw5Readiness=null;mw5Preview=null;mw5Sequence++;}if(selected)selected.loadingEntries=isMagix(selected);renderList();renderDetail();if(!selected)return;if(isMagix(selected)){loadEntries(selected.id).catch(error=>{if(selected?.id===id){selected.loadingEntries=false;renderState();}showError(error);});if(previous!==selected.id){$('missing-path').value='';$('missing-note').value='';}loadMissing().catch(missingError);if(!$('audit-panel').hidden)loadAudit().catch(showError);}if(selected.originalId==='stats-active')loadStats().catch(showError);if(projectType(selected)==='mw5')loadMw5().catch(showError);if(record)recordRecent(selected.id).catch(showError);if($('buddy-report-panel'))buddyLoadReport();}
-async function loadEntries(id){const sequence=++entrySequence,result=await api('/api/entries?project='+encodeURIComponent(id));if(selected?.id!==id||sequence!==entrySequence)return;selected.entryPoints=result.entries;selected.loadingEntries=false;renderDetail();if(result.warnings.length)$('entry-note').textContent+=' '+result.warnings.join(' ');}
+async function loadEntries(id){entryRefreshTimes.set(id,Date.now());const sequence=++entrySequence,result=await api('/api/entries?project='+encodeURIComponent(id));if(selected?.id!==id||sequence!==entrySequence)return;selected.entryPoints=result.entries;selected.loadingEntries=false;renderDetail();if(result.warnings.length)$('entry-note').textContent+=' '+result.warnings.join(' ');}
 function updateEntry(){if(!isMagix(selected)){$('entry-note').textContent=projectType(selected)==='mw5'?'Stage the reviewed mod plugins below before opening the editor. Collect changes after the editor closes.':'Open working folder starts a protected editing session. Close your editors and running tools before finishing it.';return;}const item=selected?.entryPoints.find(e=>e.path===$('entry').value);$('entry-note').textContent=item?.kind==='recovery'?'Backup selected: MAGIX opens, then choose File > Load backup project using the exact local path shown in Activity. The backup is not renamed.':'The reviewed launcher uses a short local path to the selected cached project. It does not stream media from MSI.';}
-async function loadCatalog(){
- const catalog=await api('/api/catalog');projects=catalog.projects;hub=catalog.hub||{};preferences=catalog.preferences||preferences;lastCatalogRefresh=Date.now();renderHub();
- $('demo-banner').hidden=!catalog.demo;$('mode').lastChild.textContent=catalog.demo?'DEMO · NO REAL FILES':'LOCAL CONTROL';
- $('snapshot-date').textContent='CATALOG '+String(catalog.indexDate||'snapshot').split('T')[0]+' · AUDIT '+(catalog.auditAvailable?'AVAILABLE':'NOT INSTALLED');
- select(selected?.id||initialProject||projects[0]?.id);
+async function loadCatalog({refreshSelection=false}={}){
+ if(catalogPending){if(refreshSelection)catalogAgain=true;return catalogPending;}
+ catalogPending=(async()=>{
+  let refresh=refreshSelection;
+  do{
+   catalogAgain=false;
+   let catalog;try{catalog=await api('/api/catalog');}catch(error){if(!catalogAgain||stopped)throw error;refresh=true;continue;}if(stopped)return;const previous=selected;
+   projects=catalog.projects;for(const project of projects)project.catalogEntryKey=JSON.stringify(project.entryPoints||[]);
+   hub=catalog.hub||{};preferences=catalog.preferences||preferences;lastCatalogRefresh=Date.now();renderHub();
+   $('demo-banner').hidden=!catalog.demo;$('mode').lastChild.textContent=catalog.demo?'DEMO · NO REAL FILES':'LOCAL CONTROL';
+   $('snapshot-date').textContent='CATALOG '+String(catalog.indexDate||'snapshot').split('T')[0]+' · AUDIT '+(catalog.auditAvailable?'AVAILABLE':'NOT INSTALLED');
+   const current=projects.find(project=>project.id===previous?.id);
+   if(current&&!refresh&&current.catalogEntryKey===previous.catalogEntryKey&&current.cache?.status===previous.cache?.status){
+    // Keep discovered Save As entries and in-flight selection reads across an
+    // unchanged catalog. Actions still revalidate the selected entry server-side.
+    current.entryPoints=previous.entryPoints;current.loadingEntries=previous.loadingEntries;selected=current;renderList();renderDetail();
+    if(projectType(current)==='mw5')loadMw5().catch(showError);
+   }else select(current?.id||initialProject||projects[0]?.id);
+   refresh=catalogAgain;
+  }while(catalogAgain&&!stopped);
+ })().finally(()=>{catalogPending=null;});
+ return catalogPending;
 }
 async function action(name){
  if(!selected&&name!=='recover')throw new Error('Choose a project first.');
@@ -200,13 +219,25 @@ function renderState(){
  $('recovery-note').textContent='A previous service run ended with an unfinished operation. Do not assume it stopped. Close MAGIX and check the prior launcher before using Recover. No files were automatically released.';
  if(isMagix(selected))renderOpenFeedback();else $('open-feedback').hidden=true;
 }
-async function poll(){
+async function pollOnce(){
  if(stopped)return;
- const sequence=++pollSequence,value=await api('/api/state');if(sequence<appliedPoll)return;appliedPoll=sequence;state=value;renderState();
- if(state.operation&&!state.transferring&&!['STARTING','RUNNING','WAITING_FOR_MAGIX'].includes(state.operation.status)&&state.operation.id!==lastCompleted){const completed=state.operation.id;await loadCatalog();lastCompleted=completed;}
+ const sequence=++pollSequence,value=await api('/api/state');if(stopped||sequence<appliedPoll)return;appliedPoll=sequence;state=value;renderState();
+ if(state.operation&&!state.transferring&&!['STARTING','RUNNING','WAITING_FOR_MAGIX'].includes(state.operation.status)&&state.operation.id!==lastCompleted){const completed=state.operation.id;await loadCatalog({refreshSelection:true});lastCompleted=completed;}
  else if(Date.now()-lastCatalogRefresh>8000&&!mutation){await loadCatalog();}
+ if(isMagix(selected)&&!document.hidden&&!selected.loadingEntries&&Date.now()-(entryRefreshTimes.get(selected.id)||0)>30000){const id=selected.id;try{await loadEntries(id);}catch(error){if(selected?.id===id)selected.loadingEntries=false;throw error;}}
  if(selected?.originalId==='stats-active')await loadStats();
  if($('buddy-report-panel')&&!document.hidden&&Date.now()-buddyReportRefreshed>5000)await buddyLoadReport();
+}
+async function poll({background=false}={}){
+ if(stopped||background&&document.hidden)return;
+ if(pollPending){if(!background)pollAgain=true;return pollPending;}
+ pollPending=(async()=>{do{pollAgain=false;try{await pollOnce();}catch(error){if(!pollAgain||stopped)throw error;}}while(pollAgain&&!stopped);})().finally(()=>{pollPending=null;});
+ return pollPending;
+}
+function pollError(error){if(!stopped)showError('Local interface connection lost. Closing a tab does not stop a running launcher. Keep its service window open; use the original launcher Recover only after closing MAGIX. '+error.message);}
+function schedulePoll(){
+ clearTimeout(pollTimer);pollTimer=null;if(stopped||document.hidden)return;
+ pollTimer=setTimeout(async()=>{pollTimer=null;try{await poll({background:true});}catch(error){pollError(error);}finally{schedulePoll();}},1200);
 }
 async function sendResponse(response){
  const job=state.operation;if(!job)throw new Error('No active session.');
@@ -273,7 +304,7 @@ async function toggleFavorite(){
  if(!selected)return;if(preferences.preferencesAvailable===false)throw new Error('Recover library preferences in Settings history before changing favorites.');const id=selected.id,enabled=!((preferences.favorites||[]).includes(id)||selected.favorite);
  adoptPreferences(await api('/api/preferences',{favorite:id,enabled}));const row=projects.find(p=>p.id===id);if(row)row.favorite=enabled;renderList();if(selected?.id===id)renderDetail();
 }
-async function refreshHub(){await api('/api/hub/refresh',{});await loadCatalog();}
+async function refreshHub(){await api('/api/hub/refresh',{});await loadCatalog({refreshSelection:true});}
 async function loadMw5(){
  const id=selected?.id,sequence=++mw5Sequence;if(!id||projectType(selected)!=='mw5')return;
  const value=await api('/api/mw5?project='+encodeURIComponent(id));if(selected?.id!==id||sequence!==mw5Sequence)return;
@@ -384,8 +415,9 @@ document.addEventListener('keydown',event=>{if(event.key==='/'&&!['INPUT','SELEC
 async function initialize(){
  if(!token)throw new Error('Open the local link printed by INTERLINKED.cmd. Its private session token is required.');
  await loadCatalog();await poll();if(location.pathname==='/audit')await setTab(true);
- setInterval(()=>poll().catch(error=>{if(!stopped)showError('Local interface connection lost. Closing a tab does not stop a running launcher. Keep its service window open; use the original launcher Recover only after closing MAGIX. '+error.message);}),1200);
+ schedulePoll();
 }
+document.addEventListener('visibilitychange',()=>{if(document.hidden){clearTimeout(pollTimer);pollTimer=null;}else poll().catch(pollError).finally(schedulePoll);});
 initialize().catch(showError);
 
 // BEGIN MSI JOB MODELS
@@ -468,6 +500,287 @@ async function jobsRefresh(){
 }
 // END MSI JOB INTERFACE
 
+// BEGIN AI MODELS
+function aiWords(value){return String(value||'Unknown').replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());}
+function aiModelKey(model){return JSON.stringify([model.host||model.hostId,model.id||model.name||model.model]);}
+function aiOverride(value){if(!value)return {};const [host,model]=JSON.parse(value);return {host,model};}
+function aiRoutingMode(value){return ['balanced','fast','best_quality'].includes(value)?value:'balanced';}
+function aiRouteText(value){const r=value.routing||value.routingDecision||{},m=value.model||r.model;return [r.mode?aiWords(r.mode):'',m?m.host+' / '+m.id:'',r.reason||'',r.limitedEvidence?'Limited evidence':'',r.fallback?'Classification fallback':''].filter(Boolean).join(' · ')||value.error||value.queueReason||'Auto · Balanced';}
+function aiRestoreChatSelection(value){$('ai-routing-mode').value=aiRoutingMode(value.routingMode);const choice=value.manualOverride?.model?JSON.stringify([value.manualOverride.host||'local',value.manualOverride.model]):'',select=$('ai-model-override');if(choice&&!Array.from(select.children).some(x=>x.value===choice)){const item=aiElement('option','','Selected model unavailable');item.value=choice;select.append(item);}select.value=choice;}
+function aiRunning(status){return ['QUEUED','STARTING','RUNNING','WORKING','REVIEWING','CORRECTING'].includes(String(status||'').toUpperCase());}
+function aiTaskModel(task){
+ const result=task.result||{},review=task.review||result.review||{},status=String(task.status||'UNKNOWN').toUpperCase();
+ return {id:task.id||task.taskId,title:String(task.prompt||task.instruction||task.projectId||'Assigned task').slice(0,100),status:aiWords(status),running:aiRunning(status),recoverable:task.recoveryAvailable===true||status==='RECOVERY_REQUIRED',
+  review:typeof review==='string'?review:String(review.summary||[review.status,review.reason,...(review.findings||[])].filter(Boolean).join(' · ')||'Independent review not recorded'),
+  resultHash:task.resultHash||result.resultHash||result.sha256||result.hash||'',
+  canApply:!aiRunning(status)&&['READY_FOR_REVIEW','COMPLETED','REVIEWED','READY'].includes(status)&&!!(task.resultHash||result.resultHash||result.sha256||result.hash)&&!task.applied};
+}
+function aiWav(chunks,sampleRate){
+ const count=chunks.reduce((n,row)=>n+row.length,0),buffer=new ArrayBuffer(44+count*2),view=new DataView(buffer);let offset=44;
+ const word=(at,text)=>{for(let i=0;i<text.length;i++)view.setUint8(at+i,text.charCodeAt(i));};
+ word(0,'RIFF');view.setUint32(4,36+count*2,true);word(8,'WAVE');word(12,'fmt ');view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);view.setUint32(24,sampleRate,true);view.setUint32(28,sampleRate*2,true);view.setUint16(32,2,true);view.setUint16(34,16,true);word(36,'data');view.setUint32(40,count*2,true);
+ for(const chunk of chunks)for(const value of chunk){const sample=Math.max(-1,Math.min(1,value));view.setInt16(offset,sample<0?sample*32768:sample*32767,true);offset+=2;}
+ return buffer;
+}
+function aiAudioKind(value){return value==='general'?'general':'speech';}
+function aiAttachmentValid(file){return !!file&&file.size>0&&file.size<=12*1024*1024&&['image/png','image/jpeg','audio/wav','audio/x-wav'].includes(file.type);}
+// END AI MODELS
+
+// BEGIN AI INTERFACE
+let aiVisible=false,aiSnapshot=null,aiPollBusy=false,aiConversation=null,aiConversationValue=null,aiTask=null,aiTaskValue=null,aiChatSequence=0,aiTaskSequence=0,aiPending=false,aiAttachments=[],aiRecording=null,aiRecordStarting=false,aiRecordGeneration=0,aiLastSpoken='',aiNativeVoices=[],aiView='assistant';
+let aiTaskPage=null,aiTaskPageBusy=false,aiTaskPageSequence=0,aiTaskDetailRevision=null;
+function aiElement(tag,className,text){const el=document.createElement(tag);if(className)el.className=className;if(text!==undefined)el.textContent=String(text);return el;}
+function aiError(error){$('ai-error').textContent=String(error?.message||error);$('ai-error').hidden=false;}
+function aiAction(fn){return async(...args)=>{try{$('ai-error').hidden=true;await fn(...args);}catch(error){aiError(error);}};}
+function aiHide(){aiVisible=false;if($('ai-view'))$('ai-view').hidden=true;if($('ai-view-tab')){$('ai-view-tab').classList.toggle('active',false);$('ai-view-tab').setAttribute('aria-pressed','false');}aiStopRecording(false).catch(aiError);aiStopSpeech();}
+function aiSetView(){masterSetView(false);jobsHide();aiVisible=true;$('ai-view').hidden=false;$('library-shell').hidden=true;$('library-hub-bar').hidden=true;$('master-view').hidden=true;for(const id of ['library-view-tab','master-view-tab','jobs-view-tab','ai-view-tab']){$(id).classList.toggle('active',id==='ai-view-tab');$(id).setAttribute('aria-pressed',String(id==='ai-view-tab'));}aiPoll().catch(aiError);aiLoadVoices();}
+function aiTab(name){aiView=name;for(const value of ['assistant','history','memories','sync','handoff','workers','models']){$('ai-panel-'+value).hidden=value!==name;$('ai-tab-'+value).classList.toggle('active',value===name);$('ai-tab-'+value).setAttribute('aria-pressed',String(value===name));}if(name!=='assistant'){aiStopRecording(false).catch(aiError);aiStopSpeech();}if(name==='memories')aiHistoryPoll().catch(aiError);}
+function aiSelectOptions(id,rows,automatic){const select=$(id),old=select.value;select.replaceChildren();if(automatic){const first=aiElement('option','',automatic);first.value='';select.append(first);}for(const row of rows){const option=aiElement('option','',row.label);option.value=row.value;select.append(option);}if(old&&id.endsWith('model-override')&&!rows.some(row=>row.value===old)){const unavailable=aiElement('option','','Selected model unavailable');unavailable.value=old;select.append(unavailable);}if(rows.some(row=>row.value===old)||automatic&&old===''||old&&id.endsWith('model-override'))select.value=old;}
+function aiRender(){
+ const s=aiSnapshot||{},models=s.models||[],hosts=s.hosts||[];$('ai-connection').textContent=s.available===false?'UNAVAILABLE':hosts.length?hosts.filter(h=>h.available).length+' HOSTS AVAILABLE':'NO HOST OBSERVATION';$('ai-notice').textContent=s.error||s.notice||(s.demo?'SYNTHETIC DEMO · No model inference or personal project access.':'Model capability checks are explicit. Your installed models stay on their hosts.');
+ $('ai-hosts').replaceChildren();for(const host of hosts){const card=aiElement('article','ai-card'),inventory=host.inventory||{};card.append(aiElement('h2','',host.label||host.id),aiElement('strong','',host.available?'Available':'Unavailable'),aiElement('p','master-help',host.error||inventory.version&&'Ollama '+inventory.version||'Runtime not observed'));const info=host.resources||inventory.resources;if(info)card.append(aiElement('pre','ai-result',JSON.stringify(info,null,2)));$('ai-hosts').append(card);}
+ const options=models.map(m=>({value:aiModelKey(m),label:(m.host||m.hostId)+' / '+(m.id||m.name||m.model)}));aiSelectOptions('ai-model-override',options,'Auto');aiSelectOptions('ai-task-model-override',options,'Auto');aiSelectOptions('ai-calibrate-model',options,null);
+ aiSelectOptions('ai-task-project',(s.projects||[]).map(p=>({value:p.id,label:p.label||p.name||p.id})),null);aiRenderChecks();
+ $('ai-context-projects').replaceChildren();for(const project of s.projects||[]){const row=aiElement('div','ai-context-row'),label=aiElement('label'),input=aiElement('input');input.type='checkbox';input.checked=Array.isArray(s.approvals)?s.approvals.some(p=>(typeof p==='string'?p:p.projectId||p.id)===project.id&&(typeof p==='string'||p.enabled!==false)):!!s.approvals?.[project.id];input.addEventListener('change',aiAction(async()=>{await api('/api/ai/context/approve',{projectId:project.id,enabled:input.checked});await aiPoll();}));label.append(input,aiElement('span','',project.label||project.id));const index=aiElement('button','quiet small','Index');index.type='button';index.disabled=!input.checked;index.addEventListener('click',aiAction(async()=>{const result=await api('/api/ai/context/index',{projectId:project.id});$('ai-notice').textContent=result.message||String(result.files||0)+' text files indexed; '+String(result.excluded||0)+' excluded.';}));row.append(label,index);$('ai-context-projects').append(row);}
+ $('ai-conversations').replaceChildren();for(const c of s.conversations||[]){const button=aiElement('button','ai-list-row'+(c.id===aiConversation?' active':''),c.title||c.id);button.type='button';button.addEventListener('click',aiAction(async()=>{aiConversation=c.id;aiConversationValue=null;await aiReadConversation();}));$('ai-conversations').append(button);}
+ $('ai-models').replaceChildren();for(const model of models){const card=aiElement('article','ai-card'),name=model.id||model.name||model.model;card.append(aiElement('h3','',name),aiElement('p','master-help',(model.host||model.hostId)+' · '+(model.loaded?'Loaded':'Not loaded')),aiElement('code','ai-digest',model.digest||'Digest unavailable'),aiElement('p','','Advertised: '+(model.capabilities||[]).join(', ')),aiElement('p','','Passed fixture checks: '+(Object.keys(model.verified||{}).filter(key=>model.verified[key]===true||model.verified[key]?.passed===true).join(', ')||'No passing checks')),aiElement('p','master-help',model.stale?'Inventory is stale; refresh this host.':model.eligible===false?'Unavailable or excluded from routing':'Fixture scores are limited evidence, not general model quality'));
+  const eligibility=aiElement('label'),toggle=aiElement('input');toggle.type='checkbox';toggle.checked=!(s.settings?.disabledModels||[]).includes(model.host+':'+name);toggle.addEventListener('change',aiAction(async()=>{const disabled=new Set(aiSnapshot.settings.disabledModels);if(toggle.checked)disabled.delete(model.host+':'+name);else disabled.add(model.host+':'+name);await api('/api/ai/settings',{settingsRevision:aiSnapshot.settingsRevision,value:{...aiSnapshot.settings,disabledModels:[...disabled]}});await aiPoll();}));eligibility.append(toggle,aiElement('span','','Eligible for automatic routing after checks'));card.append(eligibility);const actions=aiElement('div','ai-compose-actions');for(const action of ['load','unload']){const button=aiElement('button','quiet small',aiWords(action));button.type='button';button.addEventListener('click',aiAction(async()=>{if(action==='unload'&&!confirm('Unload this INTERLINKED-loaded model? Confirm that other Ollama clients are idle.'))return;await api('/api/ai/model',{host:model.host||model.hostId,model:name,action,confirmedExternalIdle:action==='unload'});await aiPoll();}));actions.append(button);}card.append(actions);$('ai-models').append(card);}
+  aiRenderTasks();
+ if(!(s.tasks||[]).length)$('ai-task-list').append(aiElement('p','master-help','No assigned tasks yet.'));
+}
+function aiRenderChecks(){const profiles=aiSnapshot?.checkProfiles||[],selected=new Set(Array.from($('ai-check-profiles').selectedOptions||[]).map(x=>x.value)),rows=Array.isArray(profiles)?profiles:Object.entries(profiles).map(([id,p])=>({id,...p}));const select=$('ai-check-profiles');select.replaceChildren();for(const p of rows){if(p.projectId&&p.projectId!==$('ai-task-project').value)continue;const option=aiElement('option','',p.label||p.id);option.value=p.id;option.selected=selected.has(p.id);select.append(option);}select.disabled=!$('ai-allow-check').checked;$('ai-check-note').textContent=rows.length?'Only registered commands can run.':'No reviewed check profiles are registered. Register an exact command on the execution host before assigning checks.';}
+async function aiBridgePoll(){
+ const panel=$('ai-bridge-requests');if(!panel)return;
+ try{const state=await api('/api/ai/bridge/status');panel.replaceChildren(aiElement('h2','','Violet model requests'));
+  if(!state.connectionAvailable)panel.append(aiElement('p','master-help',state.connectionError||'The AI plugin connection is unavailable.'));
+  const pending=state.pendingUnloads||[];if(!pending.length)panel.append(aiElement('p','master-help','No model unload requests need confirmation.'));
+  for(const job of pending){const row=aiElement('article','ai-card');row.append(aiElement('p','',job.host+' / '+job.model),aiElement('code','ai-digest',job.digest));
+   const button=aiElement('button','quiet small','Confirm other clients are idle and unload');button.type='button';button.addEventListener('click',aiAction(async()=>{if(!confirm('Confirm that other Ollama clients are idle. Unload only this exact INTERLINKED-loaded model?'))return;await api('/api/ai/bridge/confirm-unload',{id:job.id});await aiBridgePoll();}));row.append(button);panel.append(row);}
+ }catch(error){panel.replaceChildren(aiElement('p','master-help','Violet model requests are unavailable.'));}
+}
+function aiRenderTasks(){
+ const rows=aiTaskPage?.tasks||aiSnapshot?.tasks||[],page=aiTaskPage||aiSnapshot?.tasksPage||{};
+ $('ai-task-list').replaceChildren();for(const task of rows){const model=aiTaskModel(task),button=aiElement('button','ai-list-row'+(model.id===aiTask?' active':''));button.type='button';button.append(aiElement('strong','',model.title),aiElement('small','',model.status));button.addEventListener('click',aiAction(async()=>{aiTask=model.id;aiTaskValue=null;aiTaskDetailRevision=null;await aiReadTask();}));$('ai-task-list').append(button);}
+ $('ai-tasks-count').textContent=rows.length+' shown'+(Number.isSafeInteger(page.total)?' of '+page.total:'')+(aiTaskPage?' · Older tasks':' · Latest tasks');
+ $('ai-tasks-next').disabled=aiTaskPageBusy||!page.nextCursor;$('ai-tasks-first').disabled=aiTaskPageBusy||!aiTaskPage;
+}
+async function aiLoadTaskPage(){
+ const after=(aiTaskPage||aiSnapshot?.tasksPage)?.nextCursor;if(!after||aiTaskPageBusy)return;
+ const sequence=++aiTaskPageSequence;aiTaskPageBusy=true;aiRenderTasks();
+ try{const page=await api('/api/ai/tasks?after='+encodeURIComponent(after)+'&limit=50');if(sequence!==aiTaskPageSequence)return;aiTaskPage=page;}
+ catch(error){if(sequence===aiTaskPageSequence)throw error;}
+ finally{if(sequence===aiTaskPageSequence){aiTaskPageBusy=false;aiRenderTasks();}}
+}
+function aiLatestTasks(){aiTaskPageSequence++;aiTaskPageBusy=false;aiTaskPage=null;aiRenderTasks();}
+function aiTaskRevision(){const summary=(aiSnapshot?.tasks||[]).find(task=>task.id===aiTask);return summary?summary.revision??summary.updatedAt:null;}
+function aiTaskNeedsRead(){const revision=aiTaskRevision();return !aiTaskValue||aiTaskValue.id!==aiTask||revision==null||revision!==aiTaskDetailRevision;}
+async function aiPoll(){if(aiPollBusy||stopped)return;aiPollBusy=true;try{aiSnapshot=await api('/api/ai/state');aiRender();await aiBridgePoll();await aiHistoryPoll({background:true});if(aiConversation)await aiReadConversation();if(aiTask&&aiTaskNeedsRead())await aiReadTask();}catch(error){$('ai-connection').textContent='CONNECTION LOST';throw error;}finally{aiPollBusy=false;}}
+async function aiReadConversation(){const id=aiConversation,sequence=++aiChatSequence;if(!id)return;const value=await api('/api/ai/conversation?id='+encodeURIComponent(id));if(id!==aiConversation||sequence!==aiChatSequence)return;if(!aiConversationValue||aiConversationValue.id!==id){aiRestoreChatSelection(value);}aiConversationValue=value;aiRenderConversation(value);}
+function aiRenderConversation(value){$('ai-chat-title').textContent=value.title||'Conversation';$('ai-chat-status').textContent=aiWords(value.status);$('ai-chat-cancel').disabled=!aiRunning(value.status);$('ai-send').disabled=aiPending||aiRunning(value.status);$('ai-route').textContent=aiRouteText(value);$('ai-messages').replaceChildren();for(const message of value.messages||[]){if(message.role==='system'||message.role==='tool')continue;const article=aiElement('article','ai-message '+(message.role==='user'?'from-user':'from-assistant'));article.append(aiElement('strong','',message.role==='user'?'You':'Assistant'),aiElement('p','',message.content||message.text||''));if(message.routing||message.routingDecision)article.append(aiElement('small','ai-citation',aiRouteText(message)));for(const citation of message.citations||message.sources||[]){if(citation.kind&&aiHistorySourceId(citation)){const button=aiElement('button','quiet small ai-citation',aiHistorySourceLabel(citation));button.type='button';button.addEventListener('click',aiAction(async()=>{aiTab('history');await aiHistoryOpenActiveSource(citation);}));article.append(button);}else article.append(aiElement('small','ai-citation',[citation.projectId,citation.path,citation.line?'line '+citation.line:'',citation.available===false?'Source unavailable':citation.stale?'Stale snapshot':''].filter(Boolean).join(' · ')));}$('ai-messages').append(article);}if(value.error)$('ai-messages').append(aiElement('p','master-error',value.error));const last=(value.messages||[]).at(-1),key=value.id+':'+(value.messages||[]).length;if(last?.role==='assistant'&&!aiRunning(value.status)&&key!==aiLastSpoken){aiLastSpoken=key;if($('ai-speak').checked)aiSpeak(last.content||last.text||'');}}
+function aiRenderAttachments(){$('ai-attachments').replaceChildren();for(const item of aiAttachments){const row=aiElement('span','ai-attachment',item.name||item.id),button=aiElement('button','quiet small','Remove');button.type='button';button.addEventListener('click',()=>{aiAttachments=aiAttachments.filter(x=>x.id!==item.id);aiRenderAttachments();});row.append(button);$('ai-attachments').append(row);}}
+async function aiUpload(file){if(!aiAttachmentValid(file))throw new Error('Attach a PNG, JPEG, or WAV file, up to 12 MiB.');const buffer=new Uint8Array(await file.arrayBuffer());let binary='';for(let i=0;i<buffer.length;i+=8192)binary+=String.fromCharCode(...buffer.subarray(i,i+8192));return await api('/api/ai/attachments',{name:file.name,mime:file.type,data:btoa(binary)});}
+async function aiSend(){const entered=$('ai-prompt').value.trim(),text=entered||(aiAttachments.length?(aiAttachments.some(a=>String(a.mime).startsWith('audio/'))?(aiAudioKind($('ai-audio-kind').value)==='speech'?'Listen to the recording and respond to the spoken request.':'Describe the sounds in this audio, including music and speech when present.'):'Describe the attached image.'):'');if(aiPending||aiRunning(aiConversationValue?.status))return;if(!text)throw new Error('Enter a message or describe what to examine in the attachment.');if(text.length>24000)throw new Error('Keep each message within 24,000 characters.');aiPending=true;$('ai-send').disabled=true;try{const value=await api('/api/ai/chat',{conversationId:aiConversation||undefined,text,attachments:aiAttachments.map(a=>a.id),audioKind:aiAudioKind($('ai-audio-kind').value),routingMode:aiRoutingMode($('ai-routing-mode').value),...aiHistoryChatOptions(),...aiOverride($('ai-model-override').value)});aiConversation=value.id;aiConversationValue=value;aiHistoryContextReset=false;$('ai-prompt').value='';aiAttachments=[];aiRenderAttachments();aiRenderConversation(value);await aiPoll();}finally{aiPending=false;$('ai-send').disabled=aiRunning(aiConversationValue?.status);}}
+async function aiSearch(){const result=await api('/api/ai/search',{query:$('ai-search-query').value.trim()});$('ai-search-results').replaceChildren();for(const hit of Array.isArray(result)?result:result.results||result.hits||[]){const card=aiElement('article','ai-search-hit');card.append(aiElement('strong','',[hit.projectId,hit.path].filter(Boolean).join(' / ')),aiElement('p','',hit.excerpt||hit.text||''),aiElement('small','',hit.stale?'Stale source snapshot':'Snapshot '+(hit.sha256||hit.snapshotId||'recorded')));$('ai-search-results').append(card);}if(!$('ai-search-results').children.length)$('ai-search-results').textContent='No matching approved text.';}
+async function aiStartTask(){const permissions=['read'];if($('ai-allow-write').checked)permissions.push('write');if($('ai-allow-check').checked)permissions.push('check');const value=await api('/api/ai/tasks/start',{projectId:$('ai-task-project').value,prompt:$('ai-task-prompt').value.trim(),permissions,checkProfiles:permissions.includes('check')?Array.from($('ai-check-profiles').selectedOptions).map(x=>x.value):[],maxSteps:Number($('ai-max-steps').value),timeoutSeconds:Number($('ai-timeout').value),executionHost:$('ai-execution').value,routingMode:aiRoutingMode($('ai-task-routing-mode').value),requestId:crypto.randomUUID().replaceAll('-',''),...aiOverride($('ai-task-model-override').value)});aiTask=value.id||value.taskId;await aiPoll();}
+async function aiReadTask(){const id=aiTask,sequence=++aiTaskSequence,revision=aiTaskRevision();if(!id)return;const value=await api('/api/ai/task?id='+encodeURIComponent(id));if(id!==aiTask||sequence!==aiTaskSequence)return;aiTaskValue=value;aiTaskDetailRevision=revision;const model=aiTaskModel(value);$('ai-task-detail').hidden=false;$('ai-task-title').textContent=model.title;$('ai-task-status').textContent=model.status;$('ai-task-summary').textContent=[value.error||value.summary||value.queueReason||'',aiRouteText(value)].filter(Boolean).join(' · ');$('ai-task-review').textContent='Independent review: '+model.review;$('ai-task-result').textContent=JSON.stringify(value.result||{baseline:value.baseline,checks:value.checks,events:value.events},null,2);$('ai-task-cancel').disabled=!model.running&&!model.recoverable;$('ai-task-reconcile').hidden=!model.recoverable;$('ai-task-reconcile').disabled=!model.recoverable;$('ai-task-apply').disabled=!model.canApply;}
+async function aiReconcileTask(){const id=aiTask;if(!id)return;await api('/api/ai/tasks/reconcile',{id});aiTaskDetailRevision=null;if(aiTask===id)await aiReadTask();await aiPoll();}
+async function aiApplyTask(){if(!aiTaskValue)return;const model=aiTaskModel(aiTaskValue);if(!model.canApply)return;if(!confirm('Apply the displayed result to '+String(aiTaskValue.projectId)+'? The baseline and active-session checks will run again. This does not save to MSI.'))return;await api('/api/ai/tasks/apply',{id:model.id,expectedResultHash:model.resultHash});await aiReadTask();}
+async function aiCalibrate(){const body={...aiOverride($('ai-calibrate-model').value),capability:$('ai-capability').value};if(['vision','audio_speech','audio_general'].includes(body.capability)){const file=$('ai-calibrate-file').files[0];if(!file||!$('ai-calibrate-expected').value.trim())throw new Error('Choose a fixture and enter its expected answer.');body.attachmentId=(await aiUpload(file)).id;body.expected=$('ai-calibrate-expected').value.trim();}$('ai-calibration-result').textContent='Checking the selected model…';const result=await api('/api/ai/calibrate',body);if(body.attachmentId&&$('ai-register-fixture').checked){const id=crypto.randomUUID().replaceAll('-','');await api('/api/ai/bridge/register-fixture',{id,attachmentId:body.attachmentId,capability:body.capability,expected:body.expected});result.violetFixtureId=id;}$('ai-calibration-result').textContent=JSON.stringify(result,null,2);await aiPoll();}
+function aiLoadVoices(){const select=$('ai-voice'),old=select.value;select.replaceChildren();const voices=globalThis.speechSynthesis?.getVoices?.().filter(v=>v.localService)||[];for(const voice of voices){const option=aiElement('option','',voice.name+' · '+voice.lang);option.value=voice.voiceURI;select.append(option);}for(const voice of aiNativeVoices){const option=aiElement('option','',voice.name);option.value='native:'+voice.id;select.append(option);}if(!select.children.length)select.append(aiElement('option','','No installed voice available'));if(Array.from(select.children).some(x=>x.value===old))select.value=old;$('ai-speak').disabled=!voices.length&&!aiNativeVoices.length;}
+// Content-free, transient observations. Starting/queuing a request is not proof
+// of capture or playback. A stalled producer expires instead of being renewed.
+let aiVoiceSessionId='',aiVoiceSequence=0,aiVoiceTimer=null,aiVoiceLastState='',aiVoicePending=null,aiVoicePosting=false;
+let aiSpeechGeneration=0,aiSpeechKind='none',aiSpeechUtterance=null,aiBrowserSpeechActive=false,aiNativeSpeechActive=false,aiNativeSpeechStream=0,aiNativeSpeechObservedAt=0,aiNativeSpeechDeadline=0,aiNativeSpeechWallAt=0,aiNativeSpeechProducerAt=0;
+function aiVoiceSession(){if(!aiVoiceSessionId){aiVoiceSessionId=crypto.randomUUID().replaceAll('-','');document.documentElement.dataset.aiVoiceSession=aiVoiceSessionId;}return aiVoiceSessionId;}
+function aiVoiceClock(){return globalThis.performance?.now?.()??Date.now();}
+function aiVoiceState(){if(!aiVisible||aiView!=='assistant'||document.hidden)return {listening:false,speaking:'none'};const now=aiVoiceClock(),wall=Date.now(),record=aiRecording,sampleAge=record?now-record.lastSampleAt:NaN,sampleWallAge=record?wall-record.lastSampleWall:NaN;const listening=!!(record&&record.capturing&&sampleAge>=0&&sampleAge<2000&&sampleWallAge>=0&&sampleWallAge<2000&&record.context.state==='running'&&record.stream.getTracks().some(t=>t.kind!=='video'&&t.readyState==='live'&&!t.muted));let speaking='none';if(aiSpeechKind==='browser_tts'&&aiBrowserSpeechActive&&aiSpeechUtterance&&globalThis.speechSynthesis?.speaking===true&&!globalThis.speechSynthesis?.paused)speaking='browser_tts';if(aiSpeechKind==='windows_sapi'&&aiNativeSpeechActive&&now>=aiNativeSpeechObservedAt&&now<aiNativeSpeechDeadline&&wall>=aiNativeSpeechWallAt)speaking='windows_sapi';return {listening,speaking};}
+async function aiVoiceDrain(){if(aiVoicePosting)return;aiVoicePosting=true;try{while(aiVoicePending){const body=aiVoicePending;aiVoicePending=null;try{await api('/api/master/voice-activity',body);}catch(_){/* Best effort; the server's five-second lease expires independently. */}}}finally{aiVoicePosting=false;}}
+function aiVoiceObserve(heartbeat=false){const value=aiVoiceState(),active=value.listening||value.speaking!=='none',key=String(value.listening)+':'+value.speaking;if(active&&aiVoiceTimer===null)aiVoiceTimer=setInterval(()=>aiVoiceObserve(true),1000);if(!active&&aiVoiceTimer!==null){clearInterval(aiVoiceTimer);aiVoiceTimer=null;}if(!heartbeat&&key===aiVoiceLastState)return;if(!active&&!aiVoiceSessionId)return;aiVoiceLastState=key;if(aiVoiceSequence>=Number.MAX_SAFE_INTEGER){aiVoiceSessionId='';aiVoiceSequence=0;}aiVoicePending={sessionId:aiVoiceSession(),sequence:++aiVoiceSequence,observedAt:new Date().toISOString(),listening:value.listening,speaking:value.speaking};void aiVoiceDrain();}
+function aiNativeSpeechStatus(value){if(value?.type!=='interlinked-ai-speech-status'||value.sessionId!==aiVoiceSessionId||value.generation!==aiSpeechGeneration||aiSpeechKind!=='windows_sapi'||!Number.isSafeInteger(value.streamId)||value.streamId<=0||typeof value.speaking!=='boolean')return;if(aiNativeSpeechStream&&aiNativeSpeechStream!==value.streamId)return;const producerAt=Date.parse(value.observedAt),wall=Date.now(),age=wall-producerAt;if(!Number.isFinite(age)||age<0||producerAt<aiNativeSpeechProducerAt||(value.speaking&&age>=2000))return;aiNativeSpeechProducerAt=producerAt;aiNativeSpeechStream=value.streamId;aiNativeSpeechActive=value.speaking&&aiVisible&&!document.hidden&&aiView==='assistant'&&$('ai-speak').checked;aiNativeSpeechObservedAt=aiVoiceClock();aiNativeSpeechWallAt=wall;aiNativeSpeechDeadline=aiNativeSpeechObservedAt+Math.max(0,2000-age);aiVoiceObserve();}
+function aiStopSpeech(){aiSpeechGeneration++;aiSpeechKind='none';aiSpeechUtterance=null;aiBrowserSpeechActive=false;aiNativeSpeechActive=false;aiNativeSpeechStream=0;aiNativeSpeechProducerAt=0;globalThis.speechSynthesis?.cancel?.();if(aiVoiceSessionId)globalThis.chrome?.webview?.postMessage({type:'interlinked-ai-speech',action:'stop',sessionId:aiVoiceSessionId,generation:aiSpeechGeneration});aiVoiceObserve();}
+function aiSpeak(text){if(!aiVisible||document.hidden||aiView!=='assistant'||!text||!$('ai-speak').checked)return;aiStopSpeech();const generation=++aiSpeechGeneration,sessionId=aiVoiceSession(),voiceId=$('ai-voice').value;if(voiceId.startsWith('native:')){aiSpeechKind='windows_sapi';globalThis.chrome?.webview?.postMessage({type:'interlinked-ai-speech',action:'speak',sessionId,generation,voice:voiceId.slice(7),text:String(text).slice(0,16000)});return;}const voice=globalThis.speechSynthesis?.getVoices?.().find(v=>v.localService&&v.voiceURI===voiceId);if(!voice){$('ai-mic-status').textContent='Installed voice unavailable.';return;}const utterance=new SpeechSynthesisUtterance(String(text).slice(0,16000));utterance.voice=voice;aiSpeechKind='browser_tts';aiSpeechUtterance=utterance;const current=()=>generation===aiSpeechGeneration&&aiSpeechUtterance===utterance;const active=()=>{if(current()&&aiVisible&&!document.hidden&&aiView==='assistant'&&$('ai-speak').checked){aiBrowserSpeechActive=true;aiVoiceObserve();}};const inactive=()=>{if(current()){aiBrowserSpeechActive=false;aiVoiceObserve();}};utterance.onstart=active;utterance.onresume=active;utterance.onpause=inactive;utterance.onend=inactive;utterance.onerror=inactive;try{globalThis.speechSynthesis.speak(utterance);}catch(error){inactive();throw error;}}
+async function aiStartRecording(){if(aiRecording||aiRecordStarting||document.hidden)return;if(!navigator.mediaDevices?.getUserMedia)throw new Error('Microphone capture is unavailable in this browser. Attach a WAV recording instead.');aiStopSpeech();aiRecordStarting=true;const generation=++aiRecordGeneration;document.documentElement.dataset.aiMicrophoneArmed='true';let stream=null,context=null;try{stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true},video:false});if(generation!==aiRecordGeneration||!aiVisible||document.hidden||aiView!=='assistant'){stream.getTracks().forEach(t=>t.stop());return;}context=new AudioContext({sampleRate:16000});await context.resume();if(generation!==aiRecordGeneration||!aiVisible||document.hidden||aiView!=='assistant'){stream.getTracks().forEach(t=>t.stop());await context.close();return;}const source=context.createMediaStreamSource(stream),processor=context.createScriptProcessor(4096,1,1),gain=context.createGain();gain.gain.value=0;const record={stream,context,source,processor,gain,chunks:[],samples:0,timer:null,capturing:false,lastSampleAt:0,lastSampleWall:0,cleanup:[]};const captureLost=()=>{if(aiRecording!==record)return;record.capturing=false;aiVoiceObserve();};const stopLost=()=>{if(aiRecording===record)aiStopRecording(false).catch(aiError);};for(const track of stream.getTracks()){track.addEventListener?.('ended',stopLost);track.addEventListener?.('mute',captureLost);record.cleanup.push(()=>{track.removeEventListener?.('ended',stopLost);track.removeEventListener?.('mute',captureLost);});}const contextChanged=()=>{if(context.state!=='running')captureLost();if(context.state==='closed')stopLost();};context.addEventListener?.('statechange',contextChanged);record.cleanup.push(()=>context.removeEventListener?.('statechange',contextChanged));processor.onaudioprocess=event=>{if(aiRecording!==record)return;try{const data=new Float32Array(event.inputBuffer.getChannelData(0));if(document.hidden||context.state!=='running'||!stream.getTracks().some(t=>t.kind!=='video'&&t.readyState==='live'&&!t.muted)){captureLost();return;}if(data.length){record.capturing=true;record.lastSampleAt=aiVoiceClock();record.lastSampleWall=Date.now();aiVoiceObserve();}record.chunks.push(data);record.samples+=data.length;if(record.samples>=context.sampleRate*60)aiStopRecording(true).catch(aiError);}catch(error){stopLost();aiError(error);}};source.connect(processor);processor.connect(gain);gain.connect(context.destination);aiRecording=record;record.timer=setTimeout(()=>aiStopRecording(true).catch(aiError),60000);$('ai-microphone').textContent='Finish recording';$('ai-microphone').setAttribute('aria-pressed','true');$('ai-mic-status').textContent='Recording · maximum 60 seconds. Finish to attach, then Send.';}catch(error){stream?.getTracks().forEach(t=>t.stop());if(context)await context.close();throw error;}finally{aiRecordStarting=false;delete document.documentElement.dataset.aiMicrophoneArmed;}}
+async function aiStopRecording(attach){aiRecordGeneration++;const record=aiRecording;aiRecording=null;delete document.documentElement.dataset.aiMicrophoneArmed;aiVoiceObserve();if(!record)return;clearTimeout(record.timer);for(const cleanup of record.cleanup)cleanup();record.processor.onaudioprocess=null;record.source.disconnect();record.processor.disconnect();record.gain.disconnect();record.stream.getTracks().forEach(t=>t.stop());const rate=record.context.sampleRate;await record.context.close();$('ai-microphone').textContent='Record voice';$('ai-microphone').setAttribute('aria-pressed','false');$('ai-mic-status').textContent=attach?'Preparing recording…':'Recording stopped.';if(attach&&record.samples){const file=new File([aiWav(record.chunks,rate)],'Voice-'+new Date().toISOString().replaceAll(':','-')+'.wav',{type:'audio/wav'});aiAttachments.push(await aiUpload(file));$('ai-audio-kind').value='speech';aiRenderAttachments();$('ai-mic-status').textContent='Recording attached. Review and Send.';}}
+// BEGIN AI HISTORY
+let aiHistoryState=null,aiHistoryPollBusy=false,aiHistoryInitialized=false,aiHistoryContextReset=false,aiHistorySourceSequence=0,aiHistorySearchSequence=0,aiHistorySourceValue=null,aiHistorySelection=new Map(),aiHandoffText='',aiHandoffSequence=0,aiMemoryRenderSignature='',aiHistoryPolicySignature='',aiHistoryReviewGeneration='';
+let aiMemoryPage=null,aiMemoryAfter=null,aiMemoryPageBusy=false,aiMemoryPageSequence=0;
+let aiMemoryRecoveryBusy=false;
+let aiHistoryPollPending=null,aiHistoryPollAgain=false;
+function aiHistorySourceId(source){return String(source?.sourceId||source?.source_id||source?.id||'');}
+function aiHistorySourceLabel(source){const meta=source?.metadata||{};return [source?.title||source?.path||'Archive source',source?.kind?aiWords(source.kind):'',source?.timestamp||source?.date||'',meta.speaker||'',meta.page?'Page '+meta.page:'',meta.slide?'Slide '+meta.slide:'',meta.sheet?'Sheet '+meta.sheet:'',meta.row?'Row '+meta.row:'',Array.isArray(meta.cells)&&meta.cells.length?'Cells '+meta.cells.join(', '):'',meta.gitPath||''].filter(Boolean).join(' · ');}
+function aiHistorySourceRequest(reference){
+ const source=typeof reference==='string'?{id:reference}:reference,request={id:aiHistorySourceId(source)};if(!request.id)throw new Error('A source identity is required.');
+ if(source.revision!==undefined){if(typeof source.revision!=='string'||!/^[a-f0-9]{64}$/.test(source.revision))throw new Error('This source citation has an invalid revision.');request.revision=source.revision;}
+ if(source.start!==undefined||source.end!==undefined){if(!Number.isSafeInteger(source.start)||!Number.isSafeInteger(source.end)||source.start<0||source.end<=source.start)throw new Error('This source citation has invalid passage offsets.');request.start=source.start;request.end=source.end;}
+ return request;
+}
+function aiHistorySourcePassage(source,request){
+ if(aiHistorySourceId(source)!==request.id)throw new Error('The returned source identity differs from this citation.');
+ if(request.revision&&source.revision!==request.revision)throw new Error('The requested source revision is unavailable.');
+ const text=String(source.text??source.excerpt??'');if(request.start===undefined)return {text,label:'Full source'};
+ const passage=[];let offset=0;for(const character of text){if(offset>=request.start)passage.push(character);offset++;if(offset===request.end)break;}
+ if(offset<request.end)throw new Error('The cited passage falls outside this source revision.');
+ return {text:passage.join(''),label:'Passage characters '+(request.start+1)+'–'+request.end+' · Unicode offsets ['+request.start+', '+request.end+')'};
+}
+function aiHistoryGeneration(){const value=aiHistoryState?.generation;return typeof value==='string'?value:String(value?.id||value?.generationId||value?.generation||'');}
+function aiHistoryOnline(){return !!aiHistoryState&&aiHistoryState.available!==false&&aiHistoryState?.offline!==true;}
+function aiHistoryReadScope(){return aiHistoryReviewGeneration?{generation:aiHistoryReviewGeneration}:{};}
+function aiHistorySetReviewGeneration(generation){aiHistoryReviewGeneration=String(generation||'');aiHistorySourceSequence++;aiHistorySearchSequence++;aiHistorySelection.clear();aiHistoryInvalidateHandoff();$('ai-history-source-view').hidden=true;$('ai-history-results').replaceChildren();aiHistoryRender();}
+async function aiHistoryOpenActiveSource(reference){if(aiHistoryReviewGeneration)aiHistorySetReviewGeneration('');await aiHistoryOpenSource(reference);}
+function aiHistoryBusy(status){return ['QUEUED','RUNNING','STAGING','COPYING','PARSING','INDEXING','EMBEDDING','BUILDING','VERIFYING','SYNCING','PREPARING'].includes(String(status||'').toUpperCase());}
+function aiHistoryChatOptions(){return {historyEnabled:!!aiHistoryGeneration()&&$('ai-history-enabled').checked,historyProject:$('ai-history-project').value.trim(),historyContextReset:aiHistoryContextReset};}
+function aiHistoryScopeChanged(){aiHistoryInitialized=true;aiHistoryContextReset=true;aiStopSpeech();$('ai-history-context-note').textContent='The next message starts a fresh model context. Your visible transcript is retained.';}
+function aiHistoryInvalidateHandoff(){aiHandoffSequence++;aiHandoffText='';$('ai-handoff-preview').value='';$('ai-handoff-copy').disabled=true;$('ai-handoff-status').textContent='Prepare a new preview after changing the note or sources.';}
+function aiHistorySelect(source,selected){const id=aiHistorySourceId(source);if(!id||selected&&aiHistoryReviewGeneration)return;if(selected)aiHistorySelection.set(id,source);else aiHistorySelection.delete(id);aiHistoryInvalidateHandoff();aiHistoryRenderSelection();}
+function aiHistoryRenderSelection(){
+ const rows=[...aiHistorySelection.values()],restricted=rows.some(row=>row.memory_allowed===false||row.memoryAllowed===false),count=rows.length;
+ $('ai-history-selection').textContent=aiHistoryReviewGeneration?'Review passages and exclusions before activation. Handoff and memory selection become available after activation.':count?count+' source'+(count===1?'':'s')+' selected for memory or handoff.':'No sources selected.';
+ $('ai-memory-source-note').textContent=!count?'Select supporting sources in History first.':restricted?'This selection includes a source that cannot supply standing memory.':count+' supporting source'+(count===1?'':'s')+' selected.';
+ $('ai-memory-propose').disabled=!count||restricted||!aiHistoryOnline()||!!aiHistoryReviewGeneration;$('ai-handoff-prepare').disabled=!count||!!aiHistoryReviewGeneration;
+ $('ai-handoff-sources').replaceChildren();for(const row of rows){const item=aiElement('div','ai-history-selected'),remove=aiElement('button','quiet small','Remove');remove.type='button';remove.addEventListener('click',()=>{aiHistorySelect(row,false);});item.append(aiElement('span','',aiHistorySourceLabel(row)),remove);$('ai-handoff-sources').append(item);}
+}
+function aiHistoryRender(){
+ const s=aiHistoryState||{},generation=aiHistoryGeneration(),last=s.lastSync||s.last_sync||s.syncedAt,stamp=last?String(last):'Never synced';
+ const policy=JSON.stringify([generation,s.exclusions||[]]);if(aiHistoryPolicySignature&&policy!==aiHistoryPolicySignature){aiHistorySourceSequence++;aiHistorySearchSequence++;aiHistorySelection.clear();aiHistoryInvalidateHandoff();$('ai-history-source-view').hidden=true;$('ai-history-results').replaceChildren();aiHistoryScopeChanged();}aiHistoryPolicySignature=policy;
+ $('ai-history-banner').textContent=s.available===false?'History unavailable · '+String(s.error||'The archive service is not connected.'):generation?(s.offline?'Offline history · ':'Local history · ')+(s.generationCreatedAt||s.generation?.createdAt||generation.slice(0,12))+' · Last sync: '+stamp:'No active history archive · Import and review a snapshot in History.';
+ $('ai-history-banner').classList.toggle('offline',!!s.offline);$('ai-history-enabled').disabled=!generation;
+ if(generation&&!aiHistoryInitialized){$('ai-history-enabled').checked=true;aiHistoryInitialized=true;}
+ if(!aiHistoryContextReset)$('ai-history-context-note').textContent=generation?($('ai-history-enabled').checked?'History and reviewed memories are used locally.':'History and memory retrieval are off.'):'Activate a verified archive to use history.';
+ $('ai-history-project-options').replaceChildren();for(const p of s.projects||[]){const option=aiElement('option');option.value=typeof p==='string'?p:String(p.id||p.name||p.label||'');$('ai-history-project-options').append(option);}
+ if(aiHistoryReviewGeneration===generation)aiHistoryReviewGeneration='';
+ $('ai-history-review-status').textContent=aiHistoryReviewGeneration?'Reviewing prepared snapshot · '+aiHistoryReviewGeneration+(s.offline?' · MSI is offline; reconnect to continue review.':' · Search and exclude passages before activation.'):'Browsing the active local archive.';
+ $('ai-history-review-return').hidden=!aiHistoryReviewGeneration;
+ $('ai-history-import').disabled=!aiHistoryOnline();$('ai-history-search').disabled=aiHistoryReviewGeneration?!aiHistoryOnline():!generation;
+ const peerStatus=('peerStateStale' in s||s.lastPeerObservedAt||s.peerRefreshInFlight)?'MSI job status: '+(s.peerStateStale?'stale':s.lastPeerObservedAt?'observed':'not yet observed')+' · Last observation: '+(s.lastPeerObservedAt||'None')+(s.peerRefreshInFlight?' · Refreshing…':''):'';
+ $('ai-history-jobs').replaceChildren();if(peerStatus)$('ai-history-jobs').append(aiElement('p','master-help',peerStatus));
+ for(const job of s.jobs||[]){
+  const item=aiElement('article','ai-list-row'),progress=job.progress&&typeof job.progress==='object'?job.progress:job,phase=String(job.phase||progress.phase||''),counter=key=>Number.isSafeInteger(progress[key])&&progress[key]>=0?progress[key].toLocaleString('en-US'):null,metrics=[];
+  const pair=(done,unit)=>{const value=counter(done),total=counter('total');if(value!==null)metrics.push(value+(total!==null?' / '+total:'')+' '+unit);};
+  if(['intake','transferring'].includes(phase))pair('completed','files');
+  else if(['embedding','resuming'].includes(phase))pair('records','chunks');
+  else if(phase==='syncing')pair('bytes','bytes');
+  else if(phase==='proposing')pair('completed','sources');
+  else if(counter('records')!==null)metrics.push(counter('records')+' records');
+  if(counter('files')!==null&&!['intake','transferring'].includes(phase))metrics.push(counter('files')+' files');
+  if(counter('bytes')!==null&&phase!=='syncing')metrics.push(counter('bytes')+' bytes');
+  item.append(aiElement('strong','',aiWords(job.action||job.kind||'Import')+' · '+aiWords(job.status)),aiElement('p','master-help','Phase: '+(aiWords(phase)||'Not reported')));
+  if(metrics.length)item.append(aiElement('p','master-help',metrics.join(' · ')));
+  if(job.message||job.error||job.errorCode)item.append(aiElement('p','master-help',job.message||job.error||job.errorCode));
+  if(aiHistoryBusy(job.status)){const cancel=aiElement('button','quiet small','Cancel');cancel.type='button';cancel.addEventListener('click',aiAction(async()=>{await api('/api/ai/history/cancel',{id:job.id});await aiHistoryPoll();}));item.append(cancel);}$('ai-history-jobs').append(item);
+ }
+ const ready=s.preparedGenerations||s.readyGenerations||s.generations||[];$('ai-history-ready').replaceChildren();for(const row of ready){const id=typeof row==='string'?row:row.id||row.generationId||row.generation;if(!id||id===generation||row.status&& !['READY','PREPARED','REVIEW_READY'].includes(String(row.status).toUpperCase()))continue;const card=aiElement('article','ai-list-row'),review=aiElement('button','quiet small','Review passages and exclusions'),activate=aiElement('button','quiet small','Activate this reviewed snapshot');review.type=activate.type='button';review.disabled=activate.disabled=!aiHistoryOnline();review.addEventListener('click',()=>{aiHistorySetReviewGeneration(id);$('ai-history-query').focus?.();});activate.addEventListener('click',aiAction(async()=>{await api('/api/ai/history/activate',{generation:id});aiHistorySetReviewGeneration('');await aiHistoryPoll();aiHistoryScopeChanged();}));card.append(aiElement('strong','','Verified snapshot ready'),aiElement('small','',String(id)),review,activate);$('ai-history-ready').append(card);}
+ const reviewed=ready.find(row=>(typeof row==='string'?row:row.id||row.generationId||row.generation)===aiHistoryReviewGeneration),coverage=reviewed?.coverage||s.coverage||s.generation?.coverage;
+ $('ai-history-coverage').textContent=coverage?JSON.stringify(coverage,null,2):'No import coverage yet.';
+ $('ai-history-exclusions').replaceChildren();const exclusions=Array.isArray(s.exclusions)?s.exclusions.filter(row=>typeof row==='string'||row.enabled!==false&&row.enabled!==0):Object.entries(s.exclusions||{}).filter(([,v])=>v!==false&&v?.enabled!==false).map(([id,value])=>({id,...(typeof value==='object'?value:{})}));
+ for(const row of exclusions){const id=typeof row==='string'?row:row.id||row.sourceId;if(!id)continue;const item=aiElement('div','ai-history-selected'),restore=aiElement('button','quiet small','Include again');restore.type='button';restore.disabled=(!generation&&!aiHistoryReviewGeneration)||!!aiHistoryReviewGeneration&&!aiHistoryOnline();restore.addEventListener('click',aiAction(async()=>{await api('/api/ai/history/exclude',{id,enabled:false,...aiHistoryReadScope()});aiHistoryScopeChanged();await aiHistoryPoll();}));item.append(aiElement('span','',row.title||String(id)),restore);$('ai-history-exclusions').append(item);}
+ if(!exclusions.length)$('ai-history-exclusions').append(aiElement('p','master-help','No excluded sources.'));
+ $('ai-history-sync-status').textContent=s.offline?'MSI unavailable. Using the last verified local copy.':s.available===false?'Archive service unavailable.':'Archive connection available · '+(s.role==='primary'?'MSI primary':'THIS-MACHINE replica');
+ if(peerStatus)$('ai-history-sync-status').textContent+=' · '+peerStatus;
+ const sync=s.exclusionSync||{},pending=Number(sync.pendingCount)||0,unresolved=Number(sync.unresolvedCount)||0;
+ $('ai-history-policy-status').textContent=unresolved?'Some privacy changes need review on MSI. '+unresolved+' unresolved; '+pending+' pending.':sync.capabilityRequired?'Update the paired history service to confirm privacy changes. '+pending+' pending; local restrictions remain active.':pending?pending+' privacy changes waiting for MSI confirmation. Local restrictions remain active.':s.exclusionSync?'No pending privacy changes.':'Privacy confirmation unavailable.';
+ $('ai-history-sync-generation').textContent='Snapshot: '+(generation||'None')+' · Last sync: '+stamp;$('ai-history-sync').disabled=s.available===false;$('ai-history-sync-detail').textContent=s.sync?JSON.stringify(s.sync,null,2):s.notice||'';
+ aiHistoryRenderMemories();aiHistoryRenderGateway();aiHistoryRenderSelection();aiHistoryRenderProfiles();
+}
+function aiMemoryScope(value){return JSON.stringify([value?.generation?.generationId||value?.generationId,value?.exclusionSync?.localPolicyRevision]);}
+async function aiHistoryPollOnce(){try{const previous=aiHistoryState,value=await api('/api/ai/history/state');if(stopped)return;aiHistoryState=value;if(previous&&aiMemoryScope(previous)!==aiMemoryScope(aiHistoryState))aiLatestMemories();if(aiMemoryPage&&aiView==='memories'&&!aiMemoryPageBusy){try{await aiHistoryLoadMemoryPage(aiMemoryAfter,false);}catch(error){aiLatestMemories();aiError(error);}}aiHistoryRender();}catch(error){if(stopped)return;aiHistoryState={...(aiHistoryState||{}),available:false,error:String(error?.message||error)};aiHistoryRender();}}
+async function aiHistoryPoll({background=false}={}){
+ if(stopped||!$('ai-history-banner')||background&&document.hidden)return;
+ if(aiHistoryPollPending){if(!background)aiHistoryPollAgain=true;return aiHistoryPollPending;}
+ aiHistoryPollBusy=true;aiHistoryPollPending=(async()=>{do{aiHistoryPollAgain=false;await aiHistoryPollOnce();}while(aiHistoryPollAgain&&!stopped);})().finally(()=>{aiHistoryPollPending=null;aiHistoryPollBusy=false;});
+ return aiHistoryPollPending;
+}
+async function aiHistoryLoadMemoryPage(after=(aiMemoryPage||aiHistoryState?.memoryPage)?.nextCursor,render=true){
+ if(!after||aiMemoryPageBusy)return;const sequence=++aiMemoryPageSequence;aiMemoryPageBusy=true;if(render)aiHistoryRenderMemories();
+ try{const page=await api('/api/ai/history/memories',{after,limit:100});if(sequence!==aiMemoryPageSequence)return;aiMemoryPage=page;aiMemoryAfter=after;}
+ catch(error){if(sequence===aiMemoryPageSequence)throw error;}
+ finally{if(sequence===aiMemoryPageSequence){aiMemoryPageBusy=false;if(render)aiHistoryRenderMemories();}}
+}
+function aiLatestMemories(){aiMemoryPageSequence++;aiMemoryPageBusy=false;aiMemoryPage=null;aiMemoryAfter=null;aiHistoryRenderMemories();}
+async function aiHistoryImport(){const source=$('ai-history-source-path').value.trim(),hash=$('ai-history-manifest').value.trim().toLowerCase();if(!source)throw new Error('Enter the export folder or ZIP path.');if(hash&&!/^[a-f0-9]{64}$/.test(hash))throw new Error('The expected manifest hash must contain 64 hexadecimal characters.');$('ai-history-import').disabled=true;try{await api('/api/ai/history/import',{source,...(hash?{expectedManifestSha256:hash}:{})});await aiHistoryPoll();}finally{$('ai-history-import').disabled=!aiHistoryOnline();}}
+async function aiHistorySearch(){const query=$('ai-history-query').value.trim(),dateFrom=$('ai-history-date-from').value.trim(),dateTo=$('ai-history-date-to').value.trim();if(!query)throw new Error('Enter a history question or search terms.');if(dateFrom&&dateTo&&dateFrom>dateTo)throw new Error('Choose a From date on or before the Through date.');const sequence=++aiHistorySearchSequence;const value=await api('/api/ai/history/search',{query,project:$('ai-history-search-project').value.trim(),limit:12,...(dateFrom?{dateFrom}:{}),...(dateTo?{dateTo}:{}),...aiHistoryReadScope()});if(sequence!==aiHistorySearchSequence)return;const rows=Array.isArray(value)?value:value.results||value.sources||value.hits||[];aiHistoryRenderResults(rows);}
+function aiHistoryRenderResults(rows){
+ $('ai-history-results').replaceChildren();for(const source of rows){const id=aiHistorySourceId(source);if(!id)continue;const card=aiElement('article','ai-search-hit'),select=aiElement('input'),label=aiElement('label'),open=aiElement('button','quiet small','Open source');select.type='checkbox';select.checked=aiHistorySelection.has(id);select.disabled=!!aiHistoryReviewGeneration;select.addEventListener('change',()=>aiHistorySelect(source,select.checked));label.append(select,aiElement('span','',aiHistorySourceLabel(source)));open.type='button';open.addEventListener('click',aiAction(()=>aiHistoryOpenSource(source)));card.append(label,aiElement('p','',source.excerpt||source.text||''));if(source.memory_allowed===false||source.memoryAllowed===false)card.append(aiElement('small','ai-citation','Searchable source · excluded from standing memory'));card.append(open);$('ai-history-results').append(card);}
+ if(!$('ai-history-results').children.length)$('ai-history-results').append(aiElement('p','master-help','No matching included history.'));
+}
+async function aiHistoryOpenSource(reference){
+ const sequence=++aiHistorySourceSequence,scope=aiHistoryReadScope();$('ai-history-source-view').hidden=true;const request=aiHistorySourceRequest(reference),id=request.id,value=await api('/api/ai/history/source',{...request,...scope});if(sequence!==aiHistorySourceSequence)return;
+ const source=Object.prototype.hasOwnProperty.call(value,'source')?value.source:value;if(!source||typeof source!=='object'||!aiHistorySourceId(source)){$('ai-history-source-view').hidden=true;throw new Error('This source is unavailable or excluded. Search the current archive again.');}
+ const passage=aiHistorySourcePassage(source,request);aiHistorySourceValue=source;$('ai-history-source-view').hidden=false;$('ai-history-source-title').textContent=source.title||'Archive source';$('ai-history-source-meta').textContent=[aiHistorySourceLabel(source),source.revision?'Revision '+source.revision.slice(0,12):'',passage.label].filter(Boolean).join(' · ');$('ai-history-source-text').textContent=passage.text;$('ai-history-source-actions').replaceChildren();
+ const select=aiElement('button','quiet small','Select for handoff or memory'),exclude=aiElement('button','quiet small',source.kind==='conversation'?'Exclude this conversation':['group','group_chat'].includes(source.kind)?'Exclude this group chat':'Exclude this source');select.type=exclude.type='button';select.disabled=!!scope.generation;exclude.disabled=!!scope.generation&&!aiHistoryOnline();select.addEventListener('click',()=>{aiHistorySelect(source,true);});
+ exclude.addEventListener('click',aiAction(async()=>{await api('/api/ai/history/exclude',{id:aiHistorySourceId(source)||id,enabled:true,...scope});aiHistorySelect(source,false);aiHistoryScopeChanged();$('ai-history-source-view').hidden=true;$('ai-history-results').replaceChildren();await aiHistoryPoll();}));
+ const projectLabel=aiElement('label','ai-source-project','Project tag'),projectInput=aiElement('input'),saveProject=aiElement('button','quiet small','Save project tag');projectInput.value=source.project||'';projectInput.maxLength=200;projectInput.setAttribute('list','ai-history-project-options');projectInput.setAttribute('aria-label','Source project tag');saveProject.type='button';saveProject.disabled=!aiHistoryOnline()||!!scope.generation;projectInput.disabled=!!scope.generation;projectLabel.append(projectInput);
+ saveProject.addEventListener('click',aiAction(async()=>{await api('/api/ai/history/project',{id:aiHistorySourceId(source)||id,project:projectInput.value.trim()});aiHistoryScopeChanged();await aiHistoryPoll();await aiHistoryOpenSource(request);}));$('ai-history-source-actions').append(select,exclude,projectLabel,saveProject);
+ if(request.start!==undefined){const full=aiElement('button','quiet small','Show full source');full.type='button';full.addEventListener('click',aiAction(()=>aiHistoryOpenSource({id,...(source.revision?{revision:source.revision}:{})})));$('ai-history-source-actions').append(full);}
+ $('ai-history-source-view').scrollIntoView?.({block:'nearest'});
+}
+function aiHistoryRenderMemories(){
+ const rows=aiMemoryPage?.memories||aiHistoryState?.memories||[],page=aiMemoryPage||aiHistoryState?.memoryPage||{};
+ $('ai-memories-count').textContent=rows.length+' shown'+(Number.isSafeInteger(page.total)?' of '+page.total:'');$('ai-memories-next').disabled=aiMemoryPageBusy||!page.nextCursor;$('ai-memories-first').disabled=aiMemoryPageBusy||!aiMemoryPage;
+ const signature=JSON.stringify([rows,aiHistoryOnline()]);if(signature===aiMemoryRenderSignature)return;aiMemoryRenderSignature=signature;$('ai-memory-list').replaceChildren();for(const memory of rows){const card=aiElement('article','ai-list-row'),text=aiElement('textarea'),buttons=aiElement('div','ai-compose-actions'),approve=aiElement('button','quiet small','Approve'),save=aiElement('button','quiet small','Save edit'),reject=aiElement('button','quiet small',String(memory.status).toLowerCase()==='approved'?'Deactivate':'Reject');text.value=memory.text||'';text.maxLength=4000;text.setAttribute('aria-label','Memory proposal');approve.type=save.type=reject.type='button';approve.disabled=!aiHistoryOnline()||['approved','blocked','stale'].includes(String(memory.effectiveStatus||memory.status).toLowerCase());save.disabled=true;reject.disabled=!aiHistoryOnline();text.addEventListener('input',()=>{approve.disabled=true;save.disabled=!aiHistoryOnline();});
+  for(const [button,action] of [[approve,'approve'],[save,'edit'],[reject,'reject']])button.addEventListener('click',aiAction(async()=>{await api('/api/ai/history/memory-review',{id:memory.id,action,...(action==='edit'?{text:text.value.trim()}:{})});await aiHistoryPoll();}));
+  card.append(aiElement('strong','',aiWords(memory.effectiveStatus||memory.status||'proposed')+' · '+aiWords(memory.category||'memory')),text);for(const reference of memory.sources||memory.sourceIds||memory.source_ids||[]){const open=aiElement('button','quiet small','Supporting source');open.type='button';open.addEventListener('click',aiAction(async()=>{aiTab('history');await aiHistoryOpenActiveSource(reference);}));card.append(open);}buttons.append(save,approve,reject);card.append(buttons);$('ai-memory-list').append(card);
+ }if(!rows.length)$('ai-memory-list').append(aiElement('p','master-help',page.nextCursor?'No proposals on this page. Continue to the next page.':'No memory proposals on this page. Select eligible history sources to propose one.'));
+}
+async function aiHistoryProposeMemory(){if(aiHistoryReviewGeneration)throw new Error('Activate the reviewed snapshot before selecting memory sources.');const rows=[...aiHistorySelection.values()];if(!rows.length||rows.some(row=>row.memory_allowed===false||row.memoryAllowed===false))throw new Error('Select sources that are eligible for standing memory.');const text=$('ai-memory-text').value.trim();if(!text)throw new Error('Enter a memory proposal.');await api('/api/ai/history/memory-propose',{text,sourceIds:[...aiHistorySelection.keys()],category:$('ai-memory-category').value,project:$('ai-memory-project').value.trim()});$('ai-memory-text').value='';await aiHistoryPoll();}
+async function aiHistoryPrepareHandoff(){if(aiHistoryReviewGeneration)throw new Error('Activate the reviewed snapshot before selecting handoff sources.');if(!aiHistorySelection.size)throw new Error('Select source passages in History first.');const sequence=++aiHandoffSequence;$('ai-handoff-copy').disabled=true;const value=await api('/api/ai/history/handoff',{sourceIds:[...aiHistorySelection.keys()],text:$('ai-handoff-note').value.trim()});if(sequence!==aiHandoffSequence)return;const text=typeof value==='string'?value:value.text;if(typeof text!=='string'||!text)throw new Error('The handoff service returned an empty preview.');aiHandoffText=text;$('ai-handoff-preview').value=text;$('ai-handoff-status').textContent='Review this exact text before copying. Nothing has been shared.';$('ai-handoff-copy').disabled=false;}
+async function aiHistoryCopyHandoff(){if(!aiHandoffText||$('ai-handoff-preview').value!==aiHandoffText)throw new Error('Prepare a new preview before copying.');if(!navigator.clipboard?.writeText){$('ai-handoff-status').textContent='Clipboard access is unavailable. Select and copy the exact preview manually.';$('ai-handoff-preview').focus?.();$('ai-handoff-preview').select?.();return;}await navigator.clipboard.writeText(aiHandoffText);$('ai-handoff-status').textContent='Copied. Paste into ChatGPT or Codex when you choose.';}
+function aiHistoryRenderGateway(){const gateway=aiHistoryState?.gateway||{};$('ai-gateway-status').textContent=gateway.error?String(gateway.error):gateway.available===false?'Local client gateway is unavailable.':gateway.endpoint||gateway.baseUrl||(gateway.available===true?'Gateway endpoint: http://127.0.0.1:47444/v1':'Local client gateway is not configured.');$('ai-gateway-create').disabled=aiHistoryState?.available===false||gateway.available===false;$('ai-gateway-clients').replaceChildren();for(const client of gateway.clients||[]){const item=aiElement('div','ai-history-selected'),revoke=aiElement('button','quiet small','Revoke key');revoke.type='button';revoke.disabled=!!client.revoked;revoke.addEventListener('click',aiAction(async()=>{await api('/api/ai/history/gateway-revoke',{id:client.id});$('ai-gateway-key').textContent='';$('ai-gateway-key').hidden=true;await aiHistoryPoll();}));item.append(aiElement('span','',client.label||client.id),revoke);$('ai-gateway-clients').append(item);}}
+async function aiHistoryCreateGateway(){const label=$('ai-gateway-label').value.trim();if(!label)throw new Error('Enter a label for this client.');const value=await api('/api/ai/history/gateway-create',{label,historyEnabled:$('ai-gateway-history').checked,project:$('ai-gateway-project').value.trim()});const key=value.key||value.apiKey;if(typeof key!=='string'||!key)throw new Error('The gateway did not return a client key.');$('ai-gateway-key').textContent=key;$('ai-gateway-key').hidden=false;$('ai-gateway-key-note').textContent='Copy this key into your local client. It is shown only when created.';await aiHistoryPoll();}
+function aiHistoryRenderProfiles(){
+ const models=(aiSnapshot?.models||[]).filter(m=>m.eligible!==false&&(m.capabilities||[]).includes('completion'));
+ aiSelectOptions('ai-history-calibrate-model',models.map(m=>({value:aiModelKey(m),label:(m.host||m.hostId)+' / '+(m.id||m.name||m.model)})),null);
+ const profiles=aiHistoryState?.profiles||[];$('ai-history-profiles').replaceChildren();for(const profile of profiles){const row=aiElement('article','ai-list-row');row.append(aiElement('strong','',String(profile.host||'')+' / '+String(profile.model||'')),aiElement('small','',(profile.passed?'Passed saved history check':'History check did not pass')+' · '+String(profile.passedCases||0)+' / '+String(profile.cases||0)+' · '+String(profile.observedAt||'')));$('ai-history-profiles').append(row);}
+ const jobs=aiHistoryState?.jobs||[],running=jobs.some(j=>aiHistoryBusy(j.status));$('ai-history-calibrate').disabled=running||!models.length||aiHistoryState?.available===false;
+ const currentPass=profiles.some(p=>p.passed&&models.some(m=>m.host===p.host&&m.digest===p.digest&&!m.stale));$('ai-memory-generate').disabled=!aiHistoryGeneration()||!aiHistoryOnline()||running||!currentPass||aiMemoryRecoveryBusy;
+ aiHistoryRenderMemoryRecovery();
+ const job=[...jobs].reverse().find(j=>j.kind==='memory-proposals');$('ai-memory-generation-status').textContent=job?'Memory suggestions · '+aiWords(job.status)+' · '+aiWords(job.phase||''):(currentPass?'Generate local proposals, then review each one before use.':'Verify a history model in Sync before generating suggestions.');
+}
+async function aiHistoryCalibrate(){const choice=aiOverride($('ai-history-calibrate-model').value);if(!choice.host||!choice.model)throw new Error('Choose a local model to verify for history.');await api('/api/ai/history/calibrate',choice);await aiHistoryPoll();}
+async function aiHistoryGenerateMemories(){await api('/api/ai/history/memory-generate',{project:$('ai-memory-generate-project').value.trim()});await aiHistoryPoll();}
+function aiHistoryRenderMemoryRecovery(){
+ const recovery=aiHistoryState?.memoryRecovery||{},ids=[...new Set((recovery.uncertainRequestIds||[]).filter(id=>typeof id==='string'&&/^[a-f0-9]{32}$/.test(id)))].slice(0,20),panel=$('ai-memory-recovery');panel.hidden=!ids.length;panel.replaceChildren();if(!ids.length)return;
+ panel.append(aiElement('h3','','Interrupted suggestions'),aiElement('p','master-help',ids.length+' shown'+(Number.isSafeInteger(recovery.total)?' of '+recovery.total:'')+'. These requests may have run without a confirmed result. Keep the original project scope and review each request before retrying.'));
+ for(const id of ids){const row=aiElement('div','ai-history-selected'),retry=aiElement('button','quiet small','Retry this request');retry.type='button';retry.disabled=aiMemoryRecoveryBusy||$('ai-memory-generate').disabled;retry.addEventListener('click',aiAction(()=>aiHistoryRetryMemory(id)));row.append(aiElement('code','ai-digest',id),retry);panel.append(row);}
+}
+async function aiHistoryRetryMemory(id){
+ if(aiMemoryRecoveryBusy||$('ai-memory-generate').disabled)throw new Error('Wait for the current work and verify a history model before retrying.');
+ if(!/^[a-f0-9]{32}$/.test(id)||!(aiHistoryState?.memoryRecovery?.uncertainRequestIds||[]).includes(id))throw new Error('This interrupted request is no longer listed. Refresh its status before retrying.');
+ if(!confirm('This suggestion may already have been generated. Retry this exact request? Another model call may repeat earlier work. Review new proposals before approving them.'))return;
+ aiMemoryRecoveryBusy=true;aiHistoryRenderProfiles();
+ try{await api('/api/ai/history/memory-generate',{project:$('ai-memory-generate-project').value.trim(),retryUncertainRequestIds:[id]});await aiHistoryPoll();}
+ finally{aiMemoryRecoveryBusy=false;aiHistoryRenderProfiles();}
+}
+// END AI HISTORY
+// END AI INTERFACE
+
+// BEGIN AI BINDINGS
+if($('ai-view-tab')){
+ $('ai-view-tab').addEventListener('click',aiSetView);for(const name of ['assistant','history','memories','sync','handoff','workers','models'])$('ai-tab-'+name).addEventListener('click',()=>aiTab(name));
+ $('ai-refresh').addEventListener('click',aiAction(async()=>{await api('/api/ai/refresh',{});await aiPoll();}));
+ $('ai-history-enabled').addEventListener('change',aiHistoryScopeChanged);$('ai-history-project').addEventListener('change',aiHistoryScopeChanged);
+ $('ai-history-import-form').addEventListener('submit',aiAction(async event=>{event.preventDefault();await aiHistoryImport();}));$('ai-history-search-form').addEventListener('submit',aiAction(async event=>{event.preventDefault();await aiHistorySearch();}));
+ $('ai-history-source-close').addEventListener('click',()=>{aiHistorySourceSequence++;$('ai-history-source-view').hidden=true;});
+ $('ai-history-review-return').addEventListener('click',()=>aiHistorySetReviewGeneration(''));
+ $('ai-memory-form').addEventListener('submit',aiAction(async event=>{event.preventDefault();await aiHistoryProposeMemory();}));$('ai-history-sync').addEventListener('click',aiAction(async()=>{await api('/api/ai/history/sync',{});await aiHistoryPoll();}));
+ $('ai-history-calibrate-form').addEventListener('submit',aiAction(async event=>{event.preventDefault();await aiHistoryCalibrate();}));$('ai-memory-generate').addEventListener('click',aiAction(aiHistoryGenerateMemories));
+ $('ai-handoff-note').addEventListener('input',aiHistoryInvalidateHandoff);$('ai-handoff-prepare').addEventListener('click',aiAction(aiHistoryPrepareHandoff));$('ai-handoff-copy').addEventListener('click',aiAction(aiHistoryCopyHandoff));
+ $('ai-gateway-form').addEventListener('submit',aiAction(async event=>{event.preventDefault();await aiHistoryCreateGateway();}));
+ $('ai-chat-form').addEventListener('submit',aiAction(async event=>{event.preventDefault();await aiSend();}));$('ai-search-form').addEventListener('submit',aiAction(async event=>{event.preventDefault();await aiSearch();}));
+ $('ai-new-chat').addEventListener('click',()=>{aiConversation=null;aiConversationValue=null;aiChatSequence++;$('ai-routing-mode').value='balanced';$('ai-model-override').value='';aiAttachments=[];aiRenderAttachments();aiRenderConversation({title:'Start a conversation',status:'READY',messages:[]});aiStopSpeech();});
+ $('ai-files').addEventListener('change',aiAction(async()=>{for(const file of $('ai-files').files){if(aiAttachments.length>=4)throw new Error('Use up to four attachments per message.');aiAttachments.push(await aiUpload(file));if(file.type.startsWith('audio/'))$('ai-audio-kind').value='general';}aiRenderAttachments();$('ai-files').value='';}));
+ $('ai-chat-cancel').addEventListener('click',aiAction(async()=>{if(aiConversation){await api('/api/ai/chat/cancel',{id:aiConversation});await aiReadConversation();}aiStopSpeech();}));
+ $('ai-task-form').addEventListener('submit',aiAction(async event=>{event.preventDefault();$('ai-task-start').disabled=true;try{await aiStartTask();}finally{$('ai-task-start').disabled=false;}}));$('ai-task-project').addEventListener('change',aiRenderChecks);$('ai-allow-check').addEventListener('change',aiRenderChecks);
+ $('ai-task-cancel').addEventListener('click',aiAction(async()=>{await api('/api/ai/tasks/cancel',{id:aiTask});await aiReadTask();}));$('ai-task-apply').addEventListener('click',aiAction(aiApplyTask));
+ $('ai-task-reconcile').addEventListener('click',aiAction(aiReconcileTask));$('ai-tasks-next').addEventListener('click',aiAction(aiLoadTaskPage));$('ai-tasks-first').addEventListener('click',aiLatestTasks);
+ $('ai-memories-next').addEventListener('click',aiAction(()=>aiHistoryLoadMemoryPage()));$('ai-memories-first').addEventListener('click',aiLatestMemories);
+ $('ai-pair-form').addEventListener('submit',aiAction(async event=>{event.preventDefault();await api('/api/ai/pair',{endpoint:$('ai-pair-endpoint').value.trim(),fingerprint:$('ai-pair-fingerprint').value.trim(),code:$('ai-pair-code').value.trim(),expectedIdentity:{computer:$('ai-pair-computer').value.trim(),sid:$('ai-pair-sid').value.trim()}});$('ai-pair-code').value='';await aiPoll();}));
+ $('ai-calibrate-form').addEventListener('submit',aiAction(async event=>{event.preventDefault();$('ai-calibrate-run').disabled=true;try{await aiCalibrate();}finally{$('ai-calibrate-run').disabled=false;}}));
+ $('ai-microphone').addEventListener('click',aiAction(async()=>{if(aiRecording)await aiStopRecording(true);else await aiStartRecording();}));$('ai-speech-stop').addEventListener('click',()=>{$('ai-speak').checked=false;aiStopSpeech();});$('ai-speak').addEventListener('change',()=>{if(!$('ai-speak').checked)aiStopSpeech();});
+ globalThis.speechSynthesis?.addEventListener?.('voiceschanged',aiLoadVoices);globalThis.chrome?.webview?.addEventListener('message',event=>{if(event.data?.type==='interlinked-ai-voices'){aiNativeVoices=Array.isArray(event.data.voices)?event.data.voices:[];aiLoadVoices();}if(event.data?.type==='interlinked-ai-speech-status')aiNativeSpeechStatus(event.data);if(event.data?.type==='interlinked-ai-speech-error')$('ai-mic-status').textContent=String(event.data.error||'Installed voice unavailable.');});globalThis.chrome?.webview?.postMessage({type:'interlinked-ai-speech',action:'voices'});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden){aiStopRecording(false).catch(aiError);aiStopSpeech();}});globalThis.addEventListener('pagehide',()=>{aiStopRecording(false).catch(()=>{});aiStopSpeech();});setInterval(()=>{if(aiVisible&&!document.hidden&&!stopped)aiPoll().catch(aiError);},1500);
+}
+// END AI BINDINGS
+
 // BEGIN MASTER MODELS
 function masterStatus(value){return String(typeof value==='object'&&value!==null?value.status||'unknown':value||'unknown').toLowerCase();}
 function masterTone(value){const v=masterStatus(value);return /fail|error|blocked/.test(v)?'danger':/waiting|approval|attention|uncertain/.test(v)?'attention':/working|running|active|editing|testing|connected|live/.test(v)?'active':/pass|success|complete|finished|verified|ready/.test(v)?'good':'quiet';}
@@ -489,8 +802,8 @@ function masterSubagents(summary,snapshotUtc,now=Date.now()){
  const age=now-Date.parse(snapshotUtc),observedAge=now-Date.parse(summary?.observedAt),count=summary?.workingCount;
  const valid=Number.isFinite(age)&&age>=0&&age<=15000&&Number.isFinite(observedAge)&&observedAge>=0&&observedAge<=180000&&Number.isInteger(count)&&count>=0&&count<=256&&['observed','partial'].includes(summary?.status);
  const partial=valid&&summary.status==='partial';
- return {text:valid?String(count)+(partial?'?':''):'—',tone:valid?(partial?'attention':'active'):'quiet',
-  explanation:valid?'Observed working subagents'+(partial?'; ? means tracking is incomplete.':'; event observations are not a complete live inventory.'):'Working subagent count unavailable; missing or stale observations do not mean zero.',
+ return {text:valid?String(count):'—',tone:valid?(partial?'attention':'active'):'quiet',
+  explanation:valid?'Observed working subagents'+(partial?'; tracking is incomplete.':'; event observations are not a complete live inventory.'):'Working subagent count unavailable; missing or stale observations do not mean zero.',
   observedAt:summary?.observedAt,source:String(summary?.source||'Codex lifecycle (observed)')};
 }
 function masterProjectModel(project){
@@ -520,7 +833,7 @@ function masterInboxModel(queue,filters={}){
 function configurationDescribe(value){
  if(value?.available===false)return 'Current settings are unavailable. '+String(value.error||'Review a validated previous version.');
  value=value?.value||value||{};if(value.settings)value={...value.settings,...(typeof value.lifecyclePreferencesKnown==='boolean'?{lifecyclePreferencesKnown:value.lifecyclePreferencesKnown}:{})};
- const labels={mode:'Display mode',fps:'Target frame rate',rotationSeconds:'Detail rotation (seconds)',focusProject:'Focused project',background:'Keep running in tray',startAtLogin:'Start at login',captureEnabled:'Capture enabled',captureRect:'Capture area',captureWindowId:'Selected capture window',captureWindowBounds:'Observed source bounds',projects:'Project stations',favorites:'Favorite projects',recent:'Recent projects',lifecyclePreferencesKnown:'Startup and background choices known'};
+ const labels={layout:'Cooler layout',mode:'Violet source',fps:'Target frame rate',rotationSeconds:'Detail rotation (seconds)',focusProject:'Focused project',background:'Keep running in tray',startAtLogin:'Start at login',captureEnabled:'Capture enabled',captureRect:'Capture area',captureWindowId:'Selected capture window',captureWindowBounds:'Observed source bounds',projects:'Project stations',favorites:'Favorite projects',recent:'Recent projects',lifecyclePreferencesKnown:'Startup and background choices known'};
  const describe=item=>item===null?'Not configured':typeof item==='boolean'?(item?'Yes':'No'):String(item);
  const lines=[];for(const [key,item]of Object.entries(value)){
   if(!Object.prototype.hasOwnProperty.call(labels,key))continue;
@@ -546,6 +859,7 @@ function masterError(error){$('master-error').textContent=String(error?.message|
 function masterClearError(){$('master-error').hidden=true;}
 function masterSetView(enabled){
  if(typeof jobsHide==='function')jobsHide();
+ if(typeof aiHide==='function')aiHide();
  masterVisible=!!enabled;$('master-view').hidden=!enabled;$('library-shell').hidden=enabled;$('library-hub-bar').hidden=enabled;
  for(const [id,on] of [['master-view-tab',enabled],['library-view-tab',!enabled]]){$(id).classList.toggle('active',on);$(id).setAttribute('aria-pressed',String(on));}
  document.body.classList.toggle('master-open',enabled);
@@ -582,7 +896,7 @@ function masterLoadSettings(){
  if(!valid){$('master-settings-feedback').textContent='MASTER settings are unavailable. Review saved settings history to recover them.';return;}
  for(const section of ['display','capture','projects']){
   const draft=masterDrafts[section];if(draft.dirty)continue;draft.revision=masterSnapshot.settingsRevision??null;
-  if(section==='display'){$('master-mode').value=s.mode||'dashboard';$('master-fps-setting').value=String(s.fps||30);$('master-background').checked=!!s.background;$('master-login').checked=!!s.startAtLogin;for(const id of ['master-background','master-login'])$(id).indeterminate=masterSnapshot.lifecyclePreferencesKnown===false;masterLifecycleTouched.clear();}
+  if(section==='display'){$('master-layout').value=s.layout||'command_deck';$('master-mode').value=s.mode||'dashboard';$('master-fps-setting').value=String(s.fps||30);$('master-background').checked=!!s.background;$('master-login').checked=!!s.startAtLogin;for(const id of ['master-background','master-login'])$(id).indeterminate=masterSnapshot.lifecyclePreferencesKnown===false;masterLifecycleTouched.clear();}
   if(section==='capture'){for(const key of ['x','y','width','height'])$('master-capture-'+key).value=String(s.captureRect?.[key]??(['width','height'].includes(key)?240:0));$('master-capture-enabled').checked=!!s.captureEnabled;}
   if(section==='projects')draft.rows=(s.projects||[]).map(row=>({...row}));
  }
@@ -625,9 +939,18 @@ function masterRender(){
  $('master-source-status').textContent=s.demo?'DEMO FEED':'LOCAL OBSERVATORY';$('master-source-status').className='master-status '+(s.demo?'attention':'active');
  $('master-observed').textContent='Snapshot '+masterWhen(s.observedAt||s.utc||s.generatedAt);$('master-demo-note').hidden=!s.demo;
  const configurationNotice=String(s.configurationNotice||(s.restartRequired?'Restart INTERLINKED to activate the changed MASTER configuration.':''));$('master-configuration-notice').textContent=configurationNotice;$('master-configuration-notice').hidden=!configurationNotice;
- $('master-display-status').textContent=connected?'LCD connected':masterWords(display.status||'disconnected');$('master-display-message').textContent=display.message||display.error||(connected?'INTERLINKED owns the cooler display.':'Close TRCC, then choose Connect display.');
- $('master-display-led').className='master-led '+(connected?'active':'');$('master-connect').disabled=masterBusy||connected||!!s.demo;$('master-disconnect').disabled=masterBusy||!connected;
+ const phase=display.status||'disconnected',connectionPending=['connecting','reconnecting','retry_wait','disconnecting','canceling','cancelling','cleaning_up'].includes(phase),desired=display.desiredConnected===true;
+ const retrySeconds=display.nextRetryAt?Math.max(0,Math.ceil((Date.parse(display.nextRetryAt)-Date.now())/1000)):null;
+ const phaseLabels={connecting:'Connecting',reconnecting:'Reconnecting',retry_wait:Number.isFinite(retrySeconds)?'Retrying in '+retrySeconds+'s':'Waiting to retry',disconnecting:'Disconnecting',canceling:'Canceling connection',cancelling:'Canceling connection',cleaning_up:'Cleaning up connection',unavailable:'Connection failed',failed:'Connection failed'};
+ $('master-display-status').textContent=connected?'LCD connected':phaseLabels[phase]||masterWords(phase);
+ const lastError=display.error||'',message=display.message||lastError||(connected?'INTERLINKED owns the cooler display.':connectionPending?'Waiting for the display transport.':'Choose Connect display to request the cooler.');
+ const retry=Number.isInteger(display.retryAttempt)&&display.retryAttempt>0?'Recovery attempt '+display.retryAttempt+' of '+(display.retryLimit||3)+'. ':'';
+ $('master-display-message').textContent=retry+message+(lastError&&!message.includes(lastError)?' Last error: '+lastError:'');
+ $('master-display-led').className='master-led '+(connected?'active':connectionPending?'attention':'');$('master-connect').disabled=masterBusy||connected||connectionPending||desired||!!s.demo;$('master-disconnect').disabled=masterBusy||!!s.demo||!(connected||desired||connectionPending);
+ $('master-connect').textContent=['unavailable','failed'].includes(phase)?'Retry display':'Connect display';
+ $('master-screen-title').textContent=s.settings?.layout==='violet_web'?'Violet Web':'The command deck';
  const stats=display.stats||s.stats||display;$('master-fps').textContent='DELIVERY FPS '+(connected&&Number.isFinite(stats.deliveredFps)?stats.deliveredFps.toFixed(1):'—');$('master-dropped').textContent='DROPPED '+(Number.isFinite(stats.droppedFrames)?stats.droppedFrames:'—');
+ $('master-preview-fps').textContent='PREVIEW FPS '+(Number.isFinite(stats.renderFps)?stats.renderFps.toFixed(1):'—');
  $('master-cpu').textContent=masterTemperature(s.temperatures?.cpu);$('master-gpu').textContent=masterTemperature(s.temperatures?.gpu);
  $('master-sensor-note').textContent=s.temperatures?.message||s.temperatures?.reason||(($('master-cpu').textContent==='—'||$('master-gpu').textContent==='—')?'Unverified or unavailable readings stay blank.':'Live verified readings · '+masterWhen(s.temperatures?.observedAt));
  $('master-enable-sensors').disabled=masterBusy||!connected||!!s.demo;
@@ -649,7 +972,7 @@ async function masterEnableSensors(){
 }
 async function masterSaveSettings(){
  if(masterSnapshot?.lifecyclePreferencesKnown===false&&(!masterLifecycleTouched.has('master-background')||!masterLifecycleTouched.has('master-login')))throw new Error('Choose both background and startup preferences explicitly before saving recovered settings.');
- const patch={mode:$('master-mode').value,fps:Number($('master-fps-setting').value),background:$('master-background').checked,startAtLogin:$('master-login').checked};masterMarkDraft('display');
+ const patch={layout:$('master-layout').value,mode:$('master-mode').value,fps:Number($('master-fps-setting').value),background:$('master-background').checked,startAtLogin:$('master-login').checked};masterMarkDraft('display');
  await masterRequest(async()=>{await masterSavePatch('display',patch);$('master-settings-feedback').textContent='Preferences saved. TRCC startup is unchanged.';});
 }
 async function masterSaveCapture(){
@@ -750,7 +1073,7 @@ if($('master-view')){
  $('master-save-settings').addEventListener('click',()=>masterSaveSettings().catch(masterError));$('master-save-capture').addEventListener('click',()=>masterSaveCapture().catch(masterError));$('master-add-project').addEventListener('submit',event=>masterAddProject(event).catch(masterError));
  $('master-refresh-sources').addEventListener('click',()=>masterRequest(async()=>{await api('/api/master/display',{action:'capture_sources'});await masterPoll();}).catch(masterError));
  $('master-enable-sensors').addEventListener('click',()=>masterEnableSensors().catch(masterError));
- for(const id of ['master-mode','master-fps-setting','master-background','master-login'])$(id).addEventListener('input',()=>masterMarkDraft('display'));
+ for(const id of ['master-layout','master-mode','master-fps-setting','master-background','master-login'])$(id).addEventListener('input',()=>masterMarkDraft('display'));
  for(const id of ['master-background','master-login'])$(id).addEventListener('input',()=>{masterLifecycleTouched.add(id);$(id).indeterminate=false;});
  for(const id of ['master-capture-window','master-capture-enabled','master-capture-x','master-capture-y','master-capture-width','master-capture-height'])$(id).addEventListener('input',()=>masterMarkDraft('capture'));
  for(const id of ['master-project-label','master-project-root'])$(id).addEventListener('input',()=>masterMarkDraft('projects'));

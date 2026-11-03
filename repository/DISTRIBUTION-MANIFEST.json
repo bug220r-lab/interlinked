@@ -1,8 +1,8 @@
 {
   "format": "interlinked-distribution-manifest-v1",
-  "createdUtc": "2026-10-30T22:06:10.110088+00:00",
-  "scope": "Reviewed project hub, MW5, read-only MSI Jobs, MASTER observatory and restricted local Violet bridge, Windows rendering/capture/sensor worker, desktop host and guarded publication; private telemetry, payloads, credentials and binaries excluded. Additive Buddy companion, lock-owner media ingestion and authenticated project work report. Independent Stats workspace, contained native process lifecycle and guarded v6 application publication. Revision-checked settings, separate local recovery histories, MASTER review inbox and lifecycle validity guards. Reviewed cooler rendering and scheduling, observed subagent summaries, exact cooler-only publication and optional fixed-function startup setup. Media inbox project reports distinguish stored, searchable and delivered outcomes; current launcher publication dependency pins advance together while installed startup and sensor pins remain separate.",
-  "previousManifestSha256": "c19b748f6aacfb7c3294c3416d34cda3aa97622f7da26b78db991bbea3696eca",
+  "createdUtc": "2026-11-02T21:26:51.99241-05:00",
+  "scope": "Reviewed project hub, MW5, read-only MSI Jobs, MASTER observatory and restricted local Violet bridge, Windows rendering/capture/sensor worker, desktop host and guarded publication; private telemetry, payloads, credentials and binaries excluded. Additive Buddy companion, lock-owner media ingestion and authenticated project work report. Independent Stats workspace, contained native process lifecycle and guarded v6 application publication. Revision-checked settings, separate local recovery histories, MASTER review inbox and lifecycle validity guards. Reviewed cooler rendering and scheduling, observed subagent summaries, exact cooler-only publication and optional fixed-function startup setup. Media inbox project reports distinguish stored, searchable and delivered outcomes; current launcher publication dependency pins advance together while installed startup and sensor pins remain separate. AI workspace v8: local-model calibration/routing, scoped project context, isolated reviewed workers, paired TLS nodes and desktop image/audio/voice controls; private state and runtime payloads excluded. Violet AI v9: durable scoped operations, user-only local IPC and separate stdio plugin; exact model unload ownership and UI confirmation. Buddy AI native read-only facade, captured settings and byte-budget metadata; exact guarded launcher pin migration with retained startup dependencies. Selectable Command Deck and Violet Web cooler layouts, bounded content-free AI observations, confirmed lifecycle graph, fenced USB recovery and explicit delivery evidence. Violet Web polish: active-only stable density layouts, private exact-ID visible-chat metadata, bounded state animations, independent cached per-field hardware telemetry and separately pinned MSI CPU sensor delivery. Remote telemetry projects authenticated server-clock ages conservatively onto the GUI clock without relaxing five-second freshness or changing host clocks. Approved Violet Web visual fidelity: centered sparse composition, visual project association spokes, denser faster web particles and larger resource cards with VRAM padding. Installed visual candidate is frozen separately and excludes retained unfinished USB cleanup work in the checkout. Reviewed owned-helper graceful shutdown, retained cleanup ownership, serialized startup/recovery and numerical subagent count presentation; synthetic checks remain separate from physical acceptance. Approved visible card/hub ports and badge-aware exterior routing preserve native appearance and confirmed traffic semantics. Approved borderless card-to-Violet routes converge beneath opaque artwork, retain badge-aware exterior gutters, and preserve the concurrent installed AI bridge update. MSI CPU-only package-DTS publisher uses a pinned signed IntelMSR module and separately installed signed PawnIO driver; protected exact-hash migration preserves app/node/USB boundaries and the vendor rollback bytes. Prompt-aware Auto picker candidate: shared Balanced/Fast/Best quality routing, exact manual override, fixed classifier profile, durable selections and Buddy compatibility. Project evaluation evidence stays private; source/package checks do not establish installed model-quality acceptance. Reviewed embedded Violet 30 FPS coherent-pose artwork, bounded source-key resources, truthful animation selection and isolated physical acceptance; original atlas and transport retained. History v10: verified folder/ZIP intake, passive adapters, reviewed memories, immutable hybrid indexes, paired MSI replication, local-only client gateway, exact citations and explicit copy handoff. Private archive/dependency payloads stay outside Git; synthetic checks do not imply installed or human retrieval acceptance. November 2 audit repairs: transactional ordered exclusions, durable remote-worker recovery, exact model qualification, display request fencing, owned replica staging and eligibility-safe memory checkpoints. Coordinated UI, log, task, capability, vector, Git, sensor and matte optimizations; matched v10 package dependency validation. Source publication only.",
+  "previousManifestSha256": "17a1340c23327365dd3ff265aad9c450243523ab55d1d31cdc3e34563b755e41",
   "files": [
     {
       "path": ".gitattributes",
@@ -25,8 +25,8 @@
     {
       "path": "README.md",
       "origin": "authored documentation or packaging metadata",
-      "bytes": 8672,
-      "sha256": "7656d03bd11e0f1e63353ed27131b8f09ec81e740263fabea95d0f10e0811dbf"
+      "bytes": 9300,
+      "sha256": "705cdc24dda7f8be73ae8b221375f1a670a2515c2210d111509f11f4708c8449"
     },
     {
       "path": "repository/MAGIX-EXTENSION-MANIFEST.json",
@@ -45,6 +45,96 @@
       "origin": "authored documentation or packaging metadata",
       "bytes": 53300,
       "sha256": "0204d94dac4baba841606750859909376832478a627a3ea9e11a31ac805da631"
+    },
+    {
+      "path": "repository/ai-node/Build-Node.ps1",
+      "origin": "AI workspace, paired node, and isolated acceptance source",
+      "bytes": 1533,
+      "sha256": "72b1536fba4e2d74b649c71ede8a90f768e97cebec1be75e5dca6b2f59f1b724"
+    },
+    {
+      "path": "repository/ai-node/Initialize-Node.ps1",
+      "origin": "AI workspace, paired node, and isolated acceptance source",
+      "bytes": 8282,
+      "sha256": "8d27b7fa74e188a73dba95ffe6f4355453d4f7f21b3c3af3740aea8df2ee2546"
+    },
+    {
+      "path": "repository/ai-node/Migrate-Node.ps1",
+      "origin": "authored local history integration and validation source",
+      "bytes": 11926,
+      "sha256": "47f5e05c268bbe4394cdd9080006f4811a3d0ce4a699514537ae6f843861e825"
+    },
+    {
+      "path": "repository/ai-node/README.md",
+      "origin": "AI workspace, paired node, and isolated acceptance source",
+      "bytes": 12971,
+      "sha256": "5fa612d80a81741ef819695fac054c878c225a98f7ae040481639d9c140db4de"
+    },
+    {
+      "path": "repository/ai-node/Set-NodeNetwork.ps1",
+      "origin": "AI workspace, paired node, and isolated acceptance source",
+      "bytes": 1966,
+      "sha256": "deb0cc0221c477f19c1cb1171a62fd9cf0f3cbc17329d185b02b85d6cbf751b7"
+    },
+    {
+      "path": "repository/ai-node/Set-TransportRuntime.ps1",
+      "origin": "AI workspace, paired node, and isolated acceptance source",
+      "bytes": 1667,
+      "sha256": "8142157e293674aa8e5fa65c5e1bb4b375b58daa18d74620bb9f7cb32969ddf1"
+    },
+    {
+      "path": "repository/ai-node/Start-Node.ps1",
+      "origin": "AI workspace, paired node, and isolated acceptance source",
+      "bytes": 3752,
+      "sha256": "66be1ff3831b278a90efcba574d280ce3adb258c784962fd1c4ab2242b63386f"
+    },
+    {
+      "path": "repository/ai-node/Test-NodeMigration.ps1",
+      "origin": "audit fixes, coordinated optimizations, regression tests or release documentation",
+      "bytes": 9722,
+      "sha256": "beadb435dc1cd4b6c40b8b4edaf769b31c2747c2fa1d84aaaef727fc0206fd0b"
+    },
+    {
+      "path": "repository/ai-plugin/.codex-plugin/plugin.json",
+      "origin": "Violet AI bridge, plugin and validation source",
+      "bytes": 443,
+      "sha256": "de5524420cf75b3f9bf775e3b0e14a39c32c742336e9dca5a50931febbe458c6"
+    },
+    {
+      "path": "repository/ai-plugin/Build-AIPlugin.ps1",
+      "origin": "Violet AI bridge, plugin and validation source",
+      "bytes": 1932,
+      "sha256": "aaae85b691e618f5becbee4299b2f5fab321f83235ffa7fc6b35146476867d3d"
+    },
+    {
+      "path": "repository/ai-plugin/README.md",
+      "origin": "Violet AI bridge, plugin and validation source",
+      "bytes": 3322,
+      "sha256": "906cae7a5d1ce5867449297603d75139feb23e9f607eca497a3ea97a2271dc66"
+    },
+    {
+      "path": "repository/ai-plugin/skills/local-ai/SKILL.md",
+      "origin": "Violet AI bridge, plugin and validation source",
+      "bytes": 3258,
+      "sha256": "d20a4d81fec56a73b74b5e602a8fd90fe428527b42ba6c74be1c96035bf54a21"
+    },
+    {
+      "path": "repository/app/AI-VOICE-ACCEPTANCE.md",
+      "origin": "AI workspace, paired node, and isolated acceptance source",
+      "bytes": 3539,
+      "sha256": "2c54406d4942f05406d7c2690be20d93b633883300036405cd768e5d60309330"
+    },
+    {
+      "path": "repository/app/AI-WORKSPACE.md",
+      "origin": "AI workspace, paired node, and isolated acceptance source",
+      "bytes": 11812,
+      "sha256": "a399dce701a2d1eb0b991d4f13ec676327b98dce9083c99439e626792d184622"
+    },
+    {
+      "path": "repository/app/HISTORY.md",
+      "origin": "authored local history integration and validation source",
+      "bytes": 12929,
+      "sha256": "c52dc5e9e42902a2c0dfb673b85b8feffce6d57016c635f87be7473676fb592b"
     },
     {
       "path": "repository/app/INTERLINKED-Browser.cmd",
@@ -67,20 +157,68 @@
     {
       "path": "repository/app/README.md",
       "origin": "GUI and source-library audit addition",
-      "bytes": 29095,
-      "sha256": "7627c774df14d33d35c46da5d460c9cf8a379603ad19adfd24bfde7e0dd9ff64"
+      "bytes": 33765,
+      "sha256": "47fba321872ce71b525003dc853b13057f29c43309a77647d42dfe50658de792"
+    },
+    {
+      "path": "repository/app/ai_bridge.py",
+      "origin": "Violet AI bridge, plugin and validation source",
+      "bytes": 11216,
+      "sha256": "a599cd33f5a1e17fa173be9c498b79f88bc6b94f9f54d4de81051fd34b158d88"
+    },
+    {
+      "path": "repository/app/ai_routing_benchmark.py",
+      "origin": "Auto picker source and isolated validation",
+      "bytes": 53280,
+      "sha256": "5daab8c4ef0a6a14aa5db2a6dab85d989c50b904cbfbe5d0739a59cd21781496"
+    },
+    {
+      "path": "repository/app/history_evaluate.py",
+      "origin": "authored local history integration and validation source",
+      "bytes": 26839,
+      "sha256": "6e00c430ead45c87029e1e864c8470d2a3b133d59255bb144c63d1789d00166e"
+    },
+    {
+      "path": "repository/app/interlinked_ai.py",
+      "origin": "AI workspace, paired node, and isolated acceptance source",
+      "bytes": 91135,
+      "sha256": "1348bf4a56482fcad9803bb6993b563945b5c5220f25aeffba2d2c859b3d42be"
+    },
+    {
+      "path": "repository/app/interlinked_ai_bridge.py",
+      "origin": "Violet AI bridge, plugin and validation source",
+      "bytes": 33914,
+      "sha256": "70fca07dcd8bb65058f8531b7601ad2b9b4dc03bc296db80259b51b7f8ec9448"
+    },
+    {
+      "path": "repository/app/interlinked_ai_ipc.py",
+      "origin": "Violet AI bridge, plugin and validation source",
+      "bytes": 13768,
+      "sha256": "d3755500dc46cf6a210366fe3d0373767274a3610d1c7ff50a89563c0762ddfa"
+    },
+    {
+      "path": "repository/app/interlinked_ai_node.py",
+      "origin": "AI workspace, paired node, and isolated acceptance source",
+      "bytes": 79350,
+      "sha256": "af4a7c5206724902f8d0893e572775536408074a78c1bc0011c47add53013e6e"
+    },
+    {
+      "path": "repository/app/interlinked_ai_workspaces.py",
+      "origin": "AI workspace, paired node, and isolated acceptance source",
+      "bytes": 58025,
+      "sha256": "e4ae111a21f9009b658bfa90ddaf6913df37e764e102b99f3ad1f4719c2a2a52"
     },
     {
       "path": "repository/app/interlinked_buddy.py",
       "origin": "Buddy companion integration reviewed source",
-      "bytes": 40698,
-      "sha256": "d3a2b316baf5def28cc2002fa9827f2bfce1315f51481224e865e35fdf2bde9e"
+      "bytes": 65572,
+      "sha256": "f4dc148f5be75929d4e323440314956f56d551e4354086d3149a1bdfa0ab1d49"
     },
     {
       "path": "repository/app/interlinked_configuration.py",
       "origin": "Local versioned configuration and recovery source",
-      "bytes": 20725,
-      "sha256": "6e4844ee7b44a4d9118f821aa89287dd2eff95f339faf56ce873a13bb5ea50ec"
+      "bytes": 20731,
+      "sha256": "997d25f93b9d13e33b02107549ac649ef56b207499054a175600b09e2d6ded8c"
     },
     {
       "path": "repository/app/interlinked_controller.py",
@@ -91,8 +229,38 @@
     {
       "path": "repository/app/interlinked_gui.py",
       "origin": "Buddy companion integration reviewed source",
-      "bytes": 55703,
-      "sha256": "dd0018070f5a7b25f4372812baf463150e4eab52471f53fa63ff123eb9b0b152"
+      "bytes": 60094,
+      "sha256": "929dfa2b1e0a6e7d57e572fa7495ea9da843db5aa572c5b3cb728256042871ee"
+    },
+    {
+      "path": "repository/app/interlinked_history_gateway.py",
+      "origin": "authored local history integration and validation source",
+      "bytes": 20941,
+      "sha256": "bc5b39283307d84c450bfe7a6ca80c1b54312cd8d7a19ec3009125bdb94b6a42"
+    },
+    {
+      "path": "repository/app/interlinked_history_import.py",
+      "origin": "authored local history integration and validation source",
+      "bytes": 54695,
+      "sha256": "2b8cf70de2730aad5627774aa151418c507d68ea7a72e339e11f6abbb58939a1"
+    },
+    {
+      "path": "repository/app/interlinked_history_runtime.py",
+      "origin": "authored local history integration and validation source",
+      "bytes": 3606,
+      "sha256": "98d9c57cf9d9080eb7446e9c5a7c4fe993b7cb11dab191ee68b1285ea47019f6"
+    },
+    {
+      "path": "repository/app/interlinked_history_service.py",
+      "origin": "authored local history integration and validation source",
+      "bytes": 64506,
+      "sha256": "59dd2f3aa670d9f3027b8dd566a3bcfdb08761195ae1b761d0178372ae461825"
+    },
+    {
+      "path": "repository/app/interlinked_history_store.py",
+      "origin": "authored local history integration and validation source",
+      "bytes": 98943,
+      "sha256": "2076e16b5dd4dbf4d66953746b1955ae4ae4907c8728259cc1435e1c2fa6af97"
     },
     {
       "path": "repository/app/interlinked_hub.py",
@@ -103,14 +271,14 @@
     {
       "path": "repository/app/interlinked_jobs.py",
       "origin": "Read-only MSI job observer and synthetic checks",
-      "bytes": 34688,
-      "sha256": "16a3ecf9294605d14fac86d89dbccc678cbc64568fcdf16a892160e35009af86"
+      "bytes": 36374,
+      "sha256": "71df97cfcec7bbdd1f4a559ff634445e9cb397503930804c9c16bb9cc234b6db"
     },
     {
       "path": "repository/app/interlinked_master.py",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 85242,
-      "sha256": "af62dc7b7d5b13ad9a82bb9a9b803bc21c3c46b77c288a650f4422f5c51c8b8d"
+      "bytes": 130357,
+      "sha256": "59779e7269b550e84565b27a1da31c3742520c0bf0dd3cc4591b7ba3dd046f7b"
     },
     {
       "path": "repository/app/interlinked_mw5.py",
@@ -143,6 +311,108 @@
       "sha256": "b4b97f179dd0b2a87502216b47a0244d6423eb41c6cefb835c4cdca8167781fe"
     },
     {
+      "path": "repository/app/test_ai.py",
+      "origin": "AI workspace, paired node, and isolated acceptance source",
+      "bytes": 4890,
+      "sha256": "b8245576e8a61936d862517fc90248f22f321c81d322f553b7df86904965e869"
+    },
+    {
+      "path": "repository/app/test_ai_bridge.py",
+      "origin": "Violet AI bridge, plugin and validation source",
+      "bytes": 17502,
+      "sha256": "4ce77a230014d5df0f9777f0053bbf641531071933b7bb3b1a5beef5621e2e0c"
+    },
+    {
+      "path": "repository/app/test_ai_core_bridge.py",
+      "origin": "Violet AI bridge, plugin and validation source",
+      "bytes": 9176,
+      "sha256": "2e44296cd6feb1e5f82312de687b3b06a79bdaeb69b2b6cbdddfff1d4820e2ee"
+    },
+    {
+      "path": "repository/app/test_ai_http.py",
+      "origin": "AI workspace, paired node, and isolated acceptance source",
+      "bytes": 6384,
+      "sha256": "4a58efe67885cd568c7034eee0f2554704de833ce0bb978a17dfd4ab6f1d131b"
+    },
+    {
+      "path": "repository/app/test_ai_integration.py",
+      "origin": "AI workspace, paired node, and isolated acceptance source",
+      "bytes": 15705,
+      "sha256": "b78d2f0b3d7b67235e911bd3145516170fef8fa4792bf9bd0284d1eaedef7f0a"
+    },
+    {
+      "path": "repository/app/test_ai_ipc.py",
+      "origin": "Violet AI bridge, plugin and validation source",
+      "bytes": 4543,
+      "sha256": "038d98ef8833531712470a35a753bd4b8b936cfff335fa289f771863729f4351"
+    },
+    {
+      "path": "repository/app/test_ai_node.py",
+      "origin": "AI workspace, paired node, and isolated acceptance source",
+      "bytes": 48349,
+      "sha256": "43bbaa4d88162adf401b63ce01581d55e656addf886e2ee7845cf2429f993195"
+    },
+    {
+      "path": "repository/app/test_ai_observations.py",
+      "origin": "Reviewed cooler AI-flow and reconnect source and isolated regression fixtures",
+      "bytes": 23833,
+      "sha256": "e3cfe1b21e2313f8f4eab4552e5f347186e29b6a03e91349079f4cf201844e08"
+    },
+    {
+      "path": "repository/app/test_ai_plugin.py",
+      "origin": "Violet AI bridge, plugin and validation source",
+      "bytes": 11498,
+      "sha256": "a8e44f8fafb8a6133661893229b75ab748ee0c1f06da62af6bac4d3bb88a18c0"
+    },
+    {
+      "path": "repository/app/test_ai_recovery.py",
+      "origin": "audit fixes, coordinated optimizations, regression tests or release documentation",
+      "bytes": 20250,
+      "sha256": "1b997a57be63727b4a20a00de475be708a04fa802a1df4f849de0762cfb220b2"
+    },
+    {
+      "path": "repository/app/test_ai_routing.py",
+      "origin": "Auto picker source and isolated validation",
+      "bytes": 12624,
+      "sha256": "98f126f3fbcf97d81436db44f846c316e6f310f37c08ef947800606b17e59a36"
+    },
+    {
+      "path": "repository/app/test_ai_routing_benchmark.py",
+      "origin": "Auto picker source and isolated validation",
+      "bytes": 24344,
+      "sha256": "70ca49995f17182d4b25045cfb980a9272289cc8ba7e88e8347a8af908258451"
+    },
+    {
+      "path": "repository/app/test_ai_routing_workers.py",
+      "origin": "Auto picker source and isolated validation",
+      "bytes": 8952,
+      "sha256": "fefb9a8f5b072a1b8ccde55a2e4d233c9647293b506a4e9384b2e78bc3c75966"
+    },
+    {
+      "path": "repository/app/test_ai_ui.js",
+      "origin": "AI workspace, paired node, and isolated acceptance source",
+      "bytes": 10967,
+      "sha256": "7b18cd56335b1308d3638628a848715e3fc1453871b728da2c714b8484e1da61"
+    },
+    {
+      "path": "repository/app/test_ai_voice_ui.js",
+      "origin": "reviewed source",
+      "bytes": 10832,
+      "sha256": "badc202adedab6ff73947324a7e666ab59d78c1f64508dccf5ee19cd571302f3"
+    },
+    {
+      "path": "repository/app/test_ai_workspaces.py",
+      "origin": "AI workspace, paired node, and isolated acceptance source",
+      "bytes": 18270,
+      "sha256": "47233c8ef71bc696b62d2425f8b6af1bf669b1bd05e079acd3c31b0f1d69c9c7"
+    },
+    {
+      "path": "repository/app/test_buddy_ai.py",
+      "origin": "Reviewed Buddy AI integration and isolated regression source",
+      "bytes": 33819,
+      "sha256": "35b2035a75f1453c324d07bb8c5b738a8f12bace6bed8a21a74247bf57d6f9ce"
+    },
+    {
       "path": "repository/app/test_configuration.py",
       "origin": "Synthetic configuration durability and ownership fixtures",
       "bytes": 10237,
@@ -167,6 +437,66 @@
       "sha256": "f26ce937ccd939c3cd7e00c2651f09d9248c0da6a335ef2e2bed1a2a4f377513"
     },
     {
+      "path": "repository/app/test_history_bootstrap.py",
+      "origin": "authored local history integration and validation source",
+      "bytes": 6546,
+      "sha256": "bfc2bd674a71acf363398f3ed805d3553e2e3c99ca5a255793455ad1e59a936b"
+    },
+    {
+      "path": "repository/app/test_history_boundary.py",
+      "origin": "authored local history integration and validation source",
+      "bytes": 18490,
+      "sha256": "b2857e57dea13063a5f2dcffea0e36ca78808af89d0645fcdd5979ed20bd1153"
+    },
+    {
+      "path": "repository/app/test_history_evaluate.py",
+      "origin": "authored local history integration and validation source",
+      "bytes": 15907,
+      "sha256": "75b2009fd65d9c51720749d0f2437c4966c542bec1087d37c24909b048b5f4e4"
+    },
+    {
+      "path": "repository/app/test_history_gateway.py",
+      "origin": "authored local history integration and validation source",
+      "bytes": 11377,
+      "sha256": "a640d5663c93de46f0a9ca483f60c757688001772fab88c6edb9119a4b0d6618"
+    },
+    {
+      "path": "repository/app/test_history_import.py",
+      "origin": "authored local history integration and validation source",
+      "bytes": 21359,
+      "sha256": "197265350a8e2d487731d0b7e2b94029e7dfb93d46be16950ff0cfb25bf1008a"
+    },
+    {
+      "path": "repository/app/test_history_repairs.py",
+      "origin": "audit fixes, coordinated optimizations, regression tests or release documentation",
+      "bytes": 19375,
+      "sha256": "c70bbc68282f9a45c30f8d0d73148524feaaad91d6c522c61e6dab08f1389bf3"
+    },
+    {
+      "path": "repository/app/test_history_scheduler.py",
+      "origin": "authored local history integration and validation source",
+      "bytes": 2405,
+      "sha256": "fdf5831d2598ffb15c250e6abe647c604f8ee78180711fb078144fac59f3100d"
+    },
+    {
+      "path": "repository/app/test_history_service.py",
+      "origin": "authored local history integration and validation source",
+      "bytes": 40516,
+      "sha256": "3f03f52be12e066165ea5455d88762a37a3423574a89991c8a01085eb6608f94"
+    },
+    {
+      "path": "repository/app/test_history_store.py",
+      "origin": "authored local history integration and validation source",
+      "bytes": 46128,
+      "sha256": "fca07908c56c9533f2e5768a17a4da12bf83d0e84540fbd19ed4eb4372226874"
+    },
+    {
+      "path": "repository/app/test_history_ui.js",
+      "origin": "audit fixes, coordinated optimizations, regression tests or release documentation",
+      "bytes": 24019,
+      "sha256": "ada52020a51474e38c7b020281a703ba3deca9f249c77b4d5fe4aba8cae6cb5b"
+    },
+    {
       "path": "repository/app/test_hub.py",
       "origin": "reviewed unified hub and MW5 orchestration or synthetic validation",
       "bytes": 16983,
@@ -187,8 +517,8 @@
     {
       "path": "repository/app/test_jobs.py",
       "origin": "Read-only MSI job observer and synthetic checks",
-      "bytes": 17802,
-      "sha256": "3976f5a705cc58997fee4f1b925376f7719952e060e67cdb9f4649435fca0d18"
+      "bytes": 20479,
+      "sha256": "211fe2f63d02ccd46b172a9ef32ab9f3b30134ed3b304a48f8d0051e2b0c057e"
     },
     {
       "path": "repository/app/test_jobs_http.py",
@@ -203,10 +533,34 @@
       "sha256": "96db9ceb752bf58cd5d172ed797768f45c03ec7c5f306f346b0aa42aefce37bc"
     },
     {
+      "path": "repository/app/test_launcher_logging.py",
+      "origin": "audit fixes, coordinated optimizations, regression tests or release documentation",
+      "bytes": 8008,
+      "sha256": "d17e3db813f94d47dbb4626e21d34ace54546eb955b905b6d7249da83ced3d23"
+    },
+    {
       "path": "repository/app/test_master.py",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 55927,
-      "sha256": "1caa8356b80d8daa12f68503963f5b63ed52b4b6fd605d3f2a5e8f42fca4e371"
+      "bytes": 56899,
+      "sha256": "4a14cbbac4bb674f99f53d4e381e48233ce9abbd01a5c23ccd957a9f4f2a246f"
+    },
+    {
+      "path": "repository/app/test_master_cooler_display.py",
+      "origin": "Reviewed Violet Web private metadata or MSI-specific sensor source; no private payloads",
+      "bytes": 8787,
+      "sha256": "9a9bc0e4a46ba9abd0cea4430bb5193ec4b38f5a9fed4ad652a669334f276664"
+    },
+    {
+      "path": "repository/app/test_master_display.py",
+      "origin": "Reviewed cooler AI-flow and reconnect source and isolated regression fixtures",
+      "bytes": 18370,
+      "sha256": "20fc6dd621ea15ef5fc6050ca7d1d29eabf83bc68733c4137dfe397b8ce32e12"
+    },
+    {
+      "path": "repository/app/test_master_git.py",
+      "origin": "audit fixes, coordinated optimizations, regression tests or release documentation",
+      "bytes": 9799,
+      "sha256": "a42f881c4ec3dbd4fbdb129ef7518cf76dcc4f855713e0e25d2b3d98b371e907"
     },
     {
       "path": "repository/app/test_master_hook_launch.py",
@@ -221,6 +575,12 @@
       "sha256": "f34086b0a13e5a9e0febda4662a9be95fc1f676bc46ebaad26494cbf053f677d"
     },
     {
+      "path": "repository/app/test_master_reconnect.py",
+      "origin": "authored isolated reconnect regression fixture",
+      "bytes": 24154,
+      "sha256": "55e47d200412ad6679254bfc7b8135b0814e53072cca71e107319e80e1558aea"
+    },
+    {
       "path": "repository/app/test_master_subagents.py",
       "origin": "Authored metadata-only subagent count regression checks",
       "bytes": 25762,
@@ -229,8 +589,14 @@
     {
       "path": "repository/app/test_master_ui.js",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 18255,
-      "sha256": "e6fd5a8b9a01662a1e57ebfa3405e7b030543a6e84c060705a72a9676151dc40"
+      "bytes": 21488,
+      "sha256": "15d954daf7fb212464065898d5a441d6539f5c4de14cc4c90b0a7ac04c7d5e1c"
+    },
+    {
+      "path": "repository/app/test_master_voice_activity.py",
+      "origin": "reviewed source",
+      "bytes": 18334,
+      "sha256": "eb3679a6231bb37c8596d942d7e509c1465ed005b33e6aca195d9ce1711e7f83"
     },
     {
       "path": "repository/app/test_missing_media.py",
@@ -263,6 +629,18 @@
       "sha256": "2466131550e2f862abae335d22ff34b2b8745365ca9707312e267b71547cb3c4"
     },
     {
+      "path": "repository/app/test_polling_ui.js",
+      "origin": "audit fixes, coordinated optimizations, regression tests or release documentation",
+      "bytes": 15546,
+      "sha256": "9b500f88a67644da41fe3cee36e501c45fcbd9ddaaa4f72b7df718531ab16ea5"
+    },
+    {
+      "path": "repository/app/test_state_paging_ui.js",
+      "origin": "audit fixes, coordinated optimizations, regression tests or release documentation",
+      "bytes": 25343,
+      "sha256": "ad2b37d6fec0406f2a02509065697f1265fb6876ba3779c9bcb1e8f9049fac59"
+    },
+    {
       "path": "repository/app/test_stats.py",
       "origin": "Reviewed Stats application integration and isolated fixtures",
       "bytes": 8472,
@@ -271,20 +649,20 @@
     {
       "path": "repository/app/web/app.js",
       "origin": "Buddy companion integration reviewed source",
-      "bytes": 96989,
-      "sha256": "41c6776c3eecb9e1b3d5c8e950dad24fcd7566814fa3332ef08495fc92b83397"
+      "bytes": 170644,
+      "sha256": "eefb8bfc9745c055f4e01b91b32c9e1783952aa580cc72aeb4462e344b9b28ef"
     },
     {
       "path": "repository/app/web/index.html",
       "origin": "Buddy companion integration reviewed source",
-      "bytes": 29482,
-      "sha256": "e3c95b50452296462fab1b202f3f0263905e59834468cb32b59916b895373141"
+      "bytes": 47074,
+      "sha256": "4047e9da57740db7fc51e1f1c5fea615dbb823444455c13fc35bf719d6a79d51"
     },
     {
       "path": "repository/app/web/style.css",
       "origin": "Buddy companion integration reviewed source",
-      "bytes": 42400,
-      "sha256": "bcdab2eb903c9d1167fc1e3e84a940d43c99e71702abf28bb8a0c0f0be45cfa7"
+      "bytes": 49090,
+      "sha256": "5206354f7b76ce017d7b80c3b75dd54e5cfca324bd54be3480668f6a460ca555"
     },
     {
       "path": "repository/assemble_source_snapshot.py",
@@ -343,26 +721,26 @@
     {
       "path": "repository/deployment/Interlinked-Cooler-Publication.psm1",
       "origin": "Reviewed guarded cooler-only publisher and synthetic tests",
-      "bytes": 14244,
-      "sha256": "286353afe4c09397834202bb1438efcbdb0241f40360b3ea056efd9129cfc255"
+      "bytes": 15861,
+      "sha256": "bac79e2bfa13257f7ef93daa7c0127c78c5eb2fdc2fe4850f53fea6b1bd5c945"
     },
     {
       "path": "repository/deployment/Interlinked-Desktop-Publication.psm1",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 18129,
-      "sha256": "bd81d9028718568140ae606ecd65c9aa823d542ed97cbb709f974821b61e87da"
+      "bytes": 25010,
+      "sha256": "4622f445f65b0b6c518215bd3e4d0f48dcb61015a87a24a85be2f1c65e8b8af9"
     },
     {
       "path": "repository/deployment/Publish-Interlinked-Cooler.ps1",
       "origin": "Reviewed guarded cooler-only publisher and synthetic tests",
       "bytes": 3497,
-      "sha256": "9705bcd618f204412fad8e97730dfb663d95c59faa2e57eaf4642f14b87db0c9"
+      "sha256": "7c9b04786747f2a81c0bb1626c460f78e07b7b510b6d4f94c20ba8e131c3b988"
     },
     {
       "path": "repository/deployment/Publish-Interlinked-Desktop.ps1",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 4707,
-      "sha256": "dd6f1318befd4fe9723c9ccdabae355629f94c623a516cb819789aeb8afba3ca"
+      "bytes": 6273,
+      "sha256": "06c11487bd4b49a007897b80e2ed7ad327858d42c9f7656890abb5a3c883ff1d"
     },
     {
       "path": "repository/deployment/Publish-Interlinked-GUI.ps1",
@@ -379,26 +757,32 @@
     {
       "path": "repository/deployment/README.md",
       "origin": "GUI and source-library audit addition",
-      "bytes": 7300,
-      "sha256": "a16badc4655fba3f5ff5995871895a8d8b1773893787bee8e9201f92af8433d5"
+      "bytes": 12168,
+      "sha256": "3c12bf183c0748bb89ab7a39d3d883836b803a7d33ce970049c0bc225b01caf1"
     },
     {
       "path": "repository/deployment/Test-Interlinked-Cooler-Publication.ps1",
       "origin": "Reviewed guarded cooler-only publisher and synthetic tests",
-      "bytes": 15709,
-      "sha256": "2bf47bbe5b482d6d48f5139909d009b81124d9dcb3f6629ce35ae70d31773334"
+      "bytes": 20250,
+      "sha256": "9697998963ff32f434a241ac2b8fec1cb8204000c55ed72a98e254f687b53d20"
     },
     {
       "path": "repository/deployment/Test-Interlinked-Desktop-Publication.ps1",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 25355,
-      "sha256": "9c5c91a371ad5a91adae8f5cb19981dba68b45e3446d841abf58e33e038ac4f4"
+      "bytes": 40442,
+      "sha256": "1313118eea140e367242b520e0eb7f19d02bcc5c52c1cc7cb97f84cb6f6b75dc"
     },
     {
       "path": "repository/deployment/import_magix_presets.py",
       "origin": "GUI and source-library audit addition",
       "bytes": 16482,
       "sha256": "d1714a746432d560c9732633fa8ba042fc94f9634210e98b896872ec8085ef44"
+    },
+    {
+      "path": "repository/desktop/AiSpeechActivityTests.cs",
+      "origin": "reviewed source",
+      "bytes": 5232,
+      "sha256": "5db11b4eed29b7990ff03a62b8ee73dfdb3740aef6f863c3de263e74b5adecfb"
     },
     {
       "path": "repository/desktop/Build-CoolerStartup.ps1",
@@ -409,14 +793,26 @@
     {
       "path": "repository/desktop/Build-Desktop.ps1",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 6168,
-      "sha256": "edfffa43210f1ae36c3f503ac3b082814b24aa2e9431ab3bbc034a7b1efe2859"
+      "bytes": 6976,
+      "sha256": "baca41869dd8acd16e9aa6c37be886c0e6daf12ed65abfd5779df101fff2feec"
     },
     {
       "path": "repository/desktop/Build-MasterWorker.ps1",
       "origin": "Existing pending application source retained during MSI observer integration",
       "bytes": 1412,
       "sha256": "9138132adc7a8ddc035fcc59ad94f77f7524b3d5d6ec2673bc0d79c30ab3d64f"
+    },
+    {
+      "path": "repository/desktop/Build-MsiCpuOnly.ps1",
+      "origin": "MSI CPU-only fixed publisher, guarded migration and dependency provenance",
+      "bytes": 5428,
+      "sha256": "b453f0586a87f07f71928107c3ebb0fdf30c9be8d2a9a19bc7bda537ea533395"
+    },
+    {
+      "path": "repository/desktop/Build-MsiSensors.ps1",
+      "origin": "Reviewed Violet Web private metadata or MSI-specific sensor source; no private payloads",
+      "bytes": 5558,
+      "sha256": "8734b334584b094acfe9416f988cae9232bcea18707b8c384ae78da6e5ff9024"
     },
     {
       "path": "repository/desktop/CoolerStartupSetup.cs",
@@ -433,8 +829,14 @@
     {
       "path": "repository/desktop/Interlinked.cs",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 48954,
-      "sha256": "8487ffdc0f416d910111b450220018b1ecbf8801882d06fb55f10b9b9ddc9aff"
+      "bytes": 64787,
+      "sha256": "e0918ed09aefe696b03308b5fc87dbe3b3a26aed3f5d47c398f2beb32383a414"
+    },
+    {
+      "path": "repository/desktop/MSI-SENSORS.md",
+      "origin": "Reviewed Violet Web private metadata or MSI-specific sensor source; no private payloads",
+      "bytes": 7451,
+      "sha256": "254cf979930df5942ec3975488a9d6133b89e72258c766f8ed12ffe26489248a"
     },
     {
       "path": "repository/desktop/MasterCaptureFixture.cs",
@@ -449,16 +851,28 @@
       "sha256": "5300c3a5d01c2d94359dfc6907c7763a2462e2a0abce6a7ff3b0d11248faa3e6"
     },
     {
+      "path": "repository/desktop/MasterHelperCleanupTests.cs",
+      "origin": "authored isolated reconnect regression fixture",
+      "bytes": 11201,
+      "sha256": "e3e9cbc3d5f51fc536b26027c3782173eab5ce7c85dbd82e499d18053f8d22f6"
+    },
+    {
+      "path": "repository/desktop/MasterOptimizationTests.cs",
+      "origin": "audit fixes, coordinated optimizations, regression tests or release documentation",
+      "bytes": 11766,
+      "sha256": "8ea7301a79b8f3e498a1e072b09d239244da5f95aaeb6a55ad2e8678d2857f1b"
+    },
+    {
       "path": "repository/desktop/MasterRenderFixture.cs",
       "origin": "Authored native cooler rendering regression fixture",
-      "bytes": 16312,
-      "sha256": "1d1100718cf17c3f854ae015985406b7e3a52de8f0af638c091e471b551bf9cc"
+      "bytes": 51159,
+      "sha256": "7263c1d649104851f0927626be8879a1c0b831b3cbfcbc8d45f80835ed016c48"
     },
     {
       "path": "repository/desktop/MasterSchedulingTests.cs",
       "origin": "authored MASTER deadline and sender-notification regression fixture",
-      "bytes": 13734,
-      "sha256": "61f9ecb10b19ff26f7f715a6e7047d0d632d13e4be7faf5e8387e70e232fe3a2"
+      "bytes": 16037,
+      "sha256": "7510e14ad987058bc125c626adef6884d3e84397b3ed9a47a9fb10b9caf1bf27"
     },
     {
       "path": "repository/desktop/MasterTray.cs",
@@ -475,26 +889,86 @@
     {
       "path": "repository/desktop/MasterWorker.cs",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 72454,
-      "sha256": "151da0f637ae56087e77785634d0261e902fd68d5b9a1761bbdd019b3b02a88a"
+      "bytes": 164145,
+      "sha256": "505bc6ee75a908cb11a0a244362f19636aa9da0aba7f9a33f4cac412a29cdf5d"
+    },
+    {
+      "path": "repository/desktop/Migrate-MsiCpuOnly.ps1",
+      "origin": "MSI CPU-only fixed publisher, guarded migration and dependency provenance",
+      "bytes": 10309,
+      "sha256": "741d810f32e1e120c4425aac97d827d9929b44832db6f21f62276f8dbb66e898"
+    },
+    {
+      "path": "repository/desktop/MsiCpuOnly-LICENSE.txt",
+      "origin": "MSI CPU-only fixed publisher, guarded migration and dependency provenance",
+      "bytes": 16725,
+      "sha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5"
+    },
+    {
+      "path": "repository/desktop/MsiCpuOnly.cs",
+      "origin": "MSI CPU-only fixed publisher, guarded migration and dependency provenance",
+      "bytes": 13067,
+      "sha256": "d6698b10bba5535a2d8cf1cab3854c02291cd16af5b0b8690c9ca58adc9b306c"
+    },
+    {
+      "path": "repository/desktop/MsiSensorCommon.cs",
+      "origin": "Reviewed Violet Web private metadata or MSI-specific sensor source; no private payloads",
+      "bytes": 8751,
+      "sha256": "aa77d7bc95b8e645452488b1871e20bd81aecae680ece719855ff326c9801def"
+    },
+    {
+      "path": "repository/desktop/MsiSensorFixture.cs",
+      "origin": "Reviewed Violet Web private metadata or MSI-specific sensor source; no private payloads",
+      "bytes": 5798,
+      "sha256": "343d6755d4ea8037a0e3596b4efaca52b835cf232d79fdf03ae24a8b39fc1cc3"
+    },
+    {
+      "path": "repository/desktop/MsiSensorNative.cs",
+      "origin": "Reviewed Violet Web private metadata or MSI-specific sensor source; no private payloads",
+      "bytes": 4001,
+      "sha256": "64281093dbe4d978ef5ff90ec663d8b208a23b96a2547303c8768b2a4cbbb4b2"
+    },
+    {
+      "path": "repository/desktop/MsiSensorPublisher.cs",
+      "origin": "Reviewed Violet Web private metadata or MSI-specific sensor source; no private payloads",
+      "bytes": 6347,
+      "sha256": "e284c9968ce264d3646a3ef8d9a33d8f60dc190cd1d15554db92cf9b795020c6"
+    },
+    {
+      "path": "repository/desktop/MsiSensorSetup.cs",
+      "origin": "Reviewed Violet Web private metadata or MSI-specific sensor source; no private payloads",
+      "bytes": 16316,
+      "sha256": "99bc59ef77d8f163f69d2bb115d92928cc98270a32176e7567f131abd3e769ec"
+    },
+    {
+      "path": "repository/desktop/New-VioletAnimationBundle.ps1",
+      "origin": "Reviewed native Violet animation resource, playback and tests",
+      "bytes": 5464,
+      "sha256": "0e684c8d84b2f4e58775eb0867cf7462ffa382c338aa63baee949aa77f9a4f72"
     },
     {
       "path": "repository/desktop/README.md",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 25697,
-      "sha256": "c66126c51c3d96f4f05adbd57907175a0018eec13abbdbbe498b70d25c62b32e"
+      "bytes": 34456,
+      "sha256": "a9d5d77820c022cc8abf9077d4684e7414c6f881184ecced401f87069d5577e7"
     },
     {
       "path": "repository/desktop/SensorStartup.cs",
       "origin": "Reviewed cooler startup source and isolated fixtures",
-      "bytes": 2776,
-      "sha256": "fd6842591326552aa0af9bdbc1e7aa728b59fd7daa95bb85aa2dcdb562de159a"
+      "bytes": 2909,
+      "sha256": "389dd4538b89d2790151d5c2c365c88720dcc6d36105d1b1d25a625e0a248e97"
     },
     {
       "path": "repository/desktop/SensorStartupNative.cs",
       "origin": "Reviewed cooler startup source and isolated fixtures",
       "bytes": 4187,
       "sha256": "62feed7dd26064519c49b16fb66990bb5c4855e9b4ab07e71ae4a1afb582ad5e"
+    },
+    {
+      "path": "repository/desktop/Test-AiSpeechActivity.ps1",
+      "origin": "reviewed source",
+      "bytes": 1695,
+      "sha256": "61d2ac228596e63e10fd1c3ff60d77f305ae254c41f2dbc9c97e5698210464da"
     },
     {
       "path": "repository/desktop/Test-CoolerStartup.ps1",
@@ -511,8 +985,20 @@
     {
       "path": "repository/desktop/Test-Desktop.ps1",
       "origin": "reviewed WebView2 desktop host, tests and guarded publication",
-      "bytes": 5768,
-      "sha256": "37fb9c7bf99b5b818063d465d2689949b3cc203cf5f5a841bd47a425404078cc"
+      "bytes": 5878,
+      "sha256": "9b0f3b911ed76ddbc90afa50ab21f2fc81b0d53b9f5e157e6fc422170b48047d"
+    },
+    {
+      "path": "repository/desktop/Test-Master-HelperCleanup.ps1",
+      "origin": "authored isolated reconnect regression fixture",
+      "bytes": 3394,
+      "sha256": "5d4d26030d06b754efa9c3f045520ac088f4a4970cf4afc2c98b726118fc0210"
+    },
+    {
+      "path": "repository/desktop/Test-Master-Optimizations.ps1",
+      "origin": "audit fixes, coordinated optimizations, regression tests or release documentation",
+      "bytes": 3656,
+      "sha256": "d288ab4f1566ce57a04eee4c7f840383b3fceb275f2c40b630d7297608f04d26"
     },
     {
       "path": "repository/desktop/Test-Master-Render.ps1",
@@ -533,10 +1019,40 @@
       "sha256": "e86b2bd31462a5095e23343b155ae1e876e293788b0dfe59237f18ec25d3c7ef"
     },
     {
+      "path": "repository/desktop/Test-MsiSensors.ps1",
+      "origin": "Reviewed Violet Web private metadata or MSI-specific sensor source; no private payloads",
+      "bytes": 3246,
+      "sha256": "e29e6784037f650f108dedd2a1a3b3eec38112f6e615f7121da875d28f404ee5"
+    },
+    {
+      "path": "repository/desktop/Test-SensorMapAccess.ps1",
+      "origin": "Reviewed sensor map ACL regression and startup source",
+      "bytes": 2795,
+      "sha256": "92ca5aa666bbae9492c963bd96ae2f305d2238ae216087e561852ca9f6d6978b"
+    },
+    {
       "path": "repository/desktop/Test-Violet-Status.ps1",
       "origin": "authored Violet status rendering regression fixture",
       "bytes": 1475,
       "sha256": "d9db0e7626ab0a8e8cab3fc9e7867a30604fc82cda3b539a5193f03c0e3e2300"
+    },
+    {
+      "path": "repository/desktop/Test-VioletAnimations.ps1",
+      "origin": "Reviewed native Violet animation resource, playback and tests",
+      "bytes": 1249,
+      "sha256": "3e20e9100e2fc52981380884a332eeab679dd37e8b2a6285784bf742f4191656"
+    },
+    {
+      "path": "repository/desktop/VIOLET-LIVE-TELEMETRY.md",
+      "origin": "reviewed source",
+      "bytes": 4415,
+      "sha256": "8dd2b40228396bc5321a6fe637cde849b707b1967237efac9220b6772908ebbc"
+    },
+    {
+      "path": "repository/desktop/VioletAnimationTests.cs",
+      "origin": "Reviewed native Violet animation resource, playback and tests",
+      "bytes": 27184,
+      "sha256": "31e15b4150de5708231699a4192960473d93ff956634115289cb57507c89ce4e"
     },
     {
       "path": "repository/desktop/VioletStatusFixture.cs",
@@ -571,14 +1087,20 @@
     {
       "path": "repository/desktop/test_master_worker.py",
       "origin": "Existing pending application source retained during MSI observer integration",
-      "bytes": 9145,
-      "sha256": "f3ceaa583b75017b556847baa84772bddf593557a5a84fde1bc091468dcfce47"
+      "bytes": 9170,
+      "sha256": "ba35104adde5532405d4dce7ea99e169d5e284c74c80968833823c572dee34f4"
     },
     {
       "path": "repository/docs/MAGIX-WORKSPACE-START-HERE.txt",
       "origin": "documented extension adaptation",
       "bytes": 4659,
       "sha256": "fbc0ffba188af90d250da5b21f84bc57b7ca4c6c9d550bff42e60b86b5bbaf96"
+    },
+    {
+      "path": "repository/handoff/AUDIT-FIXES-2026-11-02.md",
+      "origin": "audit fixes, coordinated optimizations, regression tests or release documentation",
+      "bytes": 7484,
+      "sha256": "8e08706c7bd5c1edff57f8ef781742b6bac1363eae3c6cc94e7533c035eeb090"
     },
     {
       "path": "repository/handoff/Pull-INTERLINKED-Context.ps1",
@@ -896,7 +1418,7 @@
       "path": "repository/work/magix-buddy/candidate/magix_projects.py",
       "origin": "Buddy companion integration reviewed source",
       "bytes": 31015,
-      "sha256": "2c3db9938e243f680c928c4199a7371661cd68c6650eef5bb128225cc3e35375"
+      "sha256": "0650ab24e8d6b36ff2bd139408fcb565009e7f66d2952bec5dc91742dd7ae63f"
     },
     {
       "path": "repository/work/magix-legacy-path-option/MAGIX-Legacy-Path.ps1",
@@ -1188,13 +1710,13 @@
     }
   ],
   "summary": {
-    "files": 197,
-    "bytes": 2409440,
-    "pythonSourcesParsed": 73
+    "files": 284,
+    "bytes": 4288903.0,
+    "pythonSourcesParsed": 116
   },
   "preservedBaseline": "Original SOURCE-MANIFEST, MAGIX-EXTENSION-MANIFEST, frozen workspace base and original launcher source remain exact. Buddy launcher is a separate current source addition.",
   "privacy": "No personal catalog, media audit report, deployment seal, source media, cache, credential or runtime binary is included.",
-  "validationScope": "Current source hashes/Python syntax and isolated application/lifecycle, renderer/scheduling, native preview/worker and publisher checks. Private runtime state, packages and acceptance receipts remain excluded. This review performs no deployment, USB/sensor operation, startup task registration or reboot.",
+  "validationScope": "Current source hashes, Python syntax and isolated application, history, remote-worker recovery, UI, rendering and package publication fixtures. Earlier named acceptance sections retain historical provenance; this revision performs no installed application/node migration, live inference, USB/sensor operation, startup registration or production archive changes.",
   "buddyValidation": {
     "syntheticCompanionCases": 45,
     "syntheticReportRendererChecks": 18,
@@ -1319,5 +1841,55 @@
     "taskOrHardwareMutation": false,
     "rebootTested": false,
     "validationScope": "Isolated source and mocked/native refusal fixtures. Preserved installed startup evidence concerns a separately frozen artifact; hardware/reboot acceptance remains distinct."
+  },
+  "temperatureStartupAclFix": {
+    "scope": "Pinned-user protected section DACL corrects native vendor SECTION_ALL_ACCESS denial. No GUI or worker payload change.",
+    "validation": "79 startup refusal/ownership/resource checks; native isolated legacy-denial and fixed-access regression; installed hash/ACL/task readback and real scheduled publisher with automatic CPU/GPU pickup.",
+    "rebootTested": false
+  },
+  "buddyAIIntegration": {
+    "sourceTests": 15,
+    "guiHttpTests": 6,
+    "guiChecks": 46,
+    "aiUiChecks": 26,
+    "publicationChecks": 139,
+    "scope": "Merged source and isolated tests; installation, model calibration and actual Buddy UI acceptance require separate release receipts."
+  },
+  "coolerAIFlow": {
+    "reviewedFiles": 23,
+    "uiChecks": 81,
+    "renderChecks": 118,
+    "masterTests": 81,
+    "recoveryTests": 26,
+    "aiObservationTests": 12,
+    "scope": "Reviewed cooler source and synthetic checks. Concurrent AI-node/MSI jobs edits retain their preceding manifest hashes and are excluded from the cooler package. Installed and physical acceptance are separate release evidence."
+  },
+  "autoModelPicker": {
+    "routingModes": [
+      "balanced",
+      "fast",
+      "best_quality"
+    ],
+    "qualityFloor": 90,
+    "balancedBand": 3,
+    "liveBenchmark": "NOT_PERFORMED",
+    "installedAcceptance": "NOT_PERFORMED",
+    "scope": "Synthetic routing, transport, bridge, worker, Buddy and UI verification; private frozen project corpus and guarded candidate delivery.",
+    "benchmarkFixtureVersion": "actual-project-packets-20261102-v3",
+    "benchmarkCorpusSha256": "f3b5b4299ff6eb60f1f89665aae02d18e20ce5b50b413135fbac82b744f95f4c"
+  },
+  "auditFixes20261102": {
+    "report": "repository/handoff/AUDIT-FIXES-2026-11-02.md",
+    "uiChecks": 381,
+    "launcherLoggingAndGuiChecks": 57,
+    "nativeRenderingSchedulingAndCleanupChecks": 597,
+    "desktopPublicationChecks": 150,
+    "coolerPublicationChecks": 202,
+    "nodeMigrationChecks": 44,
+    "installedAcceptance": "NOT_PERFORMED",
+    "liveTwoPcAcceptance": "NOT_PERFORMED",
+    "scope": "Synthetic source checks; specific component tests and compatibility limits are documented in the report.",
+    "aiCasesPassed": 243,
+    "optionalNodeAcceptanceCasesSkipped": 4
   }
 }

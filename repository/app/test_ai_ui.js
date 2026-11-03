@@ -1,0 +1,56 @@
+'use strict';
+// Isolated DOM/API fixtures. No microphone, speech, model, or personal file access.
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync(path.join(__dirname,'web/app.js'),'utf8'),html=fs.readFileSync(path.join(__dirname,'web/index.html'),'utf8');
+const models=source.split('// BEGIN AI MODELS\n')[1].split('// END AI MODELS')[0];
+const ui=source.split('// BEGIN AI INTERFACE\n')[1].split('// END AI INTERFACE')[0];
+const native=fs.readFileSync(path.join(__dirname,'../desktop/Interlinked.cs'),'utf8');
+const elements={},requests=[],checks=[];
+function element(){return {hidden:false,disabled:false,textContent:'',value:'',checked:false,files:[],selectedOptions:[],children:[],attributes:{},listeners:{},classList:{toggle(){}},append(...v){this.children.push(...v);},replaceChildren(...v){this.children=v;},setAttribute(k,v){this.attributes[k]=v;},addEventListener(k,fn){this.listeners[k]=fn;}};}
+let snapshot={hosts:[{id:'local',available:true,inventory:{version:'fixture'}}],models:[{host:'local',id:'fixture',digest:'a'.repeat(64),capabilities:['completion','vision'],verified:{text:true}}],projects:[{id:'sample',label:'<script>untrusted</script>'}],approvals:{},settings:{},conversations:[],tasks:[]};
+let bridgeState={connectionAvailable:true,pendingUnloads:[]};
+let conversation={id:'chat',title:'Test',status:'COMPLETED',messages:[{role:'assistant',content:'<img onerror=alert(1)>',sources:[{projectId:'sample',path:'x.py',stale:true}]}]},pendingConversation=null;
+let task={id:'task',projectId:'sample',status:'REVIEW_PENDING',prompt:'Fix fixture',review:{status:'pending'},result:{sha256:'hash',diff:'<script>literal</script>'}};
+const context={document:{createElement:()=>element(),documentElement:{dataset:{}},body:{classList:{toggle(){}}},hidden:false},$:id=>elements[id]??=element(),stopped:false,confirm:()=>true,masterSetView:()=>{},jobsHide:()=>{},setTimeout,clearTimeout,ArrayBuffer,DataView,Float32Array,Uint8Array,navigator:{},console,api:async(route,body)=>{requests.push({route,body});if(route==='/api/ai/state')return snapshot;if(route==='/api/ai/bridge/status')return bridgeState;if(route.startsWith('/api/ai/conversation?'))return pendingConversation?await pendingConversation:conversation;if(route.startsWith('/api/ai/task?'))return task;if(route==='/api/ai/chat')return {...conversation,status:'QUEUED'};if(route==='/api/ai/search')return [{projectId:'sample',path:'a.txt',excerpt:'<b>literal</b>',stale:true}];return {};}};
+vm.createContext(context);vm.runInContext(models+'\n'+ui,context);
+function check(ok,label){assert.ok(ok,label);checks.push(label);}
+(async()=>{
+ check(context.aiAudioKind('speech')==='speech'&&context.aiAudioKind('general')==='general'&&context.aiAudioKind('')==='speech','Audio intent defaults to speech and preserves general-audio selection');
+ check(context.aiRunning('queued')&&context.aiRunning('REVIEWING')&&!context.aiRunning('REVIEW_PENDING'),'Running status normalization retains review-pending as a terminal review state');
+ check(!context.aiTaskModel(task).canApply,'Unreviewed results cannot enable application');
+ check(context.aiTaskModel({...task,status:'READY_FOR_REVIEW'}).canApply&&!context.aiTaskModel({...task,status:'READY',result:{}}).canApply,'Applying needs a reviewable state and exact result hash');
+ check(context.aiAttachmentValid({type:'audio/wav',size:40})&&!context.aiAttachmentValid({type:'text/html',size:40})&&!context.aiAttachmentValid({type:'image/png',size:17*1024*1024}),'Attachment media and byte bounds precede upload');
+ check(ui.includes("audioKind:aiAudioKind($('ai-audio-kind').value)")&&ui.includes("$('ai-audio-kind').value='speech'")&&source.includes("if(file.type.startsWith('audio/'))$('ai-audio-kind').value='general'"),'Chat sends selected audio intent; microphone defaults to speech and uploaded recordings to general audio');
+ const wav=new DataView(context.aiWav([new Float32Array([-2,-1,0,1,2])],16000));check(wav.byteLength===54&&wav.getUint32(24,true)===16000&&wav.getUint16(22,true)===1&&wav.getInt16(44,true)===-32768&&wav.getInt16(52,true)===32767,'Microphone WAV is mono PCM16 with bounded samples and declared rate');
+ await context.aiPoll();check(!requests.some(r=>r.body!==undefined),'Opening AI workspace reads state without inference or calibration');
+ bridgeState={connectionAvailable:true,pendingUnloads:[{id:'a'.repeat(32),host:'local',model:'<b>model</b>',digest:'d'.repeat(64)}]};await context.aiBridgePoll();
+ check(elements['ai-bridge-requests'].children[1].children[0].textContent==='local / <b>model</b>','Unload confirmation displays literal model identity');
+ context.confirm=()=>false;await elements['ai-bridge-requests'].children[1].children[2].listeners.click();check(!requests.some(r=>r.route==='/api/ai/bridge/confirm-unload'),'Declined UI confirmation never dispatches unload approval');
+ context.confirm=()=>true;await elements['ai-bridge-requests'].children[1].children[2].listeners.click();check(JSON.stringify(requests.find(r=>r.route==='/api/ai/bridge/confirm-unload').body)===JSON.stringify({id:'a'.repeat(32)}),'UI approves only the recorded unload ID without an idle-claim argument');
+ bridgeState={connectionAvailable:true,pendingUnloads:[]};
+ check(elements['ai-model-override'].children[0].value==='','Automatic model choice has an empty value, not its display label');
+ check(elements['ai-task-model-override'].children[0].value===''&&html.includes('id="ai-routing-mode"')&&html.includes('id="ai-task-routing-mode"'),'Assistant and workers have independent Auto modes and model overrides');
+ check(context.aiRoutingMode('fast')==='fast'&&context.aiRoutingMode('best_quality')==='best_quality'&&context.aiRoutingMode('unknown')==='balanced','Auto mode defaults to Balanced');
+ context.aiRestoreChatSelection({routingMode:'fast',manualOverride:{host:'msi',model:'missing'}});
+ check(elements['ai-routing-mode'].value==='fast'&&elements['ai-model-override'].value===JSON.stringify(['msi','missing']),'Reopening a conversation restores its mode and preserves unavailable manual override');
+ context.aiSelectOptions('ai-model-override',[],'Auto');check(elements['ai-model-override'].value===JSON.stringify(['msi','missing']),'Inventory changes cannot silently replace a manual override with Auto');
+ context.aiRestoreChatSelection({routingMode:'balanced'});
+ context.aiRenderConversation({...conversation,model:{host:'msi',id:'fixture'},routing:{mode:'fast',reason:'<b>literal route</b>',fallback:true,limitedEvidence:true}});
+ check(elements['ai-route'].textContent.includes('msi / fixture')&&elements['ai-route'].textContent.includes('<b>literal route</b>')&&elements['ai-route'].textContent.includes('Limited evidence')&&elements['ai-route'].textContent.includes('Classification fallback'),'Routing identity, literal reason and limited fallback evidence are visible');
+ check(ui.includes("routingMode:aiRoutingMode($('ai-routing-mode').value)")&&ui.includes("routingMode:aiRoutingMode($('ai-task-routing-mode').value)")&&ui.includes("...aiOverride($('ai-task-model-override').value)"),'Both dispatch paths send their independent mode and worker override');
+ check(elements['ai-context-projects'].children[0].children[0].children[1].textContent==='<script>untrusted</script>','Project labels are displayed as literal text');
+ check(elements['ai-context-projects'].children[0].children[1].disabled,'Unapproved project indexing is disabled');
+ context.aiRenderConversation(conversation);check(elements['ai-messages'].children[0].children[1].textContent==='<img onerror=alert(1)>','Model output is literal text');
+ check(elements['ai-messages'].children[0].children[2].textContent.includes('Stale snapshot'),'Source staleness remains visible beside the response');
+ snapshot={...snapshot,tasks:[task]};await context.aiPoll();elements['ai-task-list'].children[0].listeners.click();await new Promise(r=>setImmediate(r));check(elements['ai-task-apply'].disabled&&elements['ai-task-review'].textContent.includes('pending'),'Pending independent review is visible and apply remains unavailable');
+ await context.aiApplyTask();check(!requests.some(r=>r.route==='/api/ai/tasks/apply'),'Unreviewed result cannot dispatch an apply request');
+ task={...task,status:'READY_FOR_REVIEW'};await context.aiReadTask();await context.aiApplyTask();check(requests.find(r=>r.route==='/api/ai/tasks/apply')?.body.expectedResultHash==='hash','Explicit application includes the exact displayed result identity');
+ context.$('ai-search-query').value='fixture';await context.aiSearch();check(elements['ai-search-results'].children[0].children[1].textContent==='<b>literal</b>'&&elements['ai-search-results'].children[0].children[2].textContent.includes('Stale'),'Search excerpts and staleness render safely');
+ snapshot={...snapshot,conversations:[{id:'one',title:'One'},{id:'two',title:'Two'}]};await context.aiPoll();let release;pendingConversation=new Promise(r=>{release=r;});const old=elements['ai-conversations'].children[0].listeners.click();pendingConversation=null;conversation={...conversation,id:'two',title:'Two'};await elements['ai-conversations'].children[1].listeners.click();release({...conversation,id:'one',title:'Old'});await old;check(elements['ai-chat-title'].textContent==='Two','Late conversation response cannot replace a newer selection');
+ let releaseMic,tracksStopped=0;context.navigator.mediaDevices={getUserMedia:()=>new Promise(r=>{releaseMic=r;})};context.aiSetView();const recording=context.aiStartRecording();context.aiHide();releaseMic({getTracks:()=>[{stop(){tracksStopped++;}}]});await recording;check(tracksStopped===1&&!context.document.documentElement.dataset.aiMicrophoneArmed,'Leaving the view during microphone permission stops the delayed stream');
+ check(!ui.includes('innerHTML')&&!ui.includes('eval('),'AI content never becomes executable HTML or script');
+ check(native.includes('CoreWebView2PermissionKind.Microphone')&&native.includes('aiMicrophoneArmed')&&native.includes('MessageBoxButtons.YesNo')&&native.includes('!main || options.Smoke'),'Microphone permission requires the armed main AI view and an explicit native prompt; smoke cannot capture');
+ check(native.includes('VoiceCall(aiVoice, "Speak", text, 19)')&&native.includes('aiVoiceTokens.ContainsKey(id)'),'Native speech uses installed token selection and treats speech text as non-XML');
+ check(html.includes('id="ai-view-tab"')&&html.includes('id="ai-panel-workers"')&&html.includes('value="audio_general"')&&html.includes('value="ai">AI workspace preferences'),'AI workspace includes worker, general-audio calibration, and settings history controls');
+ console.log(JSON.stringify({status:'PASS',count:checks.length,checks,scope:'Synthetic DOM/API/audio encoding and desktop permission source checks; native microphone and installed speech acceptance separate'},null,2));
+})().catch(error=>{console.error(error);process.exitCode=1;});

@@ -2,11 +2,11 @@
 
 The Windows application hosts the existing Matrix interface in Microsoft WebView2. It starts the reviewed Python service with `--desktop --no-browser`, receives the ephemeral loopback address through its private stdout pipe, and keeps the service running while its window is open. It uses the existing sealed Python runtime without installing Python packages or replacing the MAGIX launcher.
 
-Production layout adds `INTERLINKED-Desktop/INTERLINKED.exe`, the isolated MASTER worker, the approved Violet atlas and sealed package companions beside the existing `INTERLINKED-App` folder. Run normally on THIS-MACHINE as Jude. The service verifies its original deployment path, exact fifteen-file v7 GUI seal (including MASTER, MSI Jobs, Buddy, Stats and configuration recovery), private project index and launcher hashes. The current GUI instance and MAGIX/cache locks remain authoritative.
+Production layout adds `INTERLINKED-Desktop/INTERLINKED.exe`, the isolated MASTER worker, the approved Violet atlas and sealed package companions beside the existing `INTERLINKED-App` folder. Run normally on THIS-MACHINE as Jude. The service verifies its original deployment path, exact twenty-six-file v10 GUI seal (including MASTER, MSI Jobs, Buddy, Stats, AI and history), private project index and launcher hashes. The current GUI instance and MAGIX/cache locks remain authoritative.
 
 With MASTER background mode enabled, closing the main window hides it in the tray. The tray's explicit **Exit INTERLINKED** requests authenticated `/api/quit`; busy operations and managed sessions still refuse shutdown. With background mode disabled, closing the window requests the same guarded exit. Save and close MAGIX, confirm Done, and wait for completion before exiting. Done does not save to MSI; saving, verification and exact-confirmation release retain their existing controls. Neither the host nor its test harness kills the backend or MAGIX processes. A renderer failure offers **Reopen interface**, which recreates the embedded interface while retaining the service and session.
 
-The application uses an InPrivate WebView2 profile, disables host objects, web messaging, developer tools and browser context menus, and restricts navigation and resources to the exact current local origin. Media review opens a controlled application window. JSON/CSV reports use native Save dialogs. Camera, microphone, location and other browser permissions are denied; local multiple report downloads are allowed because every download is separately restricted to an expected local Blob report and explicitly saved. The capability token is never written to desktop receipts or logs.
+The application uses an InPrivate WebView2 profile, disables host objects, developer tools and browser context menus, and restricts navigation and resources to the exact current local origin. The main interface alone has the restricted Windows speech-message bridge; other views disable web messaging. Media review opens a controlled application window. JSON/CSV reports use native Save dialogs. Microphone access requires the Assistant's explicit Record action and a native permission prompt; camera, location and other browser permissions are denied. Local multiple report downloads are allowed because every download is separately restricted to an expected local Blob report and explicitly saved. The capability token is never written to desktop receipts or logs.
 
 The host has one instance per kit (or demo fixture). A second launch activates its existing window. The original backend lock also prevents competing browser/desktop services.
 
@@ -26,13 +26,96 @@ Use an absent or empty output folder. `-VioletAtlas` is mandatory and must ident
 
 ## MASTER command deck
 
+The cooler supports two selectable layouts while retaining the approved Violet
+artwork, focused-detail strip and independent temperature readouts. Command Deck
+adds local/MSI model lanes to the existing project stations. Violet Web keeps
+Violet central under **THIS-MACHINE RUNS VIOLET** and shows current work on one
+overview: detailed branches for one or two active projects, compact project
+cards for three through six, and named status/count cards for seven through
+twelve. Surviving cards retain their slots; a density increase is immediate and
+a decrease waits eight stable seconds. There are no overflow pages, historical
+alert counts, unused loaded models, or stale activity cards.
+Unassigned Assistant, Buddy, calibration, bridge and Codex activity stays in
+source-labelled central badges. These badges count logical tasks, deduplicating
+their worker/model/call records, and never consume a project slot or change its
+density mode. Shared physical model identity does not transfer one project's
+activity state or request count to another project.
+
+Confirmed assignment, parent, model and bridge relationships create activity
+links. Each active project also has the approved visual association line to
+Violet; that line does not imply control, bridge traffic or an inference call.
+Project lines leave marked card-border ports and converge behind Violet's
+opaque artwork, which draws over their endpoints without a surrounding box.
+Routes use exterior gutters when unassigned badges obstruct a direct spoke.
+Codex and Assistant work never acquire inferred local review-model connections.
+Working/reviewing web borders and active links carry denser binary particles
+at 55 pixels per second, with short trails and a restrained glow. The original
+approved atlas is preserved. Queued cards remain stationary; a completed worker
+model also stays stationary while its independent reviewer runs. Yellow input
+and red failure cues pulse slowly until a fresh source clears them. A green
+finished-activity cue lasts three seconds from its immutable source transition;
+polling or result retrieval cannot replay it or imply that checks passed.
+
+The reviewed 30 FPS character package is embedded in the worker executable,
+without adding installed artwork files or changing the original atlas. Fourteen
+sequences retain their durations and variable frame counts. The native compositor
+moves coherent original poses at 30 Hz and switches expressions discretely,
+avoiding optical-flow blends across eyes and printed lettering. A matching
+silhouette matte hides the project-line endpoints beneath Violet without a box.
+The same player serves both layouts; calibrated live-mini capture stays separate.
+Missing or invalid embedded resources retain the original-atlas fallback.
+
+Selection uses fresh observed work, model requests and independent review, with
+failure and input taking priority. Verified idle requires complete activity
+coverage; unavailable coverage remains neutral. Completion and verified check
+success are distinct one-shots with startup suppression and bounded consumed
+identities. Reading a result does not restart an animation or establish a test
+pass. Listening follows actual Assistant microphone capture; speaking follows
+browser playback or the current SAPI stream's observed runtime status. A fresh
+Violet interruption selects Concerned, and the bounded established-stream
+recovery scheduler supplies Reconnecting. These are private, expiring display
+observations; see [live animation telemetry](VIOLET-LIVE-TELEMETRY.md).
+Review-only manual selection and fixture clocks are not production controls.
+
+`New-VioletAnimationBundle.ps1` validates the exact reviewed private manifest,
+source seal and 86 immutable PNG keys, then packs only bounded timing/identity
+metadata and image bytes. No private source paths enter the resource. Supply
+`-VioletAnimationPackage` to the desktop build for this resource; its absence
+retains the legacy build path. Private assets and compiled resources stay out of
+Git. Updating the embedded artwork changes the worker hash and requires the full
+guarded desktop publication and exact protected startup-binding review.
+
+The private worker-only `coolerDisplay` enrichment supplies bounded active-chat
+display names and per-host resource records; transcript text, paths, prompts and
+credentials are excluded. Long chat names wrap to two lines and ellipsize. The
+two fixed resource cards retain 42-pixel CPU/GPU temperature numerals (34 for
+three digits), smaller units, a small GPU-load bar and VRAM used/total for
+THIS-MACHINE and MSI. VRAM text has clearance above the bottom card border.
+Each field expires independently
+after five seconds; missing readings are dashes, never old values or zero. The
+outer frame and resource cards have no particle/attention animation. Empty
+confirmed coverage says **NO ACTIVE WORK**; unavailable or partial activity
+coverage says **ACTIVITY UNAVAILABLE**. These distinctions do not stop otherwise
+fresh independent resource readings. The layout setting remains independent of
+dashboard versus calibrated live-mini Violet sources.
+
+Connection attempts and statuses are fenced by request identity. Cancellation
+interrupts handshake and acknowledgment waits; cleanup only releases owned
+helpers and maps. Transient loss after acknowledged delivery permits bounded
+service-scheduled recovery, while competing writers, integrity and ownership
+failures require an explicit user retry. A worker replacement waits for the
+previous owned process to exit. Display recovery never grants sensor permission.
+These behaviors require the matching backend and native worker; publishing only
+the renderer is insufficient. App/worker changes also require an exact reviewed
+update of any protected automatic-startup bindings.
+
 MASTER shows project activity separately from evidenced project health, with an exact 480 × 480 cooler-frame preview. Rendering and USB transfers run in `INTERLINKED.Master.Worker.exe`, outside the workflow-owning Python service. Its private input carries bounded JSON snapshots/settings; its output carries length-prefixed JPEGs. Status and sensor messages use its separate diagnostic pipe. A worker failure cannot complete, save, release or terminate a project operation.
 
 The cooler uses the reviewed Matrix layout: the original approved Violet atlas is centered above three stations, each with one aggregate activity figure. Status-colored binary streams surround active wires and figures; stale/unknown stations have no active flow. The compact detail strip follows the focused project, prioritizing current check failures before input requests. Additional registered projects page in groups of three around that focus. Chat turn completion is labeled separately from build/test check results. The real attention queue supplies the review count; missing observations remain unavailable. Temperatures use fresh verified independent readings, with adjacent large CPU/GPU labels and values. A snapshot older than fifteen seconds neutralizes project status and hides temperature values.
 
-The renderer also shows observed working subagents: a total below the source and alert text to Violet's right, and a compact `SUBS` count above each project's existing figure. `N?` means N confirmed working with incomplete tracking; `—` means unavailable, not zero. The total covers all registered projects, including later pages. Counts do not change activity, build/test evidence, attention priority or the approved artwork. A stale whole snapshot hides all counts. The desktop MASTER panel shows the same summaries and explains their source under **Source & evidence**. This addition requires a newly sealed app/worker publication; source fixtures do not update the installed display.
+The renderer also shows observed working subagents: a total below the source and alert text to Violet's right, and a compact `SUBS` count above each project's existing figure. Counts use numerical values without a question-mark suffix; `—` means unavailable, not zero. Partial coverage remains in the underlying status and desktop hover/source explanation. The total covers all registered projects, including later pages. Counts do not change activity, build/test evidence, attention priority or the approved artwork. A stale whole snapshot hides all counts. The desktop MASTER panel shows the same summaries and explains their source under **Source & evidence**. This addition requires a newly sealed app/worker publication; source fixtures do not update the installed display.
 
-For a renderer-only update, `../deployment/Publish-Interlinked-Cooler.ps1` verifies the existing installed baseline and a complete reviewed baseline plan: 26 files for v5, 28 for v6 or 29 for v7, but permits changes only to the worker executable and its matching desktop seal. It preserves the GUI version, approved atlas, launchers and dependencies, retains exact backups, and reuses the full publisher's session/process/ownership guards, including Stats. It never bypasses a held lock or migrates the GUI. The broader desktop publisher remains responsible for GUI/configuration releases.
+For a renderer-only update, `../deployment/Publish-Interlinked-Cooler.ps1` verifies the existing installed baseline and a complete reviewed baseline plan: 26 files for v5, 28 for v6, 29 for v7, 32 for v8 or 35 for v9, but permits changes only to the worker executable and its matching desktop seal. It preserves the GUI version, approved atlas, launchers and dependencies, retains exact backups, and reuses the full publisher's session/process/ownership guards, including Stats. It never bypasses a held lock or migrates the GUI. The broader desktop publisher remains responsible for GUI/configuration releases.
 
 Native render checks compile only a synthetic fixture entry point and never run the worker's USB, capture or sensor setup paths:
 
@@ -43,6 +126,15 @@ Native render checks compile only a synthetic fixture entry point and never run 
 The fixture checks status/evidence priority, workspace freshness, turn completion, sensor validity, focused-project paging, changing rendered pixels without diagnostic animation, and inactive stale stations. The optional artwork remains outside Git; the receipt records its SHA-256. Inspect the generated PNGs for layout. Synthetic checks do not certify physical LCD appearance, delivered cadence or real sensor availability.
 
 Display ownership is requested by **Connect display** or the separately configured, hash-bound automatic-startup opt-in described below. TRCC or another USB writer causes a visible conflict; MASTER does not close it or change TRCC startup through its display controls. The worker uses the already installed vendor transport, verifies private helper-file pins, creates its image map exclusively and sends picture packets only. MASTER-created helpers are contained in owned Windows Job Objects and have separate input pipes so they cannot consume worker commands. Borrowed helpers are never terminated. The optional vendor sensor reader reports absent, stale or unverified readings as unavailable; successful image delivery does not prove temperature independence.
+
+Owned LCD helpers receive the vendor's graceful-exit marker for up to two seconds,
+then an owned-process termination fallback with up to one second to confirm exit.
+The map, process and Job Object remain owned until exit is confirmed; a new
+connection cannot replace an unclean predecessor. Backend cleanup and shutdown
+allow five seconds, and automatic startup cannot override pending cleanup or
+recovery. These bounds do not by themselves establish physical reconnect success.
+Run `Test-Master-HelperCleanup.ps1 -OutputDirectory <fresh-private-folder>` for
+isolated child-process/map checks; it never starts vendor USB or sensor helpers.
 
 The source renderer now supports normal targets of 5, 10, 15 and 30 FPS, with 30 as the default for new preferences. Existing saved lower targets remain valid. Frames use GDI+ JPEG quality 100. Carried monotonic deadlines skip missed slots instead of queuing catch-up frames; a separate USB frame-ready notification wakes the sender without consuming the preview notification. Both consumers retain the latest immutable encoded frame. Cached-picture repeats remain limited to once per second, and more than three seconds without new production stops the stream. Quality 100 remains lossy JPEG; the measured encoder uses 4:2:0 chroma sampling.
 
@@ -76,6 +168,8 @@ Optional setup also manages the exact reviewed `TRCCAppStartup` task so the two 
 
 Source checks, native refusal checks, installed task/ACL readback, an app restart, and an actual PC restart/sign-in are separate acceptance steps. A staged setup or passing synthetic test does not establish automatic startup after reboot.
 
+The standalone sensor publisher grants generic section access only to the pinned user, with a protected DACL. The vendor requests native `SECTION_ALL_ACCESS`; .NET's `MemoryMappedFileRights.FullControl` omits `SECTION_EXTEND_SIZE`, causing the vendor to report `shareMemory_SysInfo error!` and exit, which the task reports as code 5. Run `Test-SensorMapAccess.ps1 -SensorPath <built-publisher>` from normal Windows PowerShell 5.1 outside packaged/app-container contexts. It reproduces the legacy denial and verifies the corrected user-only ACL using unique synthetic maps without starting hardware. Existing completed installations still require a hash-bound replacement procedure and a matching retained setup for disable/recovery; rebuilding alone does not update them.
+
 Standalone worker checks use a freshly built private worker and fixture directory:
 
 ```powershell
@@ -102,6 +196,30 @@ python -B repository\desktop\test_master_hardware.py --worker .\.handoff\desktop
 The receipt separates acknowledged pictures, encoded preview frames, worker CPU/memory and reported sensor state from physical-screen observation. Use `--motion-confirmed` only to record an already supplied human confirmation of motion. Acknowledgments alone do not establish visible motion, correct temperature labels, temperature independence, actual Dot access, real mini mirroring or recovery after reconnect. Those remain separate acceptance gates; synthetic or source-only checks cannot substitute for them.
 
 `master_resource_probe.sample_owned(worker_pid)` supplies read-only Windows counters for the worker and its evidenced process descendants. It reads only PID/parent PID, executable basename, creation time, cumulative CPU time and working set. Denied or exited counters remain `null` with a reason. Compare CPU deltas per `(pid, createdAtTicks)`; summing cumulative totals across changing process trees can undercount exited helpers. Detached elevation-service processes are not guessed from matching names, so the sampler's explicit coverage note must remain with any resource summary.
+
+## Isolated sensor and matte checks
+
+The native renderer reads the latest completed sample from one background sensor
+producer. Sampling retains its per-field timestamps and five-second expiry;
+rendering does not wait for sensor file validation or map acquisition. Shutdown
+cancels the producer and waits for a bounded interval. A blocked OS read can
+finish later, but its result cannot publish after cancellation. The existing
+sensor permission, helper identity and content checks still apply to every read.
+
+Animation matte preparation uses bulk bitmap rows with the same alpha threshold
+and transparent-pixel values. Run its isolated equivalence and sampler lifecycle
+checks in a new private output folder:
+
+```powershell
+.\repository\desktop\Test-Master-Optimizations.ps1 -OutputDirectory .\.handoff\master-optimizations-check
+```
+
+This fixture uses synthetic sensor delegates and in-memory images. It covers
+blocked acquisition, bounded shutdown, discarded late samples, per-field expiry,
+bitmap formats and signed stride, and compares matte pixels and stage timing.
+It does not start the production worker loop, sensors, USB helpers or elevation,
+and does not use the approved artwork. Stage timings do not establish total
+startup or physical display performance.
 
 ## Isolated acceptance test
 

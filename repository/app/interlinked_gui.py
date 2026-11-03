@@ -30,7 +30,7 @@ from urllib.parse import parse_qs, urlsplit
 import uuid
 import webbrowser
 
-MAGIX_SHA='2c3db9938e243f680c928c4199a7371661cd68c6650eef5bb128225cc3e35375'
+MAGIX_SHA='0650ab24e8d6b36ff2bd139408fcb565009e7f66d2952bec5dc91742dd7ae63f'
 BASE_SHA='c60fb2559a90a2301aa3d741c1d2e676e5ed90559fb40a63e27ef83d75f697aa'
 INDEX_SHA='bccb71983d23a3baa88926aca4d14fe6ce95d003e46e1d3d696350e47b746a83'
 CLIENT_SEAL_SHA='362517385124df2ad6d55363fc0b39d072b4378c11e3f468b1bfebf8bc21f3fc'
@@ -40,6 +40,8 @@ STATIC={'/':('index.html','text/html; charset=utf-8'),'/app.js':('app.js','text/
 ACTIONS={'open','save','verify','release','recover'}
 MAX_BODY=16*1024
 PROMPT='Type DONE after MAGIX closes (or CANCEL STARTUP): '
+LOG_BATCH_CHARS=4096
+LOG_FLUSH_SECONDS=.1
 ROOTS=('OneDrive/Documents','OneDrive/Pictures','OneDrive/Desktop','Downloads','OneDrive - The University of Akron/The Rialto Theatre','AppData/Roaming/MAGIX/Videodeluxe27_plus_steam')
 PREFIX='Drive_C/Users/jlewi/'
 ENTRY_CAP=25000
@@ -102,7 +104,7 @@ def identifier(value):
     return value
 
 def load_companion(name):
-    need(name in ('interlinked_controller','interlinked_hub','interlinked_mw5','interlinked_master','interlinked_jobs','interlinked_buddy','interlinked_stats','interlinked_stats_process','interlinked_configuration'),'Unknown companion module.')
+    need(name in ('interlinked_controller','interlinked_hub','interlinked_mw5','interlinked_master','interlinked_jobs','interlinked_buddy','interlinked_stats','interlinked_stats_process','interlinked_configuration','interlinked_ai','interlinked_ai_node','interlinked_ai_workspaces','interlinked_ai_bridge','interlinked_ai_ipc'),'Unknown companion module.')
     if name in sys.modules:return sys.modules[name]
     path=Path(__file__).resolve().parent/(name+'.py')
     spec=importlib.util.spec_from_file_location(name,ordinary(path))
@@ -312,7 +314,10 @@ def production_runtime():
     expected={'interlinked_gui.py','interlinked_controller.py','interlinked_hub.py','interlinked_mw5.py','interlinked_master.py','master_hook.py','master_bridge.py','interlinked_jobs.py','interlinked_buddy.py','web/index.html','web/app.js','web/style.css'}
     expected.update({'interlinked_stats.py','interlinked_stats_process.py'})
     expected.add('interlinked_configuration.py')
-    need(seal.get('format')=='interlinked-gui-checksums-v7' and set(seal.get('files',{}))==expected,'GUI seal is missing or incomplete.')
+    expected.update({'interlinked_ai.py','interlinked_ai_node.py','interlinked_ai_workspaces.py'})
+    expected.update({'interlinked_ai_bridge.py','interlinked_ai_ipc.py','ai_bridge.py'})
+    expected.update({'interlinked_history_import.py','interlinked_history_store.py','interlinked_history_service.py','interlinked_history_runtime.py','interlinked_history_gateway.py'})
+    need(seal.get('format')=='interlinked-gui-checksums-v10' and set(seal.get('files',{}))==expected,'GUI seal is missing or incomplete.')
     for rel,sha in seal['files'].items():
         path=ordinary(app/rel);need(digest(path)==sha,'GUI file differs: '+rel)
     for name,sha in (('magix_projects.py',MAGIX_SHA),('magix_workspace.py',BASE_SHA),('MAGIX-All-Projects-Index.json',INDEX_SHA)):
@@ -437,7 +442,7 @@ class Controller:
                             if state is not None:
                                 status=state.get('status','UNKNOWN')
                                 if state.get('pendingSave'):status='PENDING_SAVE'
-                        except (ValueError,OSError,json.JSONDecodeError) as exc:status='CHECK_REQUIRED';warning=str(exc)
+                        except (ValueError,OSError,json.JSONDecodeError,KeyError,TypeError,RuntimeError) as exc:status='CHECK_REQUIRED';warning=str(exc)
                     self.cache_summary[pid]=dict(status=status,warning=warning)
                 self.cache_at=time.monotonic()
             audit_projects={p['id']:p for p in (self.r.audit or {}).get('projects',[])}
@@ -555,23 +560,43 @@ class Controller:
 
     def _read(self,stream,label,log,job_id=None):
         # read(1) works for input() prompts that have no trailing newline.
-        tail='';logging=True
-        while True:
-            chunk=stream.read(1)
-            if not chunk:break
-            if logging:
-                try:log.write(chunk);log.flush()
+        # A separate bounded sink buffer also flushes partial lines while the
+        # character reader is blocked waiting for more launcher output.
+        tail='';pending=[];pending_chars=0;logging=True
+        log_lock=threading.Lock();stop_flush=threading.Event()
+        def flush():
+            nonlocal pending_chars,logging
+            with log_lock:
+                if not logging or not pending:return
+                text=''.join(pending);pending.clear();pending_chars=0
+                try:log.write(text);log.flush()
                 except (OSError,ValueError) as exc:
                     logging=False
-                    with self.lock:self.job['reportingWarning']='Output log failed; prompt control is still active: '+str(exc)
-            with self.lock:
-                if job_id is not None and self.job['id']!=job_id:continue
-            self.append(chunk)
-            tail=(tail+chunk)[-len(PROMPT):]
-            with self.lock:
-                if label=='stdout' and self.job['action']=='open' and tail==PROMPT:
-                    self.job['status']='WAITING_FOR_MAGIX';self.job['awaitingDone']=True;self.job['promptGeneration']+=1
-                    tail=''
+                    with self.lock:
+                        if job_id is None or self.job['id']==job_id:
+                            self.job['reportingWarning']='Output log failed; prompt control is still active: '+str(exc)
+        def periodic_flush():
+            while not stop_flush.wait(LOG_FLUSH_SECONDS):flush()
+        flusher=threading.Thread(target=periodic_flush,name='INTERLINKED '+label+' log',daemon=True)
+        flusher.start()
+        try:
+            while True:
+                chunk=stream.read(1)
+                if not chunk:break
+                with log_lock:
+                    if logging:pending.append(chunk);pending_chars+=len(chunk)
+                    full=pending_chars>=LOG_BATCH_CHARS
+                prompt=False
+                with self.lock:
+                    if job_id is None or self.job['id']==job_id:
+                        self.append(chunk)
+                        tail=(tail+chunk)[-len(PROMPT):]
+                        if label=='stdout' and self.job['action']=='open' and tail==PROMPT:
+                            self.job['status']='WAITING_FOR_MAGIX';self.job['awaitingDone']=True;self.job['promptGeneration']+=1
+                            tail='';prompt=True
+                if full or prompt:flush()
+        finally:
+            stop_flush.set();flusher.join();flush()
 
     def _run(self,args):
         process=None
@@ -632,12 +657,31 @@ class Server(ThreadingHTTPServer):
         self.master=load_companion('interlinked_master').safe_service(controller.r,controller,
             violet_asset=getattr(controller.r,'master_violet',None) if controller.r.demo else None)
         self.jobs=load_companion('interlinked_jobs').safe_service(controller.r)
+        self.ai=load_companion('interlinked_ai').safe_service(controller.r,controller,self.master)
+        self.master.ai_service=self.ai
+        self.ai_bridge=None;self.ai_pipe=None;self.ai_bridge_error=None
+        if hasattr(self.ai,'root'):
+            try:
+                self.ai_bridge=load_companion('interlinked_ai_bridge').BridgeService(self.ai)
+                self.ai_pipe=load_companion('interlinked_ai_ipc').PipeServer(self.ai.root/'bridge'/'endpoint.json',self.ai_bridge.dispatch)
+                self.ai_pipe.start()
+            except (OSError,ValueError,RuntimeError) as exc:
+                self.ai_bridge_error='AI plugin connection unavailable.'
+                if self.ai_pipe is not None:self.ai_pipe.close()
+                self.ai_pipe=None
 
     def configuration(self,scope):
-        need(scope in ('master','library'),'Choose MASTER or library configuration.')
+        need(scope in ('master','library','ai'),'Choose MASTER, library or AI configuration.')
+        if scope=='ai':return self.ai
         return self.master if scope=='master' else self.controller.hub
 
     def server_close(self):
+        pipe=getattr(self,'ai_pipe',None)
+        if pipe is not None:pipe.close()
+        bridge=getattr(self,'ai_bridge',None)
+        if bridge is not None:bridge.close()
+        ai=getattr(self,'ai',None)
+        if ai is not None:ai.close()
         jobs=getattr(self,'jobs',None)
         if jobs is not None:jobs.close()
         master=getattr(self,'master',None)
@@ -680,6 +724,13 @@ class Handler(BaseHTTPRequestHandler):
                 need(set(query)=={'project'} and len(query['project'])==1,'Select one project audit.')
                 identifier(query['project'][0])
                 self.respond(200,ordinary(self.server.controller.r.web/'index.html').read_bytes(),'text/html; charset=utf-8')
+            elif path=='/api/ai/bridge/status' and not parsed.query:
+                value=self.server.ai_bridge.dispatch('get_ai_state',{}) if self.server.ai_bridge is not None else dict(available=False,pendingUnloads=[])
+                value['connectionAvailable']=self.server.ai_pipe is not None
+                value['connectionError']=self.server.ai_bridge_error
+                self.respond(200,value)
+            elif path.startswith('/api/ai/'):
+                self.respond(200,self.server.ai.get(path[len('/api/ai/'):],parse_qs(parsed.query,strict_parsing=True)))
             elif path=='/api/state' and not parsed.query:self.respond(200,self.server.controller.state())
             elif path=='/api/msi/jobs' and not parsed.query:self.respond(200,self.server.jobs.view())
             elif path=='/api/msi/jobs/log':
@@ -724,16 +775,26 @@ class Handler(BaseHTTPRequestHandler):
                 result=self.server.controller.missing_view(query['project'][0],query['format'][0] if path.endswith('/export') else None)
                 self.respond(200,result)
             else:self.respond(404,dict(error='Unknown route.'))
-        except (ValueError,OSError,json.JSONDecodeError) as exc:self.respond(403,dict(error=str(exc)))
+        except (ValueError,OSError,json.JSONDecodeError,KeyError,TypeError,RuntimeError) as exc:self.respond(403,dict(error=str(exc)))
     def do_POST(self):
         try:
             self.gate(api=True,write=True)
-            need(self.path in ('/api/action','/api/session','/api/quit','/api/missing/report','/api/missing/status','/api/preferences','/api/hub/refresh','/api/mw5/check','/api/mw5/preview','/api/mw5/apply','/api/mw5/finish','/api/master/settings','/api/master/display','/api/master/attention/acknowledge','/api/configuration/preview','/api/configuration/restore','/api/msi/jobs/refresh','/api/stats/action'),'Unknown action route.')
+            need(self.path.startswith('/api/ai/') or self.path in ('/api/action','/api/session','/api/quit','/api/missing/report','/api/missing/status','/api/preferences','/api/hub/refresh','/api/mw5/check','/api/mw5/preview','/api/mw5/apply','/api/mw5/finish','/api/master/settings','/api/master/display','/api/master/voice-activity','/api/master/attention/acknowledge','/api/configuration/preview','/api/configuration/restore','/api/msi/jobs/refresh','/api/stats/action'),'Unknown action route.')
             need(self.headers.get('Content-Type','').split(';')[0]=='application/json','JSON content type required.')
             need(self.headers.get('Transfer-Encoding') is None,'Chunked request bodies are not accepted.')
-            length=int(self.headers.get('Content-Length','-1'));need(0<=length<=MAX_BODY,'Request too large or missing length.')
+            limit=17*1024*1024 if self.path=='/api/ai/attachments' else MAX_BODY
+            length=int(self.headers.get('Content-Length','-1'));need(0<=length<=limit,'Request too large or missing length.')
             body=json.loads(self.rfile.read(length));need(isinstance(body,dict),'JSON object required.')
-            if self.path=='/api/action':
+            if self.path=='/api/ai/bridge/confirm-unload':
+                need(set(body)=={'id'} and self.server.ai_bridge is not None,'Choose an outstanding unload request.')
+                result=self.server.ai_bridge.confirm_unload(body['id'])
+            elif self.path=='/api/ai/bridge/register-fixture':
+                need(set(body)=={'id','attachmentId','capability','expected'} and self.server.ai_bridge is not None,'Choose a local calibration fixture.')
+                self.server.ai_bridge.register_fixture(body['id'],body['attachmentId'],body['capability'],body['expected'])
+                result=dict(id=body['id'],registered=True)
+            elif self.path.startswith('/api/ai/'):
+                result=self.server.ai.post(self.path[len('/api/ai/'):],body)
+            elif self.path=='/api/action':
                 need(set(body).issubset({'action','project','entry','confirmation','expectedRevision'}),'Unexpected action fields.')
                 result=self.server.controller.start(body.get('action'),body.get('project'),body.get('entry'),body.get('confirmation'),body.get('expectedRevision'))
             elif self.path=='/api/session':
@@ -748,6 +809,7 @@ class Handler(BaseHTTPRequestHandler):
                 result=self.server.jobs.refresh()
             elif self.path=='/api/master/settings':result=self.server.master.settings(body)
             elif self.path=='/api/master/display':result=self.server.master.display(body)
+            elif self.path=='/api/master/voice-activity':result=self.server.master.voice_activity(body)
             elif self.path=='/api/master/attention/acknowledge':result=self.server.master.acknowledge_attention(body)
             elif self.path in ('/api/configuration/preview','/api/configuration/restore'):
                 expected={'scope','snapshotId'} if self.path.endswith('/preview') else {'scope','previewId'}
@@ -760,7 +822,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.controller.request_quit()
                 result=dict(status='SERVER_STOPPING');threading.Thread(target=self.server.shutdown,daemon=True).start()
             self.respond(200,result)
-        except (ValueError,OSError,json.JSONDecodeError) as exc:
+        except (ValueError,OSError,json.JSONDecodeError,KeyError,TypeError,RuntimeError) as exc:
             error=dict(error=str(exc))
             if hasattr(exc,'current'):error.update(code='CONFIGURATION_CONFLICT',current=exc.current)
             self.respond(409,error)

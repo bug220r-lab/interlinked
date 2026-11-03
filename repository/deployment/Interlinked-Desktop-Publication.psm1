@@ -89,16 +89,19 @@ function Assert-DesktopObjectKeys($Object,[string[]]$Keys) {
 function Assert-DesktopGuiSeal($Context,$Seal,[hashtable]$Prospective) {
     Assert-DesktopObjectKeys $Seal @('format','files','auditSha256')
     $names=@('interlinked_gui.py','web/index.html','web/app.js','web/style.css')
-    if($Prospective -and $Seal.format -cne 'interlinked-gui-checksums-v7'){
-        throw 'The configuration recovery release requires an exact fifteen-file v7 GUI seal.'
+    if($Prospective -and $Seal.format -cne 'interlinked-gui-checksums-v10'){
+        throw 'The history release requires an exact twenty-six-file v10 GUI seal.'
     }
-    if($Seal.format -cin @('interlinked-gui-checksums-v2','interlinked-gui-checksums-v3','interlinked-gui-checksums-v4','interlinked-gui-checksums-v5','interlinked-gui-checksums-v6','interlinked-gui-checksums-v7')){
+    if($Seal.format -cin @('interlinked-gui-checksums-v2','interlinked-gui-checksums-v3','interlinked-gui-checksums-v4','interlinked-gui-checksums-v5','interlinked-gui-checksums-v6','interlinked-gui-checksums-v7','interlinked-gui-checksums-v8','interlinked-gui-checksums-v9','interlinked-gui-checksums-v10')){
         $names+=@('interlinked_controller.py','interlinked_hub.py','interlinked_mw5.py')
-        if($Seal.format -cin @('interlinked-gui-checksums-v3','interlinked-gui-checksums-v4','interlinked-gui-checksums-v5','interlinked-gui-checksums-v6','interlinked-gui-checksums-v7')){$names+=@('interlinked_master.py','master_hook.py','master_bridge.py')}
-        if($Seal.format -cin @('interlinked-gui-checksums-v4','interlinked-gui-checksums-v5','interlinked-gui-checksums-v6','interlinked-gui-checksums-v7')){$names+=@('interlinked_jobs.py')}
-        if($Seal.format -cin @('interlinked-gui-checksums-v5','interlinked-gui-checksums-v6','interlinked-gui-checksums-v7')){$names+=@('interlinked_buddy.py')}
-        if($Seal.format -cin @('interlinked-gui-checksums-v6','interlinked-gui-checksums-v7')){$names+=@('interlinked_stats.py','interlinked_stats_process.py')}
-        if($Seal.format -ceq 'interlinked-gui-checksums-v7'){$names+=@('interlinked_configuration.py')}
+        if($Seal.format -cin @('interlinked-gui-checksums-v3','interlinked-gui-checksums-v4','interlinked-gui-checksums-v5','interlinked-gui-checksums-v6','interlinked-gui-checksums-v7','interlinked-gui-checksums-v8','interlinked-gui-checksums-v9','interlinked-gui-checksums-v10')){$names+=@('interlinked_master.py','master_hook.py','master_bridge.py')}
+        if($Seal.format -cin @('interlinked-gui-checksums-v4','interlinked-gui-checksums-v5','interlinked-gui-checksums-v6','interlinked-gui-checksums-v7','interlinked-gui-checksums-v8','interlinked-gui-checksums-v9','interlinked-gui-checksums-v10')){$names+=@('interlinked_jobs.py')}
+        if($Seal.format -cin @('interlinked-gui-checksums-v5','interlinked-gui-checksums-v6','interlinked-gui-checksums-v7','interlinked-gui-checksums-v8','interlinked-gui-checksums-v9','interlinked-gui-checksums-v10')){$names+=@('interlinked_buddy.py')}
+        if($Seal.format -cin @('interlinked-gui-checksums-v6','interlinked-gui-checksums-v7','interlinked-gui-checksums-v8','interlinked-gui-checksums-v9','interlinked-gui-checksums-v10')){$names+=@('interlinked_stats.py','interlinked_stats_process.py')}
+        if($Seal.format -cin @('interlinked-gui-checksums-v7','interlinked-gui-checksums-v8','interlinked-gui-checksums-v9','interlinked-gui-checksums-v10')){$names+=@('interlinked_configuration.py')}
+        if($Seal.format -cin @('interlinked-gui-checksums-v8','interlinked-gui-checksums-v9','interlinked-gui-checksums-v10')){$names+=@('interlinked_ai.py','interlinked_ai_node.py','interlinked_ai_workspaces.py')}
+        if($Seal.format -cin @('interlinked-gui-checksums-v9','interlinked-gui-checksums-v10')){$names+=@('interlinked_ai_bridge.py','interlinked_ai_ipc.py','ai_bridge.py')}
+        if($Seal.format -ceq 'interlinked-gui-checksums-v10'){$names+=@('interlinked_history_import.py','interlinked_history_store.py','interlinked_history_service.py','interlinked_history_runtime.py','interlinked_history_gateway.py')}
     } elseif($Seal.format -ceq 'interlinked-gui-checksums-v1'){
     } else {throw 'Unknown GUI seal format.'}
     Assert-DesktopObjectKeys $Seal.files $names
@@ -115,11 +118,71 @@ function Assert-DesktopGuiSeal($Context,$Seal,[hashtable]$Prospective) {
     }
 }
 
-function Assert-DesktopBaseline($Context) {
+function Get-DesktopLauncherMigration($Context) {
+    $property=$Context.PSObject.Properties['LauncherMigration']
+    if(-not $property -or $null -eq $property.Value){return $null}
+    $migration=$property.Value
+    Assert-DesktopObjectKeys $migration @('path','beforeSha256','afterSha256','beforeBuddySha256','afterBuddySha256')
+    if($migration.path -cne 'magix_projects.py'){throw 'Only the reviewed MAGIX launcher can migrate.'}
+    foreach($key in @('beforeSha256','afterSha256','beforeBuddySha256','afterBuddySha256')){
+        if($migration.$key -cnotmatch '^[a-f0-9]{64}$'){throw 'Launcher migration requires fixed reviewed SHA-256 values.'}
+    }
+    if($migration.beforeSha256 -ceq $migration.afterSha256 -or $migration.beforeBuddySha256 -ceq $migration.afterBuddySha256){throw 'Launcher migration must change the reviewed Buddy pin.'}
+    if(-not $Context.Pins.ContainsKey('magix_projects.py') -or $Context.Pins['magix_projects.py'] -cne $migration.beforeSha256){throw 'Launcher migration baseline differs from the accepted dependency pin.'}
+    return $migration
+}
+
+function Get-DesktopPythonPin([byte[]]$Bytes,[string]$Name) {
+    # Strict UTF-8 decoding retains BOMs and line endings. The accepted assignment
+    # is a single unindented literal; no Python code is executed during review.
+    $text=[Text.UTF8Encoding]::new($false,$true).GetString($Bytes)
+    $pattern='(?m)^'+[regex]::Escape($Name)+'=([''"])([a-f0-9]{64})\1\r?$'
+    $matches=[regex]::Matches($text,$pattern)
+    if($matches.Count -ne 1){throw ('Expected exactly one literal Python pin: '+$Name)}
+    return [pscustomobject]@{text=$text;value=$matches[0].Groups[2].Value;index=$matches[0].Groups[2].Index}
+}
+
+function Assert-DesktopLauncherChain($Migration,[byte[]]$Launcher,[byte[]]$Buddy,[byte[]]$Gui) {
+    if((Get-DesktopBytesDigest $Launcher) -cne $Migration.afterSha256 -or (Get-DesktopBytesDigest $Buddy) -cne $Migration.afterBuddySha256){throw 'Migrated launcher or Buddy companion differs from reviewed bytes.'}
+    Assert-DesktopBuddyChain $Launcher $Buddy $Gui
+}
+
+function Assert-DesktopBuddyChain([byte[]]$Launcher,[byte[]]$Buddy,[byte[]]$Gui) {
+    if((Get-DesktopPythonPin $Launcher 'BUDDY_SHA').value -cne (Get-DesktopBytesDigest $Buddy)){throw 'Prospective launcher does not pin the exact Buddy companion.'}
+    if((Get-DesktopPythonPin $Gui 'MAGIX_SHA').value -cne (Get-DesktopBytesDigest $Launcher)){throw 'Prospective GUI does not pin the exact launcher.'}
+}
+
+function Assert-DesktopLauncherMigration($Context,$Migration,[hashtable]$Rows,[hashtable]$Buffers) {
+    # A widened caller allowlist must not authorize replacement of other pins.
+    foreach($name in $Context.Pins.Keys){
+        if($Rows.ContainsKey($name) -and ($name -cne 'magix_projects.py' -or -not $Migration)){throw 'Pinned dependency replacement is not authorized.'}
+    }
+    if(-not $Migration){
+        if($Rows.ContainsKey('magix_projects.py')){throw 'Launcher replacement requires an exact reviewed migration.'}
+        return
+    }
+    $name='magix_projects.py'
+    if(-not $Rows.ContainsKey($name)){throw 'Reviewed launcher migration is missing from the publication plan.'}
+    if($Rows[$name].beforeSha256 -cne $Migration.beforeSha256 -or $Rows[$name].sha256 -cne $Migration.afterSha256){throw 'Launcher plan differs from reviewed before/after hashes.'}
+    $before=Read-DesktopBytes (Join-Path $Context.Kit $name) -SingleLink
+    if((Get-DesktopBytesDigest $before) -cne $Migration.beforeSha256){throw 'Installed launcher differs from migration baseline.'}
+    $pin=Get-DesktopPythonPin $before 'BUDDY_SHA'
+    if($pin.value -cne $Migration.beforeBuddySha256){throw 'Installed launcher Buddy pin differs from migration baseline.'}
+    $oldBuddy=Read-DesktopBytes (Join-Path $Context.Kit 'INTERLINKED-App/interlinked_buddy.py') -SingleLink
+    if((Get-DesktopBytesDigest $oldBuddy) -cne $Migration.beforeBuddySha256){throw 'Installed Buddy companion differs from the accepted launcher pin.'}
+    $expectedText=$pin.text.Remove($pin.index,64).Insert($pin.index,$Migration.afterBuddySha256)
+    $expectedBytes=[Text.UTF8Encoding]::new($false,$true).GetBytes($expectedText)
+    if([Convert]::ToBase64String($expectedBytes) -cne [Convert]::ToBase64String($Buffers[$name])){throw 'Launcher migration changes bytes beyond the single BUDDY_SHA value.'}
+    Assert-DesktopLauncherChain $Migration $Buffers[$name] $Buffers['INTERLINKED-App/interlinked_buddy.py'] $Buffers['INTERLINKED-App/interlinked_gui.py']
+}
+
+function Assert-DesktopBaseline($Context,[switch]$AfterMigration) {
+    $migration=Get-DesktopLauncherMigration $Context
     foreach($name in $Context.Pins.Keys){
         $path=Join-DesktopSafe $Context.Kit $name
         Assert-DesktopOrdinary $path
-        if((Get-DesktopDigest $path) -cne $Context.Pins[$name]){throw ('Accepted dependency differs: '+$name)}
+        $expected=if($AfterMigration -and $migration -and $name -ceq 'magix_projects.py'){$migration.afterSha256}else{$Context.Pins[$name]}
+        if((Get-DesktopDigest $path) -cne $expected){throw ('Accepted dependency differs: '+$name)}
     }
     $client=Join-Path $Context.Kit 'Project-Library-Client'
     $sealPath=Join-Path $client 'HELPER-CHECKSUMS.json'
@@ -135,6 +198,13 @@ function Assert-DesktopBaseline($Context) {
         if((Get-Item -LiteralPath $path).Length -ne $row.bytes -or (Get-DesktopDigest $path) -cne $row.sha256){throw ('Original sealed client differs: '+$row.path)}
     }
     Assert-DesktopGuiSeal $Context (Read-DesktopJson (Join-Path $Context.Kit 'INTERLINKED-App/GUI-CHECKSUMS.json')) $null
+    if($AfterMigration){
+        $launcher=Read-DesktopBytes (Join-Path $Context.Kit 'magix_projects.py') -SingleLink
+        $buddy=Read-DesktopBytes (Join-Path $Context.Kit 'INTERLINKED-App/interlinked_buddy.py') -SingleLink
+        $gui=Read-DesktopBytes (Join-Path $Context.Kit 'INTERLINKED-App/interlinked_gui.py') -SingleLink
+        if($migration){Assert-DesktopLauncherChain $migration $launcher $buddy $gui}
+        else{Assert-DesktopBuddyChain $launcher $buddy $gui}
+    }
 }
 
 function Assert-DesktopIdle($Context) {
@@ -192,6 +262,7 @@ function Invoke-DesktopPublication {
     function Save-Receipt {$receipt | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $receiptPath -Encoding utf8}
     try {
         Assert-DesktopOrdinary $Context.Kit
+        $migration=Get-DesktopLauncherMigration $Context
         $planBytes=Read-DesktopBytes $ManifestPath -SingleLink
         if((Get-DesktopBytesDigest $planBytes) -cne $ManifestSha256.ToLowerInvariant()){throw 'Reviewed publication plan hash differs.'}
         $plan=[Text.Encoding]::UTF8.GetString($planBytes).TrimStart([char]0xfeff) | ConvertFrom-Json
@@ -219,6 +290,8 @@ function Invoke-DesktopPublication {
         }
         Assert-DesktopIdle $Context
         Assert-DesktopBaseline $Context
+        Assert-DesktopLauncherMigration $Context $migration $rows $buffers
+        if($migration){$receipt.launcherMigration=$migration}
         foreach($row in $rows.Values){
             $target=Join-DesktopSafe $Context.Kit $row.path
             Assert-DesktopOrdinary $target -AllowMissing
@@ -237,6 +310,8 @@ function Invoke-DesktopPublication {
         $oldGui=Read-DesktopJson (Join-Path $Context.Kit 'INTERLINKED-App/GUI-CHECKSUMS.json')
         if($newGui.auditSha256 -cne $oldGui.auditSha256){throw 'Desktop update cannot replace the private audit.'}
         Assert-DesktopGuiSeal $Context $newGui $rows
+        $prospectiveLauncher=if($migration){$buffers['magix_projects.py']}else{Read-DesktopBytes (Join-Path $Context.Kit 'magix_projects.py') -SingleLink}
+        Assert-DesktopBuddyChain $prospectiveLauncher $buffers['INTERLINKED-App/interlinked_buddy.py'] $buffers['INTERLINKED-App/interlinked_gui.py']
         $desktopSeal=[Text.Encoding]::UTF8.GetString($buffers['INTERLINKED-Desktop/DESKTOP-CHECKSUMS.json']).TrimStart([char]0xfeff) | ConvertFrom-Json
         if($desktopSeal.format -cne 'interlinked-desktop-checksums-v1'){throw 'Unknown desktop package seal.'}
         $desktopNames=@($Context.Allowed | Where-Object {$_ -like 'INTERLINKED-Desktop/*' -and $_ -cne 'INTERLINKED-Desktop/DESKTOP-CHECKSUMS.json'} | ForEach-Object {$_.Substring(20)})
@@ -268,9 +343,9 @@ function Invoke-DesktopPublication {
             if((Get-DesktopDigest $target) -cne $row.sha256){throw 'Installed publication bytes differ.'}
             $receipt.files+=@([ordered]@{path=$row.path;sha256=$row.sha256;backup=$backup;unchanged=$false});Save-Receipt
         }
-        Assert-DesktopBaseline $Context
+        Assert-DesktopBaseline $Context -AfterMigration
         Assert-DesktopIdle $Context
-        $receipt.status='DESKTOP_PUBLISHED_HASH_VERIFIED';$receipt.acceptedLauncherUnchanged=$true
+        $receipt.status='DESKTOP_PUBLISHED_HASH_VERIFIED';$receipt.acceptedLauncherUnchanged=(-not $migration)
         Save-Receipt
         return [pscustomobject]@{status=$receipt.status;receipt=$receiptPath;files=$receipt.files.Count}
     } catch {$receipt.status='PUBLICATION_STOPPED';$receipt.failure=$_.Exception.Message;throw}

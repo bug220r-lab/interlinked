@@ -4,6 +4,7 @@
 param([Parameter(Mandatory=$true)][string]$ManifestPath,
       [Parameter(Mandatory=$true)][string]$ManifestSha256,
       [Parameter(Mandatory=$true)][string]$ReceiptDirectory,
+      [switch]$MigrateBuddyLauncher,
       [switch]$Apply)
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
@@ -20,6 +21,10 @@ $allowed=@('INTERLINKED.cmd','INTERLINKED-Browser.cmd','INTERLINKED-App/interlin
  'INTERLINKED-App/interlinked_jobs.py','INTERLINKED-App/interlinked_buddy.py',
  'INTERLINKED-App/interlinked_stats.py','INTERLINKED-App/interlinked_stats_process.py',
  'INTERLINKED-App/interlinked_configuration.py',
+ 'INTERLINKED-App/interlinked_ai.py','INTERLINKED-App/interlinked_ai_node.py','INTERLINKED-App/interlinked_ai_workspaces.py',
+ 'INTERLINKED-App/interlinked_ai_bridge.py','INTERLINKED-App/interlinked_ai_ipc.py','INTERLINKED-App/ai_bridge.py',
+ 'INTERLINKED-App/interlinked_history_import.py','INTERLINKED-App/interlinked_history_store.py','INTERLINKED-App/interlinked_history_service.py',
+ 'INTERLINKED-App/interlinked_history_runtime.py','INTERLINKED-App/interlinked_history_gateway.py',
  'INTERLINKED-App/web/index.html','INTERLINKED-App/web/app.js','INTERLINKED-App/web/style.css',
  'INTERLINKED-Desktop/INTERLINKED.exe','INTERLINKED-Desktop/INTERLINKED.exe.config',
  'INTERLINKED-Desktop/INTERLINKED.Master.Worker.exe','INTERLINKED-Desktop/INTERLINKED.Master.Worker.exe.config','INTERLINKED-Desktop/Violet.png',
@@ -28,9 +33,24 @@ $allowed=@('INTERLINKED.cmd','INTERLINKED-Browser.cmd','INTERLINKED-App/interlin
  'INTERLINKED-Desktop/WebView2-NOTICE.txt','INTERLINKED-Desktop/DESKTOP-CHECKSUMS.json')
 $context=[pscustomobject]@{Workspace=$workspace;Kit=$kit;Allowed=$allowed;ClientFileCount=52;
  ClientSealSha256='362517385124df2ad6d55363fc0b39d072b4378c11e3f468b1bfebf8bc21f3fc';
- Pins=@{'magix_projects.py'='2c3db9938e243f680c928c4199a7371661cd68c6650eef5bb128225cc3e35375';
+ Pins=@{'magix_projects.py'='0650ab24e8d6b36ff2bd139408fcb565009e7f66d2952bec5dc91742dd7ae63f';
         'magix_workspace.py'='c60fb2559a90a2301aa3d741c1d2e676e5ed90559fb40a63e27ef83d75f697aa';
         'MAGIX-All-Projects-Index.json'='bccb71983d23a3baa88926aca4d14fe6ce95d003e46e1d3d696350e47b746a83'}}
+# Exact reviewed Buddy integration. Migration hashes are source constants, never
+# arbitrary command-line inputs. Later ordinary updates pin the resulting launcher.
+if($MigrateBuddyLauncher){
+    $migration=[pscustomobject]@{
+        path='magix_projects.py'
+        beforeSha256='b1ca74f6169a39199f464c7420633013fc0d945b58e624dfca53c78997dcb819'
+        afterSha256='0650ab24e8d6b36ff2bd139408fcb565009e7f66d2952bec5dc91742dd7ae63f'
+        beforeBuddySha256='ed897501febcaa7084c84508dd86ceba1122113d2e0da06843e1b077e1973bfc'
+        afterBuddySha256='f4dc148f5be75929d4e323440314956f56d551e4354086d3149a1bdfa0ab1d49'
+    }
+    if($migration.afterSha256 -cnotmatch '^[a-f0-9]{64}$' -or $migration.afterBuddySha256 -cnotmatch '^[a-f0-9]{64}$'){throw 'Freeze and review the exact Buddy and launcher hashes before enabling this migration.'}
+    $context.Pins['magix_projects.py']=$migration.beforeSha256
+    $context.Allowed+=@('magix_projects.py')
+    $context | Add-Member -NotePropertyName LauncherMigration -NotePropertyValue $migration
+}
 $modulePath=Join-Path $PSScriptRoot 'Interlinked-Desktop-Publication.psm1'
 $walk=[IO.Path]::GetFullPath($modulePath)
 while($walk){

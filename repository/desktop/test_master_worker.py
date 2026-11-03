@@ -93,7 +93,7 @@ def main():
         for line in proc.stderr:
             try:
                 event = json.loads(line)
-                if event.get('type') not in {'stats', 'status', 'capture', 'capture_sources', 'sensors', 'sensor_permission'}:
+                if event.get('type') not in {'stats', 'status', 'transport', 'delivery', 'capture', 'capture_sources', 'sensors', 'sensor_permission'}:
                     failures.append('Unknown worker event')
                 events.put(event)
             except (ValueError, UnicodeError):

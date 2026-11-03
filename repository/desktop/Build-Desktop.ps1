@@ -2,7 +2,8 @@
 param(
     [Parameter(Mandatory=$true)][string]$DependencyRoot,
     [Parameter(Mandatory=$true)][string]$OutputDirectory,
-    [Parameter(Mandatory=$true)][string]$VioletAtlas
+    [Parameter(Mandatory=$true)][string]$VioletAtlas,
+    [string]$VioletAnimationPackage
 )
 $ErrorActionPreference = 'Stop'
 $dependency = (Resolve-Path -LiteralPath $DependencyRoot).Path
@@ -55,8 +56,18 @@ if ($LASTEXITCODE -ne 0) { throw 'Desktop compilation failed.' }
 $atlas=(Resolve-Path -LiteralPath $VioletAtlas).Path
 $atlasImage=[Drawing.Image]::FromFile($atlas)
 try {if($atlasImage.Width -ne 1536 -or $atlasImage.Height -ne 2288){throw 'Use the approved v2 Violet atlas.'}}finally{$atlasImage.Dispose()}
-& $compiler /nologo /target:exe /platform:x64 /optimize+ /warn:4 ('/out:'+(Join-Path $output 'INTERLINKED.Master.Worker.exe')) /reference:System.Drawing.dll /reference:System.Web.Extensions.dll (Join-Path $PSScriptRoot 'MasterWorker.cs')
-if($LASTEXITCODE -ne 0){throw 'MASTER worker compilation failed.'}
+$workerArguments=@('/nologo','/target:exe','/platform:x64','/optimize+','/warn:4',('/out:'+(Join-Path $output 'INTERLINKED.Master.Worker.exe')),'/reference:System.Drawing.dll','/reference:System.Web.Extensions.dll',(Join-Path $PSScriptRoot 'MasterWorker.cs'))
+$animationStream=$null;$animationResource=$null
+try {
+ if(-not [string]::IsNullOrWhiteSpace($VioletAnimationPackage)){
+  $animationResource=Join-Path $output 'INTERLINKED-build-violet.bin'
+  & (Join-Path $PSScriptRoot 'New-VioletAnimationBundle.ps1') -PackageRoot $VioletAnimationPackage -OutputPath $animationResource | Out-Null
+  $animationStream=[IO.File]::Open($animationResource,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
+  $workerArguments+=('/resource:'+$animationResource+',Interlinked.VioletAnimations.v1')
+ }
+ & $compiler @workerArguments
+ if($LASTEXITCODE -ne 0){throw 'MASTER worker compilation failed.'}
+} finally {if($animationStream){$animationStream.Dispose()};if($animationResource -and (Test-Path -LiteralPath $animationResource)){Remove-Item -LiteralPath $animationResource}}
 [IO.File]::WriteAllText((Join-Path $output 'INTERLINKED.Master.Worker.exe.config'),'<?xml version="1.0" encoding="utf-8"?><configuration><startup><supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.8"/></startup></configuration>',[Text.UTF8Encoding]::new($false))
 Copy-Item -LiteralPath $atlas -Destination (Join-Path $output 'Violet.png')
 Remove-Item -LiteralPath $iconPath

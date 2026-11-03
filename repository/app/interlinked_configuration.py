@@ -139,7 +139,7 @@ def atomic(path, data, limit=LIMIT):
 class ConfigStore:
     def __init__(self, path, namespace, owner_check, validate, legacy_reader, default):
         self.path = Path(path)
-        if namespace not in ('master', 'library'):
+        if namespace not in ('master', 'library', 'ai'):
             raise ValueError('Unknown configuration namespace.')
         self.namespace, self.owner_check = namespace, owner_check
         self.validate, self.legacy_reader = validate, legacy_reader

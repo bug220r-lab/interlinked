@@ -203,6 +203,65 @@ namespace InterlinkedDesktop
         }
     }
 
+    // BEGIN PURE AI SPEECH STATUS
+    // SAPI status is engine activity, not a claim that a speaker is audible.
+    // https://learn.microsoft.com/en-us/previous-versions/windows/desktop/ee125527(v=vs.85)
+    // https://learn.microsoft.com/en-us/previous-versions/windows/desktop/ms720850(v=vs.85)
+    internal sealed class AiSpeechRuntimeStatus
+    {
+        internal string SessionId = "";
+        internal long Generation;
+        internal int StreamId;
+        internal bool Pending, Speaking;
+        private DateTime started, inactive, published;
+        private bool hasPublished, publishedSpeaking, observedTargetSpeaking;
+        internal void Begin(string session, long generation, int stream, DateTime now)
+        {
+            if (!System.Text.RegularExpressions.Regex.IsMatch(session ?? "", "^[a-f0-9]{32}$") || generation <= 0 || generation > 9007199254740991L || stream <= 0)
+                throw new ArgumentException("Bounded speech request identity required.");
+            SessionId = session; Generation = generation; StreamId = stream;
+            Pending = true; Speaking = false; started = inactive = now; published = DateTime.MinValue; hasPublished = false; observedTargetSpeaking = false;
+        }
+        internal bool Observe(int runningState, int currentStream, DateTime now)
+        {
+            if (!Pending) { Speaking = false; return false; }
+            if (now < started || now - started >= TimeSpan.FromMinutes(30)) { Cancel(); return false; }
+            Speaking = runningState == 2 && currentStream == StreamId;
+            if (Speaking) { inactive = DateTime.MinValue; observedTargetSpeaking = true; }
+            else if (inactive == DateTime.MinValue) inactive = now;
+            // Async Speak may return while the previous status is still Done.
+            // Retain bounded startup grace until this stream was actually seen.
+            if ((runningState == 1 && observedTargetSpeaking) || (!Speaking && now - inactive >= TimeSpan.FromSeconds(20))) Pending = false;
+            return Speaking;
+        }
+        internal bool PublishDue(DateTime now)
+        {
+            bool due = !hasPublished || Speaking != publishedSpeaking || (Speaking && now - published >= TimeSpan.FromSeconds(1));
+            if (due) { hasPublished = true; publishedSpeaking = Speaking; published = now; }
+            return due;
+        }
+        internal void Cancel() { Pending = false; Speaking = false; }
+    }
+    internal sealed class AiSpeechRequestFence
+    {
+        internal string SessionId = "";
+        internal long Generation;
+        private long epoch;
+        private object requestedCore;
+        internal long Begin(object core, string session, long generation)
+        {
+            requestedCore = core; SessionId = session; Generation = generation;
+            return ++epoch;
+        }
+        internal void Cancel() { epoch++; }
+        internal bool Current(long ticket, object requested, object actualCore, string session, long generation)
+        {
+            return ticket == epoch && Object.ReferenceEquals(requestedCore, requested) && Object.ReferenceEquals(requested, actualCore)
+                && SessionId == session && Generation == generation;
+        }
+    }
+    // END PURE AI SPEECH STATUS
+
     internal sealed class MainWindow : Form
     {
         private readonly Options options;
@@ -239,7 +298,7 @@ namespace InterlinkedDesktop
             status.Text = "Starting INTERLINKED…"; status.Dock = DockStyle.Fill; status.TextAlign = ContentAlignment.MiddleCenter;
             status.Font = new Font("Segoe UI", 14); Controls.Add(status);
             reopen.Text = "Reopen interface"; reopen.Dock = DockStyle.Bottom; reopen.Height = 44; reopen.Visible = false;
-            reopen.Click += async delegate { if (origin != null && !serviceEnded) { reopen.Enabled = false; try { foreach (var child in audits.ToArray()) child.Close(); if (view != null) { Controls.Remove(view); view.Dispose(); } await CreateView(new Uri(origin + "/#" + token)); reopen.Visible = false; } catch (Exception) { ShowFailure("The interface could not be reopened. Its service remains protected. Try Reopen interface again."); } finally { reopen.Enabled = true; } } };
+            reopen.Click += async delegate { if (origin != null && !serviceEnded) { reopen.Enabled = false; try { StopAiVoice(); foreach (var child in audits.ToArray()) child.Close(); if (view != null) { Controls.Remove(view); view.Dispose(); } await CreateView(new Uri(origin + "/#" + token)); reopen.Visible = false; } catch (Exception) { ShowFailure("The interface could not be reopened. Its service remains protected. Try Reopen interface again."); } finally { reopen.Enabled = true; } } };
             Controls.Add(reopen);
             http = new HttpClient(new HttpClientHandler { UseProxy = false, AllowAutoRedirect = false }); http.Timeout = TimeSpan.FromSeconds(6);
             Shown += async delegate { if (options.Background) Hide(); await Start(); };
@@ -247,6 +306,8 @@ namespace InterlinkedDesktop
             FormClosing += OnClosing;
             FormClosed += delegate
             {
+                StopAiVoice();
+                if (aiVoicePollTimer != null) { aiVoicePollTimer.Dispose(); aiVoicePollTimer = null; }
                 if (masterTray != null) masterTray.Dispose();
                 if (service != null && (!serviceEnded || service.ExitCode != 0)) return;
                 Rectangle normal = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
@@ -364,13 +425,144 @@ namespace InterlinkedDesktop
             if (uri.GetLeftPart(UriPartial.Authority) != origin || uri.UserInfo != "") return false;
             return !document || uri.AbsolutePath == "/" || uri.AbsolutePath == "/audit";
         }
+        private object aiVoice;
+        private int aiSpeechRejected, aiSpeechInvoked;
+        private readonly AiSpeechRuntimeStatus aiSpeechStatus = new AiSpeechRuntimeStatus();
+        private System.Windows.Forms.Timer aiVoicePollTimer;
+        private CoreWebView2 aiSpeechCore;
+        private readonly AiSpeechRequestFence aiSpeechRequests = new AiSpeechRequestFence();
+        private readonly Dictionary<string, object> aiVoiceTokens = new Dictionary<string, object>();
+        private object VoiceCall(object target, string name, params object[] args)
+        {
+            return target.GetType().InvokeMember(name, System.Reflection.BindingFlags.InvokeMethod, null, target, args);
+        }
+        private void StopAiVoice()
+        {
+            aiSpeechRequests.Cancel();
+            if (aiVoicePollTimer != null) aiVoicePollTimer.Stop();
+            aiSpeechStatus.Cancel();
+            PublishAiSpeechStatus();
+            if (aiVoice != null) try { VoiceCall(aiVoice, "Speak", "", 3); } catch (Exception) { }
+        }
+        private void PublishAiSpeechStatus()
+        {
+            if (aiSpeechCore == null || aiSpeechStatus.StreamId <= 0 || !aiSpeechStatus.PublishDue(DateTime.UtcNow)) return;
+            try { aiSpeechCore.PostWebMessageAsJson(json.Serialize(new { type = "interlinked-ai-speech-status", sessionId = aiSpeechStatus.SessionId,
+                generation = aiSpeechStatus.Generation, streamId = aiSpeechStatus.StreamId, speaking = aiSpeechStatus.Speaking, observedAt = DateTime.UtcNow.ToString("o") })); }
+            catch (Exception) { /* A missing page cannot renew the server's short voice lease. */ }
+        }
+        private void PollAiVoice()
+        {
+            if (!aiSpeechStatus.Pending || aiVoice == null) { if (aiVoicePollTimer != null) aiVoicePollTimer.Stop(); PublishAiSpeechStatus(); return; }
+            object runtime = null;
+            try
+            {
+                runtime = aiVoice.GetType().InvokeMember("Status", System.Reflection.BindingFlags.GetProperty, null, aiVoice, null);
+                int state = Convert.ToInt32(runtime.GetType().InvokeMember("RunningState", System.Reflection.BindingFlags.GetProperty, null, runtime, null));
+                // CurrentStreamNumber is valid only while SAPI claims its audio queue.
+                int stream = state == 2 ? Convert.ToInt32(runtime.GetType().InvokeMember("CurrentStreamNumber", System.Reflection.BindingFlags.GetProperty, null, runtime, null)) : 0;
+                aiSpeechStatus.Observe(state, stream, DateTime.UtcNow);
+                PublishAiSpeechStatus();
+                if (!aiSpeechStatus.Pending) aiVoicePollTimer.Stop();
+            }
+            catch (Exception) { aiSpeechStatus.Cancel(); PublishAiSpeechStatus(); aiVoicePollTimer.Stop(); }
+            finally { if (runtime != null && Marshal.IsComObject(runtime)) try { Marshal.ReleaseComObject(runtime); } catch (Exception) { } }
+        }
+        private void StartAiVoicePolling(CoreWebView2 core, string session, long generation, int stream)
+        {
+            aiSpeechCore = core;
+            aiSpeechStatus.Begin(session, generation, stream, DateTime.UtcNow);
+            if (aiVoicePollTimer == null) { aiVoicePollTimer = new System.Windows.Forms.Timer(); aiVoicePollTimer.Interval = 250; aiVoicePollTimer.Tick += delegate { PollAiVoice(); }; }
+            aiVoicePollTimer.Start();
+            // Begin does not set Speaking: only a matching observed runtime stream may do so.
+            PollAiVoice();
+        }
+        private async Task AiSpeech(CoreWebView2 core, string source, string json)
+        {
+            if (!Local(source, true) || new Uri(source).AbsolutePath != "/" || json.Length > 70000) { aiSpeechRejected++; return; }
+            var serializer = new JavaScriptSerializer();
+            string action = "", session = "";
+            long generation = 0, ticket = 0;
+            try
+            {
+                var message = serializer.Deserialize<Dictionary<string, object>>(json);
+                if (message == null || !message.ContainsKey("type") || Convert.ToString(message["type"]) != "interlinked-ai-speech") { aiSpeechRejected++; return; }
+                action = message.ContainsKey("action") ? Convert.ToString(message["action"]) : "";
+                session = message.ContainsKey("sessionId") ? Convert.ToString(message["sessionId"]) : "";
+                object generationValue; generation = message.TryGetValue("generation", out generationValue) && (generationValue is int || generationValue is long) ? Convert.ToInt64(generationValue) : 0;
+                bool scoped = Regex.IsMatch(session ?? "", "^[a-f0-9]{32}$") && generation > 0 && generation <= 9007199254740991L;
+                if (action == "stop") { if (scoped && session == aiSpeechRequests.SessionId && generation > aiSpeechRequests.Generation) { aiSpeechRequests.Generation = generation; StopAiVoice(); } return; }
+                if (action != "voices" && action != "speak") { aiSpeechRejected++; return; }
+                if (action == "speak")
+                {
+                    if (options.Smoke || !scoped || (session == aiSpeechRequests.SessionId && generation <= aiSpeechRequests.Generation)) { aiSpeechRejected++; return; }
+                    StopAiVoice();
+                    ticket = aiSpeechRequests.Begin(core, session, generation);
+                    if (await core.ExecuteScriptAsync("!!(!document.hidden && document.documentElement.dataset.aiVoiceSession === '" + session + "' && document.getElementById('ai-view') && !document.getElementById('ai-view').hidden && !document.getElementById('ai-panel-assistant').hidden && document.getElementById('ai-speak').checked)") != "true") { aiSpeechRejected++; return; }
+                    if (!aiSpeechRequests.Current(ticket, core, view == null ? null : view.CoreWebView2, session, generation)) return;
+                }
+                if (aiVoice == null) aiVoice = Activator.CreateInstance(Type.GetTypeFromProgID("SAPI.SpVoice", true));
+                if (action == "voices")
+                {
+                    var installed = VoiceCall(aiVoice, "GetVoices", "", "");
+                    int count = Convert.ToInt32(installed.GetType().InvokeMember("Count", System.Reflection.BindingFlags.GetProperty, null, installed, null));
+                    var rows = new List<Dictionary<string, string>>();
+                    aiVoiceTokens.Clear();
+                    for (int i = 0; i < Math.Min(count, 64); i++)
+                    {
+                        object entry = VoiceCall(installed, "Item", i);
+                        string id = Convert.ToString(entry.GetType().InvokeMember("Id", System.Reflection.BindingFlags.GetProperty, null, entry, null));
+                        aiVoiceTokens[id] = entry;
+                        rows.Add(new Dictionary<string, string> { { "id", id }, { "name", Convert.ToString(VoiceCall(entry, "GetDescription", 0)) } });
+                    }
+                    core.PostWebMessageAsJson(serializer.Serialize(new { type = "interlinked-ai-voices", voices = rows }));
+                }
+                else
+                {
+                    string id = message.ContainsKey("voice") ? Convert.ToString(message["voice"]) : "";
+                    string text = message.ContainsKey("text") ? Convert.ToString(message["text"]) : "";
+                    if (!aiVoiceTokens.ContainsKey(id) || text.Length == 0 || text.Length > 16000) return;
+                    if (!aiSpeechRequests.Current(ticket, core, view == null ? null : view.CoreWebView2, session, generation)) return;
+                    aiVoice.GetType().InvokeMember("Voice", System.Reflection.BindingFlags.SetProperty, null, aiVoice, new object[] { aiVoiceTokens[id] });
+                    // SVSFlagsAsync | SVSFPurgeBeforeSpeak | SVSFIsNotXML: text is never SAPI markup.
+                    int stream = Convert.ToInt32(VoiceCall(aiVoice, "Speak", text, 19));
+                    if (!aiSpeechRequests.Current(ticket, core, view == null ? null : view.CoreWebView2, session, generation)) return;
+                    StartAiVoicePolling(core, session, generation, stream);
+                    aiSpeechInvoked++;
+                }
+            }
+            catch (Exception)
+            {
+                // A failed old UI check must not cancel a replacement document
+                // or newer stream. Invalid messages never gain stop authority.
+                bool current = false;
+                try { current = ticket > 0 && aiSpeechRequests.Current(ticket, core, view == null ? null : view.CoreWebView2, session, generation); } catch (Exception) { }
+                if (action == "speak" && !current) return;
+                if (current) StopAiVoice();
+                if (current || action == "voices") try { core.PostWebMessageAsJson("{\"type\":\"interlinked-ai-speech-error\",\"error\":\"Installed Windows speech is unavailable.\"}"); } catch (Exception) { }
+            }
+        }
         private void Configure(WebView2 browser, bool main)
         {
             var core = browser.CoreWebView2;
-            core.Settings.AreDevToolsEnabled = false; core.Settings.AreHostObjectsAllowed = false; core.Settings.IsWebMessageEnabled = false;
+            core.Settings.AreDevToolsEnabled = false; core.Settings.AreHostObjectsAllowed = false; core.Settings.IsWebMessageEnabled = main;
             core.Settings.AreDefaultContextMenusEnabled = false; core.Settings.IsStatusBarEnabled = false;
-            core.PermissionRequested += delegate(object sender, CoreWebView2PermissionRequestedEventArgs e) { e.State = e.PermissionKind == CoreWebView2PermissionKind.MultipleAutomaticDownloads && Local(e.Uri, false) ? CoreWebView2PermissionState.Allow : CoreWebView2PermissionState.Deny; };
-            core.NavigationStarting += delegate(object sender, CoreWebView2NavigationStartingEventArgs e) { if (!Local(e.Uri, true)) { e.Cancel = true; blockedNavigation++; } };
+            core.PermissionRequested += async delegate(object sender, CoreWebView2PermissionRequestedEventArgs e)
+            {
+                e.State = CoreWebView2PermissionState.Deny;
+                if (e.PermissionKind == CoreWebView2PermissionKind.MultipleAutomaticDownloads && Local(e.Uri, false)) { e.State = CoreWebView2PermissionState.Allow; return; }
+                if (!main || options.Smoke || e.PermissionKind != CoreWebView2PermissionKind.Microphone || !Local(e.Uri, true) || new Uri(e.Uri).AbsolutePath != "/") return;
+                var deferral = e.GetDeferral();
+                try
+                {
+                    string armed = await core.ExecuteScriptAsync("!!(!document.hidden && document.documentElement.dataset.aiMicrophoneArmed === 'true' && document.getElementById('ai-view') && !document.getElementById('ai-view').hidden && !document.getElementById('ai-panel-assistant').hidden)");
+                    if (armed == "true" && MessageBox.Show(this, "Allow the AI workspace to record this voice input? Recording stops when you finish, leave the view, or after 60 seconds. The recording is attached for your review before sending.", "INTERLINKED microphone", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                        e.State = CoreWebView2PermissionState.Allow;
+                }
+                finally { deferral.Complete(); }
+            };
+            if (main) core.WebMessageReceived += async delegate(object sender, CoreWebView2WebMessageReceivedEventArgs e) { await AiSpeech(core, e.Source, e.WebMessageAsJson); };
+            core.NavigationStarting += delegate(object sender, CoreWebView2NavigationStartingEventArgs e) { if (!Local(e.Uri, true)) { e.Cancel = true; blockedNavigation++; } if (main && !e.Cancel) StopAiVoice(); };
             core.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
             core.WebResourceRequested += delegate(object sender, CoreWebView2WebResourceRequestedEventArgs e)
             {
@@ -414,7 +606,7 @@ namespace InterlinkedDesktop
                 var download = e.DownloadOperation;
                 download.StateChanged += delegate { if (download.State == CoreWebView2DownloadState.Completed) completedDownloads++; };
             };
-            core.ProcessFailed += delegate { ShowFailure("The interface renderer stopped. Its local service remains running. Close MAGIX before using recovery if the interface cannot be restored."); };
+            core.ProcessFailed += delegate { StopAiVoice(); ShowFailure("The interface renderer stopped. Its local service remains running. Close MAGIX before using recovery if the interface cannot be restored."); };
         }
 
         internal void ShowFailure(string text)
@@ -425,6 +617,7 @@ namespace InterlinkedDesktop
         }
         private void OnServiceExited()
         {
+            StopAiVoice();
             if (!ready && !allowClose)
             {
                 if (options.Smoke && ExitCode != 0) { allowClose = true; Close(); }
@@ -441,6 +634,7 @@ namespace InterlinkedDesktop
         }
         private async void OnClosing(object sender, FormClosingEventArgs e)
         {
+            StopAiVoice();
             if (allowClose || serviceEnded || service == null) return;
             e.Cancel = true;
             if (masterTray != null && masterTray.BackgroundEnabled && !askingQuit && !options.Smoke) { Hide(); return; }
@@ -496,6 +690,20 @@ namespace InterlinkedDesktop
             {
                 await WaitFor(async delegate { return await JsBool("document.querySelectorAll('.project-item').length===6 && !!selected"); }, "mixed demo catalog");
                 checks["catalogLoaded"] = true;
+                Phase("AI workspace synthetic interface");
+                await view.ExecuteScriptAsync("document.getElementById('ai-view-tab').click()");
+                await WaitFor(async delegate { return await JsBool("document.getElementById('ai-view').hidden===false && aiSnapshot?.demo===true && document.getElementById('library-shell').hidden===true"); }, "AI demo workspace");
+                checks["aiWorkspaceLoaded"] = true;
+                await view.ExecuteScriptAsync("document.getElementById('ai-tab-models').click()");
+                checks["aiModelControls"] = await JsBool("document.getElementById('ai-panel-models').hidden===false && !!document.getElementById('ai-calibrate-run') && document.getElementById('ai-panel-assistant').hidden===true");
+                await view.ExecuteScriptAsync("document.getElementById('ai-tab-workers').click()");
+                checks["aiWorkerControls"] = await JsBool("document.getElementById('ai-panel-workers').hidden===false && document.getElementById('ai-task-apply').disabled===true");
+                int rejectedMessages = aiSpeechRejected, spokenMessages = aiSpeechInvoked;
+                await AiSpeech(view.CoreWebView2, "https://example.com/", "{\"type\":\"interlinked-ai-speech\",\"action\":\"speak\",\"text\":\"must not speak\"}");
+                await view.ExecuteScriptAsync("window.chrome.webview.postMessage({type:'unknown-command',action:'execute'}); window.chrome.webview.postMessage({type:'interlinked-ai-speech',action:'execute'}); window.chrome.webview.postMessage({type:'interlinked-ai-speech',action:'speak',text:'must not speak'});");
+                await WaitFor(delegate { return Task.FromResult(aiSpeechRejected >= rejectedMessages + 4); }, "restricted speech bridge refusals");
+                checks["webMessagesRestricted"] = aiSpeechInvoked == spokenMessages && view.CoreWebView2.Settings.IsWebMessageEnabled;
+                await view.ExecuteScriptAsync("document.getElementById('library-view-tab').click()");
                 int activated = activationRequests;
                 var secondInfo = new ProcessStartInfo(Application.ExecutablePath, "--demo --app " + Quote(options.App) + " --python " + Quote(options.Python) + " --demo-state " + Quote(options.DemoState)) { UseShellExecute = false, CreateNoWindow = true };
                 using (var second = Process.Start(secondInfo)) { await Task.Run(delegate { if (!second.WaitForExit(10000)) throw new InvalidOperationException("Second instance did not exit."); }); if (second.ExitCode != 0) throw new InvalidOperationException("Second instance failed."); }
@@ -599,7 +807,7 @@ namespace InterlinkedDesktop
                 await WaitFor(async delegate { return await JsBool("state.operation?.action==='save' && !state.busy && !mutation"); }, "MW5 explicit save");
                 checks["mw5ExplicitSave"] = true;
                 checks["hostObjectsDisabled"] = !view.CoreWebView2.Settings.AreHostObjectsAllowed;
-                checks["webMessagesDisabled"] = !view.CoreWebView2.Settings.IsWebMessageEnabled;
+                checks["auditWebMessagesDisabled"] = auditViews.Count == 0 || !auditViews[0].CoreWebView2.Settings.IsWebMessageEnabled;
                 checks["devToolsDisabled"] = !view.CoreWebView2.Settings.AreDevToolsEnabled;
                 checks["inPrivateProfile"] = view.CoreWebView2.Profile.IsInPrivateModeEnabled;
                 TestWindowPreferences();

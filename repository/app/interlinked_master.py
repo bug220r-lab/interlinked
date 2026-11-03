@@ -15,12 +15,14 @@ import json
 import os
 from pathlib import Path
 import re
+import sqlite3
 import stat
 import struct
 import subprocess
 import threading
 import time
 import uuid
+import unicodedata
 
 
 def configuration_module():
@@ -47,6 +49,68 @@ def utc():
     return datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
 
 
+def lifecycle_node_id(kind, *parts):
+    return 'codex-' + hashlib.sha256(json.dumps([kind, *parts], separators=(',', ':')).encode()).hexdigest()[:24]
+
+
+class CoolerTitleResolver:
+    """Read only exact active-chat metadata; never open conversation payloads.
+
+    The cache belongs exclusively to the private native-display enrichment. A
+    missing/changed schema or locked database is a label fallback, not an app
+    failure. No caller can choose a database through an HTTP or plugin request.
+    """
+    def __init__(self, database=None):
+        self.database = Path(database) if database is not None else Path.home() / '.codex' / 'state_5.sqlite'
+        self.cache = {}
+        self.lock = threading.Lock()
+
+    @staticmethod
+    def title(value):
+        if not isinstance(value, str):
+            return None
+        cleaned = ''.join(' ' if unicodedata.category(c).startswith('C') else c for c in value)
+        return ' '.join(cleaned.split())[:160] or None
+
+    def resolve(self, candidates, now=None):
+        now = time.monotonic() if now is None else now
+        candidates = {node: session for node, session in list(candidates.items())[:64]
+                      if isinstance(node, str) and re.fullmatch(r'codex-[a-f0-9]{24}', node)
+                      and isinstance(session, str) and ID.fullmatch(session)}
+        with self.lock:
+            requested = set(candidates.values())
+            self.cache = {key: row for key, row in self.cache.items() if key in requested and row[0] > now}
+            missing = sorted(requested - self.cache.keys())
+            if missing:
+                # Negative results are cached too, so an absent source is not
+                # repeatedly opened at the renderer's polling cadence.
+                self.cache.update({key: (now + 10, None) for key in missing})
+                connection = None
+                try:
+                    path = ordinary(self.database)
+                    info = path.stat()
+                    if info.st_nlink != 1 or info.st_size > 512 * 1024 * 1024 or getattr(info, 'st_file_attributes', 0) & 0x1000:
+                        raise ValueError('Chat metadata is unavailable.')
+                    connection = sqlite3.connect(path.as_uri() + '?mode=ro', uri=True, timeout=.05)
+                    deadline = time.monotonic() + .05
+                    connection.set_progress_handler(lambda: int(time.monotonic() > deadline), 1000)
+                    placeholders = ','.join('?' for _ in missing)
+                    # In the desktop's current schema, `name` is the visible
+                    # chat title. The legacy `title` column can contain the
+                    # initial prompt and must never be used as a fallback.
+                    rows = connection.execute('SELECT id,substr(name,1,640),updated_at,archived FROM threads WHERE id IN (' + placeholders + ')', missing)
+                    for session, title, updated, archived in rows:
+                        if session in requested and type(archived) is int and archived == 0:
+                            self.cache[session] = (now + 10, self.title(title))
+                except (OSError, ValueError, sqlite3.Error):
+                    pass
+                finally:
+                    if connection is not None:
+                        connection.close()
+            return {node: self.cache[session][1] for node, session in candidates.items()
+                    if session in self.cache and self.cache[session][1]}
+
+
 def timestamp(value):
     if not isinstance(value, str) or len(value) > 40:
         raise ValueError('Invalid observation time.')
@@ -57,6 +121,79 @@ def timestamp(value):
         return result.timestamp()
     except (ValueError, OverflowError):
         raise ValueError('Invalid observation time.') from None
+
+
+class CoolerVoiceActivity:
+    """Ephemeral UI heartbeats, exposed only in the native display copy.
+
+    Sequence tombstones outlive the five-second activity lease. Receipt age is
+    carried forward with a monotonic clock, so polling or wall-clock adjustment
+    cannot renew microphone/speech activity. No session identity is exported.
+    """
+    TTL = 5
+    TOMBSTONE_TTL = 120
+    MAX_SESSIONS = 64
+
+    def __init__(self, wall_clock=None, monotonic_clock=None):
+        self.wall_clock = wall_clock or (lambda: time.time())
+        self.monotonic_clock = monotonic_clock or (lambda: time.monotonic())
+        self.lock = threading.Lock()
+        self.sessions = {}
+
+    def accept(self, body):
+        fields = {'sessionId', 'sequence', 'observedAt', 'listening', 'speaking'}
+        if not isinstance(body, dict) or set(body) != fields:
+            raise ValueError('Voice activity requires only its full heartbeat fields.')
+        session, sequence, observed = body['sessionId'], body['sequence'], body['observedAt']
+        if not isinstance(session, str) or re.fullmatch(r'[a-f0-9]{32}', session) is None:
+            raise ValueError('Invalid voice activity session.')
+        if type(sequence) is not int or not 1 <= sequence <= 9007199254740991:
+            raise ValueError('Invalid voice activity sequence.')
+        if (not isinstance(observed, str) or re.fullmatch(
+                r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|\+00:00)', observed) is None):
+            raise ValueError('Voice activity requires a UTC observation time.')
+        event_time = timestamp(observed)
+        if type(body['listening']) is not bool or body['speaking'] not in ('none', 'browser_tts', 'windows_sapi'):
+            raise ValueError('Invalid voice activity state.')
+        with self.lock:
+            now = self.monotonic_clock()
+            age = self.wall_clock() - event_time
+            # Future observations are rejected rather than receiving an
+            # extended lease. At five seconds an observation is already stale.
+            if not 0 <= age < self.TTL:
+                raise ValueError('Voice activity observation is stale or in the future.')
+            self._purge(now)
+            previous = self.sessions.get(session)
+            if previous is not None and sequence <= previous['sequence']:
+                raise ValueError('Voice activity sequence must increase.')
+            if previous is None and len(self.sessions) >= self.MAX_SESSIONS:
+                raise ValueError('Voice activity session limit reached.')
+            self.sessions[session] = dict(sequence=sequence, received=now, age=age,
+                observedAt=observed, eventTime=event_time, listening=body['listening'], speaking=body['speaking'])
+        return dict(accepted=True, sequence=sequence)
+
+    def _purge(self, now):
+        self.sessions = {session: row for session, row in self.sessions.items()
+                         if now - row['received'] < self.TOMBSTONE_TTL}
+
+    def snapshot(self):
+        with self.lock:
+            now = self.monotonic_clock()
+            self._purge(now)
+            sources = {}
+            for row in self.sessions.values():
+                if row['age'] + max(0, now - row['received']) >= self.TTL:
+                    continue
+                active = ([('microphone_capture', 'listening')] if row['listening'] else [])
+                if row['speaking'] != 'none':
+                    active.append((row['speaking'], 'speaking'))
+                for source, phase in active:
+                    if source not in sources or row['eventTime'] > sources[source][0]:
+                        sources[source] = (row['eventTime'], dict(origin='assistant_ui', source=source,
+                            phase=phase, observedAt=row['observedAt']))
+            observed = datetime.fromtimestamp(self.wall_clock(), timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+            return dict(available=True, observedAt=observed,
+                sources=[sources[source][1] for source in ('microphone_capture', 'browser_tts', 'windows_sapi') if source in sources])
 
 
 def ordinary(path, missing=False):
@@ -689,6 +826,83 @@ class EventModel:
                          source='Codex lifecycle (observed)')
         return projects, total
 
+    def lifecycle_graph(self, registrations, now=None):
+        """Bounded observed relationships; absence of an edge is not a guessed parent."""
+        now = time.time() if now is None else now
+        roots = sorted(((os.path.normcase(os.path.abspath(row[field])).rstrip('\\/'), order, row['id'])
+            for order, row in enumerate(registrations) for field in ('activityRoot', 'root') if row.get(field)),
+            key=lambda row: (-len(row[0]), row[1]))
+        def project(cwd):
+            path = os.path.normcase(os.path.abspath(cwd)) if cwd else ''
+            return next((identifier for root, _, identifier in roots if path == root or path.startswith(root + os.sep)), None)
+        def identifier(kind, *parts):
+            return lifecycle_node_id(kind, *parts)
+        by_agent = {}
+        for edge in self.subagents:
+            by_agent.setdefault(edge[1], []).append(edge)
+        mains = {key[0]: event for key, event in self.sessions.items()
+                 if key[1] == 'main' and key[0] not in by_agent}
+        main_ids = {session: identifier('main', session) for session in mains}
+        child_ids = {edge: identifier('child', *edge) for edge in self.subagents}
+        def parent_identifier(edge):
+            parents = by_agent.get(edge[0], [])
+            if len(parents) != 1:
+                return main_ids.get(edge[0]) if not parents else None
+            seen, cursor = {edge}, parents[0]
+            while True:
+                if cursor in seen:
+                    return None
+                seen.add(cursor)
+                ancestors = by_agent.get(cursor[0], [])
+                if len(ancestors) != 1:
+                    return child_ids[parents[0]]
+                cursor = ancestors[0]
+        def owner(edge, seen):
+            if edge in seen:
+                return None
+            seen.add(edge)
+            parents = by_agent.get(edge[0], [])
+            if len(parents) == 1:
+                inherited = owner(parents[0], seen)
+                if inherited is not None:
+                    return inherited
+            child = self.subagents[edge]
+            return project(child.get('parentCwd') or mains.get(edge[0], {}).get('cwd')) or project(child['cwd'])
+        def status(event):
+            kind = event['event']
+            return ('waiting' if kind == 'PermissionRequest' else 'interrupted' if kind == 'Interrupt'
+                    else 'turn_finished' if kind in {'Stop', 'SubagentStop'}
+                    else 'working' if kind in {'UserPromptSubmit', 'PreToolUse', 'PostToolUse', 'SubagentStart'} else 'unknown')
+        nodes = []
+        for session, event in mains.items():
+            fresh = 0 <= now - timestamp(event['observedAt']) <= EVENT_TTL
+            nodes.append(dict(nodeId=main_ids[session], kind='codex_main', projectId=project(event['cwd']),
+                status=status(event) if fresh else 'unknown', observedAt=event['observedAt'],
+                confidence='observed' if fresh else 'stale'))
+        for edge, child in self.subagents.items():
+            parent = parent_identifier(edge)
+            fresh = 0 <= now - timestamp(child['observedAt']) <= EVENT_TTL
+            certain = fresh and not child.get('uncertainAt')
+            node = dict(nodeId=child_ids[edge], kind='codex_child', projectId=owner(edge, set()),
+                status=status(child) if certain else 'unknown', observedAt=child['observedAt'],
+                confidence='stale' if not fresh else 'observed' if certain and parent else 'partial')
+            if parent:
+                node['parentNodeId'] = parent
+            nodes.append(node)
+        priority = {'waiting': 0, 'working': 1, 'interrupted': 2, 'turn_finished': 3, 'unknown': 4}
+        nodes.sort(key=lambda node: (priority[node['status']], -timestamp(node['observedAt']), node['nodeId']))
+        partial = self.subagent_coverage_lost or len(nodes) > 64 or any(node['confidence'] == 'partial' for node in nodes)
+        omitted_count = max(0, len(nodes) - 64)
+        nodes = nodes[:64]
+        retained = {node['nodeId'] for node in nodes}
+        # Never send a dangling edge after bounded selection.
+        for node in nodes:
+            if node.get('parentNodeId') not in retained:
+                if node.pop('parentNodeId', None) is not None:
+                    node['confidence'] = 'partial'; partial = True
+        return dict(available=bool(nodes), observedAt=max((node['observedAt'] for node in nodes), key=timestamp, default=None),
+                    partial=partial, omittedCount=omitted_count, nodes=nodes)
+
 
 def default_projects(demo=False):
     home = Path(os.environ.get('USERPROFILE') or Path.home())
@@ -728,25 +942,115 @@ def validate_projects(rows):
     return result
 
 
-def git_observation(root):
+GIT_OBSERVATION_TTL = 15
+
+
+def git_observation(root, stop=None):
     if not root:
         return dict(status='unavailable', branch=None, head=None, dirty=None, observedAt=None)
     try:
         ordinary(root)
         flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
-        result = subprocess.run(['git', '--no-optional-locks', '-c', 'core.fsmonitor=false', '-c',
+        if stop is not None and stop.is_set():
+            raise ValueError('Git observation cancelled.')
+        process = subprocess.Popen(['git', '--no-optional-locks', '-c', 'core.fsmonitor=false', '-c',
             'core.untrackedCache=false', '-C', root, 'status', '--porcelain=v2', '--branch', '--untracked-files=normal'],
-            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=3,
-            creationflags=flags, check=False)
-        if result.returncode or len(result.stdout) > 256 * 1024:
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, creationflags=flags)
+        deadline = time.monotonic() + 3
+        try:
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0 or stop is not None and stop.is_set():
+                    raise ValueError('Git observation expired or cancelled.')
+                try:
+                    output, _ = process.communicate(timeout=min(.1, remaining))
+                    break
+                except subprocess.TimeoutExpired:
+                    continue
+        finally:
+            if process.poll() is None:
+                process.kill()
+            process.communicate(timeout=1)
+        if process.returncode or len(output) > 256 * 1024:
             raise ValueError('Git status unavailable.')
-        lines = result.stdout.decode('utf-8', 'replace').splitlines()
+        lines = output.decode('utf-8', 'replace').splitlines()
         metadata = {line.split(' ', 2)[1]: line.split(' ', 2)[2] for line in lines if line.startswith('# branch.')}
         changes = [line for line in lines if not line.startswith('# ')]
         return dict(status='available', branch=metadata.get('branch.head'), head=metadata.get('branch.oid'),
                     dirty=bool(changes), changeCount=len(changes), observedAt=utc())
     except (ValueError, OSError, subprocess.TimeoutExpired):
         return dict(status='unavailable', branch=None, head=None, dirty=None, observedAt=utc())
+
+
+class GitCollector:
+    """At most two owned Git checks; pending work is coalesced by registered root."""
+    def __init__(self, stop):
+        self.stop = stop
+        self.wake = threading.Condition()
+        self.roots = {}
+        self.pending = deque()
+        self.queued = set()
+        self.active = set()
+        self.scheduled = {}
+        self.observations = {}
+        self.threads = []
+
+    def schedule(self, projects, now=None):
+        now = time.monotonic() if now is None else now
+        with self.wake:
+            if self.stop.is_set():
+                return
+            self.roots = {p['id']: p['root'] for p in projects}
+            valid = set(self.roots.items())
+            self.pending = deque(key for key in self.pending if key in valid)
+            self.queued.intersection_update(valid)
+            self.scheduled = {key: value for key, value in self.scheduled.items() if key in valid}
+            self.observations = {key: value for key, value in self.observations.items() if key in valid}
+            for key in self.roots.items():
+                if key[1] and key not in self.queued and key not in self.active and (key not in self.scheduled or now - self.scheduled[key] >= 10):
+                    self.pending.append(key)
+                    self.queued.add(key)
+                    self.scheduled[key] = now
+            if not self.threads:
+                for index in range(2):
+                    thread = threading.Thread(target=self._run, daemon=True, name='master-git-' + str(index))
+                    self.threads.append(thread)
+                    thread.start()
+            self.wake.notify_all()
+
+    def snapshot(self, projects):
+        with self.wake:
+            return {p['id']: deepcopy(self.observations.get((p['id'], p['root']),
+                dict(status='unavailable', branch=None, head=None, dirty=None, observedAt=None))) for p in projects}
+
+    def _run(self):
+        while not self.stop.is_set():
+            with self.wake:
+                while not self.pending and not self.stop.is_set():
+                    self.wake.wait(.5)
+                if self.stop.is_set():
+                    return
+                key = self.pending.popleft()
+                self.queued.discard(key)
+                self.active.add(key)
+            try:
+                observation = git_observation(key[1], self.stop)
+            except Exception:
+                observation = dict(status='unavailable', branch=None, head=None, dirty=None, observedAt=utc())
+            with self.wake:
+                self.active.discard(key)
+                if not self.stop.is_set() and self.roots.get(key[0]) == key[1]:
+                    self.observations[key] = observation
+                self.wake.notify_all()
+
+    def close(self):
+        self.stop.set()
+        with self.wake:
+            self.pending.clear()
+            self.queued.clear()
+            self.wake.notify_all()
+        for thread in self.threads:
+            thread.join(timeout=4)
 
 
 def receipt_health(receipt, git):
@@ -760,14 +1064,20 @@ def receipt_health(receipt, git):
     if not isinstance(baseline, dict) or set(baseline) != {'head', 'clean'} or baseline.get('clean') is not True or not re.fullmatch(r'[0-9a-fA-F]{40,64}', str(baseline.get('head', ''))):
         raise ValueError('Build/test receipt needs an exact clean revision baseline.')
     summary = clean_text(receipt.get('summary', receipt['kind'] + ' ' + receipt['result']), 120)
-    current = git.get('status') == 'available' and git.get('dirty') is False and git.get('head') == baseline['head']
+    try:
+        git_age = time.time() - timestamp(git.get('observedAt'))
+    except ValueError:
+        git_age = float('inf')
+    fresh_git = git.get('status') == 'available' and 0 <= git_age <= GIT_OBSERVATION_TTL
+    current = fresh_git and git.get('dirty') is False and git.get('head') == baseline['head']
     return dict(status=receipt['result'] if current else 'unknown', source='Recorded ' + receipt['kind'] + ' result',
-                observedAt=observed, baseline=baseline, summary=summary if current else 'Previous result; current working state differs',
+                observedAt=observed, baseline=baseline, summary=summary if current else
+                    'Previous result; current working state differs' if fresh_git else 'Previous result; Git observation is unavailable or stale',
                 lastResult=receipt['result'], current=current)
 
 
 def default_settings(runtime):
-    return dict(mode='dashboard', fps=30, rotationSeconds=8, focusProject=None,
+    return dict(mode='dashboard', layout='command_deck', fps=30, rotationSeconds=8, focusProject=None,
         captureRect=dict(x=0, y=0, width=240, height=240), captureEnabled=False,
         captureWindowId=None, captureWindowBounds=None, background=True,
         startAtLogin=not runtime.demo, projects=default_projects(runtime.demo))
@@ -831,10 +1141,14 @@ class MasterService:
         self.commands = deque(maxlen=32)
         self.pending_snapshot = None
         self.events = EventModel()
+        self._cooler_titles = CoolerTitleResolver()
+        self._cooler_display = dict(observedAt=None, titles={}, resources=[], activityAvailable=False, activityPartial=True)
+        self._voice_activity = CoolerVoiceActivity()
         self.event_errors = 0
         self._frame = b''
         self._worker = None
         self._thread = None
+        self._maintenance_thread = None
         self.configuration = master_configuration(runtime, self.root)
         saved = self.configuration.status()
         if not saved['available']:
@@ -855,8 +1169,26 @@ class MasterService:
         demo_worker = getattr(runtime, 'master_worker', None) if runtime.demo else None
         self.worker_path = Path(worker_path or demo_worker) if worker_path or demo_worker else Path(runtime.kit) / 'INTERLINKED-Desktop' / 'INTERLINKED.Master.Worker.exe'
         self.violet_asset = Path(violet_asset) if violet_asset else Path(runtime.kit) / 'INTERLINKED-Desktop' / 'Violet.png'
-        self._git = {}; self._last_git = 0
+        self._git_collector = GitCollector(self.stop)
         self._ack_sample = None
+        self._request_serial = 0
+        self._sensor_request_serial = 0
+        self._connect_intent = False
+        self._attempt_deadline = 0
+        self._cleanup_deadline = 0
+        self._transport_heartbeat = 0
+        self._pending_failure = None
+        self._recovery_armed = False
+        self._recovery_suspended = False
+        self._recovery_until = 0
+        self._retry_index = 0
+        self._retry_at = 0
+        self._stable_since = 0
+        self._attempt_ack_baseline = 0
+        self._attempt_delivered = 0
+        self._last_delivery_at = 0
+        self._state['display'].update(requestId=0, desiredConnected=False,
+            retryAttempt=0, retryLimit=3, nextRetryAt=None, errorCode=None, retryable=False)
         # One-time administrative setup authorizes only this exact installed
         # service/worker pair. Demo checkouts never reconnect real hardware.
         self._auto_start_until = time.monotonic() + 150 if self._automatic_startup_allowed() else 0
@@ -870,16 +1202,20 @@ class MasterService:
             self._start_worker()
             self._thread = threading.Thread(target=self._loop, name='master-status', daemon=True)
             self._thread.start()
+            self._maintenance_thread = threading.Thread(target=self._maintenance_loop, name='master-display-maintenance', daemon=True)
+            self._maintenance_thread.start()
 
     @staticmethod
     def _validate_settings(body):
-        allowed = {'mode', 'fps', 'rotationSeconds', 'focusProject', 'captureRect', 'captureEnabled',
+        allowed = {'mode', 'layout', 'fps', 'rotationSeconds', 'focusProject', 'captureRect', 'captureEnabled',
                    'captureWindowId', 'captureWindowBounds', 'background', 'startAtLogin', 'projects'}
         if not isinstance(body, dict) or set(body) - allowed:
             raise ValueError('Unexpected MASTER settings fields.')
         result = deepcopy(body)
         if 'mode' in result and result['mode'] not in {'dashboard', 'live_mini'}:
             raise ValueError('Unknown display mode.')
+        if 'layout' in result and result['layout'] not in {'command_deck', 'violet_web'}:
+            raise ValueError('Unknown cooler layout.')
         if 'fps' in result and (type(result['fps']) is not int or result['fps'] not in (5, 10, 15, 30)):
             raise ValueError('Choose a target of 5, 10, 15 or 30 FPS.')
         if 'rotationSeconds' in result and result['rotationSeconds'] != 8:
@@ -1009,6 +1345,7 @@ class MasterService:
             saved = self.configuration.restore(body['previewId'], expected_revision=body.get('expectedRevision'))
             # Recovery cannot leave an earlier automatic hardware request armed.
             self._cancel_automatic_startup()
+            self._suspend_recovery('MASTER configuration was restored; choose Connect display to start a new recovery session.')
             self._settings = deepcopy(saved['value']['settings'])
             self.settings_revision = saved['revision']
             self.lifecycle_preferences_known = saved['value']['lifecyclePreferencesKnown']
@@ -1032,31 +1369,277 @@ class MasterService:
         with self.lock:
             return self._frame
 
+    def voice_activity(self, body):
+        return self._voice_activity.accept(body)
+
     def display(self, body):
         # A manual action always takes precedence over the startup retry window.
-        self._auto_start_until = 0
-        self._auto_connect_sent = False
-        self._auto_cancel_pending = False
         if body in ({'action': 'enable_sensors'}, {'action': 'disable_sensors'}):
             if self.runtime.demo:
                 raise ValueError('Sensor setup is unavailable in a synthetic demo.')
             enable = body['action'] == 'enable_sensors'
             with self.lock:
+                self._cancel_startup_for_manual_action()
+                self._sensor_request_serial += 1
+                sensor_request = self._sensor_request_serial
+                display_request = self._request_serial
+                worker = self._worker
                 if enable and not self._state['display'].get('connected'):
                     raise ValueError('Connect the cooler display before enabling its sensor reader.')
-            self._ensure_worker()
-            self._send(dict(op='sensors', enable=enable))
+                if not enable:
+                    # Revocation never starts a replacement sensor/display worker.
+                    if worker is not None and worker.poll() is None:
+                        self._send(dict(op='sensors', enable=False))
+                    return self.state()
+                if worker is None or worker.poll() is not None:
+                    raise ValueError('The connected display worker is unavailable; reconnect before enabling sensors.')
+            # There is normally no startup here. Retain and recheck both identities
+            # in case worker availability inspection or a concurrent restart waits.
+            try:
+                self._ensure_worker(expected_request_id=display_request, report_failure=False)
+            except (OSError, ValueError):
+                with self.lock:
+                    if sensor_request != self._sensor_request_serial or display_request != self._request_serial or self._worker is not worker:
+                        return self.state()
+                raise
+            with self.lock:
+                if (sensor_request == self._sensor_request_serial and display_request == self._request_serial
+                        and self._worker is worker and not self.stop.is_set() and self._state['display'].get('connected')):
+                    self._send(dict(op='sensors', enable=True))
         elif body == {'action': 'capture_sources'}:
+            with self.lock:
+                self._cancel_startup_for_manual_action()
             self._ensure_worker()
             self._send(dict(op='capture_sources'))
         elif isinstance(body, dict) and set(body) == {'connect'} and type(body['connect']) is bool:
-            self._ensure_worker()
             with self.lock:
-                self._state['display'].update(status='connecting' if body['connect'] else 'disconnecting', message='Waiting for display worker')
-            self._send(dict(op='display', connect=body['connect']))
+                if body['connect'] and (self._cleanup_deadline or self._connect_intent and (self._attempt_deadline or self._retry_at or self._state['display'].get('connected'))):
+                    return self.state()
+                self._cancel_startup_for_manual_action(supersedes_display=True)
+                self._recovery_armed = False
+                self._recovery_suspended = False
+                self._recovery_until = self._retry_at = self._stable_since = 0
+                self._retry_index = 0
+                self._pending_failure = None
+                request = self._request_display(body['connect'], enqueue=False)
+                if not body['connect']:
+                    # Fence first; cancellation never starts a replacement.
+                    worker = self._worker
+                    if worker is not None and worker.poll() is None:
+                        self._send(dict(op='display', connect=False))
+                    else:
+                        self._cleanup_deadline = 0
+                        self._state['display'].update(status='disconnected', message='Display disconnected.')
+            if body['connect']:
+                self._finish_display_connect(request, raise_errors=True)
         else:
             raise ValueError('Display takes a boolean connect field, capture_sources, enable_sensors or disable_sensors action.')
         return self.state()
+
+    def _cancel_startup_for_manual_action(self, supersedes_display=False):
+        """Caller holds self.lock, atomically with its own intent reservation."""
+        if not supersedes_display:
+            self._cancel_automatic_startup()
+            return
+        self._auto_start_until = 0
+        self._auto_connect_sent = False
+        self._auto_cancel_pending = False
+
+    def _request_display(self, connect, now=None, desired=None, recovery=False, enqueue=True):
+        """Fence each transport action before publishing it to the bounded queue."""
+        now = time.monotonic() if now is None else now
+        with self.lock:
+            self._request_serial += 1
+            self._sensor_request_serial += 1
+            self._connect_intent = connect if desired is None else desired
+            self._attempt_deadline = now + 20 if connect else 0
+            self._cleanup_deadline = 0 if connect else now + 5
+            self._transport_heartbeat = now
+            self._stable_since = self._last_delivery_at = 0
+            self._attempt_ack_baseline = self._state['display'].get('acknowledgedFrames') or 0
+            self._attempt_delivered = 0
+            self._state['display'].update(requestId=self._request_serial, desiredConnected=self._connect_intent,
+                connected=False, status=('reconnecting' if recovery else 'connecting') if connect else 'disconnecting',
+                message='Waiting for display worker' if connect else 'Releasing owned display transport',
+                error=None, errorCode=None, retryable=False, nextRetryAt=None,
+                deliveredFps=None, retryAttempt=self._retry_index, retryLimit=3)
+            try:
+                if enqueue:
+                    self._send(dict(op='display', connect=connect))
+            except (OSError, ValueError):
+                if connect:
+                    self._attempt_deadline = 0
+                    self._connect_intent = False
+                    self._state['display'].update(status='unavailable', desiredConnected=False,
+                        message='Display command could not be queued; choose Retry display.', errorCode='command_queue_full')
+                raise
+            return self._request_serial
+
+    def _finish_display_connect(self, request, now=None, automatic=False, raise_errors=False):
+        """Start outside the state lock; only the reserved request may dispatch."""
+        started = time.monotonic()
+        now = started if now is None else now
+        try:
+            self._ensure_worker(expected_request_id=request)
+        except (OSError, ValueError):
+            with self.lock:
+                if request != self._request_serial or not self._connect_intent or self.stop.is_set():
+                    return
+                self._display_failed('worker_unavailable', 'Reviewed display worker could not start.', False, now)
+            if raise_errors:
+                raise
+            return
+        with self.lock:
+            if request != self._request_serial or not self._connect_intent or self.stop.is_set():
+                return
+            # Explicit now values support fixture clocks; production measures the
+            # actual elapsed startup time against the original reservation.
+            checked_now = now + max(0, time.monotonic() - started)
+            if automatic and (not self._auto_start_until or checked_now >= self._auto_start_until
+                    or self._auto_connect_until and checked_now >= self._auto_connect_until or not self._automatic_startup_allowed()):
+                self._cancel_automatic_startup()
+                return
+            if self._recovery_until and checked_now >= self._recovery_until:
+                self._recovery_armed = False
+                self._connect_intent = False
+                self._cancel_failed_attempt('recovery_exhausted', 'Automatic recovery reached its time limit; choose Retry display.', False, checked_now)
+                return
+            if not self._attempt_deadline or checked_now >= self._attempt_deadline:
+                self._cancel_failed_attempt('attempt_timeout', 'The display worker did not finish connecting.', True, checked_now)
+                return
+            try:
+                self._send(dict(op='display', connect=True))
+            except (OSError, ValueError):
+                self._display_failed('command_queue_full', 'Display command could not be queued; choose Retry display.', False, checked_now)
+                if raise_errors:
+                    raise
+
+    def _display_failed(self, code, message, retryable=False, now=None):
+        """Called only after owned cleanup or confirmed worker exit."""
+        now = time.monotonic() if now is None else now
+        with self.lock:
+            self._attempt_deadline = self._cleanup_deadline = self._stable_since = 0
+            self._pending_failure = None
+            self._state['display'].update(connected=False, deliveredFps=None, errorCode=code,
+                error=message, message=message, retryable=bool(retryable))
+            if self._connect_intent and self._recovery_armed and retryable and not self.stop.is_set():
+                if not self._recovery_until:
+                    self._recovery_until = now + 75
+                if self._retry_index < 3 and now < self._recovery_until:
+                    delay = (2, 5, 10)[self._retry_index]
+                    self._retry_index += 1
+                    self._retry_at = min(now + delay, self._recovery_until)
+                    next_at = datetime.fromtimestamp(time.time() + self._retry_at - now, timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+                    self._state['display'].update(status='retry_wait', desiredConnected=True,
+                        retryAttempt=self._retry_index, nextRetryAt=next_at)
+                    return
+                code = 'recovery_exhausted'
+                self._state['display'].update(errorCode=code, message=message + ' Automatic recovery ended; choose Retry display.')
+            self._retry_at = self._recovery_until = 0
+            self._connect_intent = False
+            self._state['display'].update(status='unavailable', desiredConnected=False, nextRetryAt=None)
+
+    def _suspend_recovery(self, message):
+        with self.lock:
+            pending = bool(self._retry_at or self._recovery_until and self._attempt_deadline)
+            self._recovery_suspended = True
+            self._recovery_armed = False
+            self._retry_at = self._recovery_until = 0
+            if self._pending_failure:
+                self._pending_failure = ('configuration_changed', message, False)
+                self._connect_intent = False
+                self._state['display']['desiredConnected'] = False
+            elif pending:
+                self._connect_intent = False
+                self._cancel_failed_attempt('configuration_changed', message, False)
+
+    def _cancel_failed_attempt(self, code, message, retryable=True, now=None):
+        now = time.monotonic() if now is None else now
+        with self.lock:
+            self._pending_failure = (code, message, retryable)
+            self._retry_at = 0
+            desired = self._connect_intent
+            # Queue saturation cannot discard cancellation. The watchdog retires
+            # only this owned worker if it cannot acknowledge cleanup in time.
+            try:
+                self._request_display(False, now, desired=desired)
+            except (OSError, ValueError):
+                pass
+            self._state['display'].update(status='cleaning_up', errorCode=code, error=message, message=message)
+
+    def _retire_worker(self, worker):
+        """Fence and stop only this service's exact owned child, then permit retry."""
+        with self.worker_start_lock:
+            if worker is None or self._worker is not worker:
+                return
+            # Fence old frame/status threads before waiting for process cleanup.
+            with self.lock:
+                self._worker = None
+            with self.wake:
+                self.commands.clear(); self.pending_snapshot = None; self.wake.notify_all()
+            try:
+                if worker.poll() is None:
+                    worker.kill()
+                worker.wait(timeout=2)
+            except (OSError, subprocess.TimeoutExpired):
+                # A live old worker remains authoritative; never overlap writers.
+                with self.lock:
+                    self._worker = worker
+                raise ValueError('Owned display worker did not finish cleanup.') from None
+            try:
+                if worker.stdin:
+                    worker.stdin.close()
+            except (OSError, ValueError):
+                pass
+            with self.lock:
+                self._frame = b''
+                self._state['display']['frameObservedAt'] = None
+
+    def _display_tick(self, now=None):
+        now = time.monotonic() if now is None else now
+        retire = None
+        with self.lock:
+            if self._cleanup_deadline and now >= self._cleanup_deadline:
+                retire = self._worker
+                failure_request = self._request_serial
+                failure = self._pending_failure or ('worker_unresponsive', 'Display cleanup did not respond.', True)
+                self._cleanup_deadline = 0
+            else:
+                failure = None
+            if not failure and self._recovery_until and now >= self._recovery_until and self._connect_intent:
+                self._recovery_armed = False
+                self._retry_at = self._recovery_until = 0
+                self._connect_intent = False
+                self._cancel_failed_attempt('recovery_exhausted', 'Automatic recovery reached its time limit; choose Retry display.', False, now)
+                return
+            if not failure and self._attempt_deadline and now >= self._attempt_deadline:
+                self._cancel_failed_attempt('attempt_timeout', 'The display worker did not finish connecting.', True, now)
+                return
+            if not failure and self._state['display'].get('connected') and self._connect_intent:
+                if now - self._transport_heartbeat > 5:
+                    self._cancel_failed_attempt('transport_unresponsive', 'The USB transport stopped responding.', True, now)
+                    return
+                if self._stable_since and now - self._stable_since >= 30 and now - self._last_delivery_at <= 5:
+                    self._retry_index = 0; self._recovery_until = 0
+                    self._state['display'].update(retryAttempt=0, nextRetryAt=None)
+            retry = bool(not failure and not self._cleanup_deadline and self._pending_failure is None
+                         and self._retry_at and now >= self._retry_at)
+            if retry:
+                self._retry_at = 0
+                request = self._request_display(True, now, desired=True, recovery=True, enqueue=False)
+        if failure:
+            try:
+                self._retire_worker(retire)
+            except (OSError, ValueError) as exc:
+                with self.lock:
+                    if failure_request == self._request_serial:
+                        self._display_failed('cleanup_failed', str(exc), False, now)
+                return
+            with self.lock:
+                if failure_request == self._request_serial:
+                    self._display_failed(*failure, now=now)
+        elif retry:
+            self._finish_display_connect(request, now)
 
     def _worker_settings(self):
         with self.lock:
@@ -1079,19 +1662,26 @@ class MasterService:
         settings['requireHelperPins'] = not self.runtime.demo
         return settings
 
-    def _ensure_worker(self):
+    def _ensure_worker(self, expected_request_id=None, report_failure=True):
+        with self.lock:
+            expected_request_id = self._request_serial if expected_request_id is None else expected_request_id
         if self._worker is None or self._worker.poll() is not None:
-            self._start_worker()
+            self._start_worker(expected_request_id, report_failure)
         if self._worker is None:
             raise ValueError('MASTER display worker is not installed. Build and publish its reviewed package first.')
 
-    def _start_worker(self):
+    def _start_worker(self, expected_request_id=None, report_failure=True):
         # HTTP handlers may request a restart concurrently. Keep one owned
         # renderer, so no request can orphan a second display writer.
+        with self.lock:
+            expected_request_id = self._request_serial if expected_request_id is None else expected_request_id
         with self.worker_start_lock:
-            self._start_worker_locked()
+            self._start_worker_locked(expected_request_id, report_failure)
 
-    def _start_worker_locked(self):
+    def _start_worker_locked(self, expected_request_id=None, report_failure=True):
+        with self.lock:
+            if expected_request_id is not None and expected_request_id != self._request_serial:
+                return
         if self.stop.is_set() or self._worker is not None and self._worker.poll() is None:
             return
         try:
@@ -1113,19 +1703,45 @@ class MasterService:
                 # Restarted workers never replay an old Connect/capture request.
                 self.commands.clear()
                 self.pending_snapshot = None
-            self._worker = subprocess.Popen([str(executable)], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            worker = subprocess.Popen([str(executable)], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0), cwd=str(executable.parent))
-            threading.Thread(target=self._read_frames, args=(self._worker,), daemon=True, name='master-frames').start()
-            threading.Thread(target=self._read_status, args=(self._worker,), daemon=True, name='master-worker-status').start()
-            threading.Thread(target=self._write_worker, args=(self._worker,), daemon=True, name='master-worker-input').start()
+            with self.lock:
+                self._worker = worker
+            threading.Thread(target=self._read_frames, args=(worker,), daemon=True, name='master-frames').start()
+            threading.Thread(target=self._read_status, args=(worker,), daemon=True, name='master-worker-status').start()
+            threading.Thread(target=self._write_worker, args=(worker,), daemon=True, name='master-worker-input').start()
             self._send(dict(op='settings', settings=settings))
             self._send(dict(op='snapshot', snapshot=self.state()))
         except (OSError, ValueError):
-            self._worker = None
             with self.lock:
-                self._state['display'].update(status='unavailable', connected=False, message='Reviewed display worker is not installed', error=None)
+                self._worker = None
+                if report_failure and expected_request_id == self._request_serial and not self.stop.is_set():
+                    self._state['display'].update(status='unavailable', connected=False, message='Reviewed display worker is not installed', error=None)
+
+    def _connection_activity(self):
+        """Observe bounded recovery without changing transport state or intent."""
+        with self.lock:
+            now = time.monotonic()
+            pending = (self._pending_failure is not None and self._cleanup_deadline > now
+                or self._recovery_until > now and (self._retry_at > 0 or self._attempt_deadline > now))
+            if self._connect_intent and self._recovery_armed and not self._recovery_suspended and pending:
+                return dict(source='cooler_transport', phase='reconnecting',
+                    requestId=self._request_serial, observedAt=utc())
+        return None
 
     def _send(self, value):
+        if value['op'] == 'display':
+            value = dict(value, requestId=self._request_serial)
+        elif value['op'] == 'snapshot':
+            # Titles/resources/activity are display-only: never mutate public state or
+            # persist the private enrichment in snapshot.json or plugin feeds.
+            snapshot = deepcopy(value['snapshot'])
+            with self.lock:
+                private = deepcopy(self._cooler_display)
+                private['connectionActivity'] = self._connection_activity()
+            private['voiceActivity'] = self._voice_activity.snapshot()
+            snapshot['coolerDisplay'] = private
+            value = dict(value, snapshot=snapshot)
         with self.wake:
             if value['op'] == 'snapshot':
                 self.pending_snapshot = value
@@ -1152,6 +1768,9 @@ class MasterService:
                     if value['op'] == 'quit':
                         return
         except (BrokenPipeError, OSError, ValueError):
+            with self.lock:
+                if self._worker is worker and not self.stop.is_set():
+                    self._cancel_failed_attempt('command_pipe_failed', 'The display command pipe stopped responding.', True)
             return
 
     @staticmethod
@@ -1186,7 +1805,8 @@ class MasterService:
                 if self._worker is worker:
                     self._frame = b''
                     self._state['display']['frameObservedAt'] = None
-                    self._state['display'].update(status='unavailable', connected=False, message='Display worker stopped; project workflows are unaffected')
+                    if not self.stop.is_set():
+                        self._cancel_failed_attempt('worker_stopped', 'Display worker stopped; project workflows are unaffected.', True)
 
     def _read_status(self, worker):
         try:
@@ -1198,20 +1818,40 @@ class MasterService:
                     continue
                 try:
                     message = json.loads(line)
-                    if self._worker is worker:
-                        self.accept_worker_status(message)
+                    self.accept_worker_status(message, worker=worker)
                 except (ValueError, TypeError, json.JSONDecodeError):
                     continue
         except OSError:
             return
 
-    def accept_worker_status(self, message):
+    def accept_worker_status(self, message, worker=None):
         if not isinstance(message, dict):
             return
         kind = message.get('type')
         with self.lock:
+            if worker is not None and self._worker is not worker:
+                return
+            if kind in {'status', 'stats', 'transport', 'delivery'}:
+                request_id = message.get('requestId')
+                if request_id is None and self._request_serial == 0:
+                    request_id = 0  # Initial preview-only protocol observations.
+                if type(request_id) is not int or request_id != self._request_serial:
+                    return
+                if kind == 'transport':
+                    self._transport_heartbeat = time.monotonic()
+                    return
+                if kind == 'delivery':
+                    count = message.get('attemptAcknowledgedFrames')
+                    if type(count) is int and count > 0 and self._connect_intent and self._state['display'].get('connected'):
+                        now = time.monotonic()
+                        self._recovery_armed = not self._recovery_suspended
+                        self._attempt_deadline = 0
+                        self._stable_since = self._last_delivery_at = now
+                        self._attempt_delivered = count
+                        self._state['display']['attemptAcknowledgedFrames'] = count
+                    return
             if kind in {'status', 'stats'}:
-                allowed = {'connected', 'displayStatus', 'error', 'message', 'fps', 'acknowledgedFrames', 'droppedFrames', 'ackLatencyMs', 'encodeMs', 'frameBytes', 'cpuPercent', 'memoryBytes', 'renderFps', 'encodedBytes', 'ackMs', 'workingSetBytes', 'cpuTotalMs', 'frameSequence'}
+                allowed = {'connected', 'displayStatus', 'error', 'errorCode', 'retryable', 'message', 'fps', 'acknowledgedFrames', 'attemptAcknowledgedFrames', 'droppedFrames', 'ackLatencyMs', 'encodeMs', 'frameBytes', 'cpuPercent', 'memoryBytes', 'renderFps', 'encodedBytes', 'ackMs', 'workingSetBytes', 'cpuTotalMs', 'frameSequence'}
                 self._state['display'].update({k: v for k, v in message.items() if k in allowed and isinstance(v, (str, int, float, bool, type(None)))})
                 if 'displayStatus' in message:
                     self._state['display']['status'] = message['displayStatus']
@@ -1219,6 +1859,26 @@ class MasterService:
                         # The worker status supersedes the pending
                         # request text, so the UI can show its actual error.
                         self._state['display']['message'] = None
+                    if message['displayStatus'] == 'connected':
+                        self._transport_heartbeat = time.monotonic()
+                    elif message['displayStatus'] in {'unavailable', 'disconnected'}:
+                        if message.get('cleanupComplete') is False:
+                            self._cancel_failed_attempt('cleanup_failed', message.get('error') or 'Display cleanup needs review.', False)
+                            return
+                        if self._pending_failure:
+                            failure = self._pending_failure
+                            self._display_failed(*failure)
+                        elif message['displayStatus'] == 'unavailable':
+                            if message.get('retryable') is not True:
+                                # An ownership or integrity refusal cannot become
+                                # an automatic sign-in acquisition loop.
+                                self._auto_start_until = 0
+                                self._auto_connect_sent = self._auto_cancel_pending = False
+                            self._display_failed(message.get('errorCode') or 'transport_failed',
+                                message.get('message') or message.get('error') or 'Display connection failed.', message.get('retryable') is True)
+                        else:
+                            self._attempt_deadline = self._cleanup_deadline = 0
+                            self._state['display']['desiredConnected'] = self._connect_intent
                 if kind == 'stats':
                     self._state['display']['targetFps'] = message.get('fps')
                     self._state['display']['fps'] = message.get('renderFps')
@@ -1230,6 +1890,16 @@ class MasterService:
                         else:
                             self._state['display']['deliveredFps'] = None
                         self._ack_sample = (now,count)
+                        attempt_count = message.get('attemptAcknowledgedFrames')
+                        if (self._state['display'].get('connected') and type(attempt_count) is int
+                                and attempt_count > self._attempt_delivered and self._connect_intent):
+                            self._recovery_armed = not self._recovery_suspended
+                            self._attempt_deadline = 0
+                            if count > self._attempt_ack_baseline and (not self._stable_since or now - self._last_delivery_at > 5):
+                                self._stable_since = now
+                            self._last_delivery_at = now
+                            self._attempt_ack_baseline = count
+                            self._attempt_delivered = attempt_count
             elif kind == 'sensors':
                 payload = message.get('temperatures', message)
                 for key in ('cpu', 'gpu'):
@@ -1293,16 +1963,88 @@ class MasterService:
         with self.refresh_lock:
             self._refresh_locked(collect_git)
 
+    def _collect_cooler_display(self, graph, registrations, ai_summary):
+        now = time.time()
+        nodes = {row.get('nodeId'): row for row in graph.get('nodes', []) if isinstance(row, dict)}
+        candidates = {}
+        for (session, role), event in self.events.sessions.items():
+            node_id = lifecycle_node_id('main', session)
+            row = nodes.get(node_id, {}) if role == 'main' else {}
+            if row.get('kind') != 'codex_main' or not row.get('projectId'):
+                continue
+            age = now - timestamp(row['observedAt'])
+            if row.get('confidence') == 'observed' and 0 <= age <= EVENT_TTL and (
+                    row.get('status') in ('working', 'waiting') or row.get('status') == 'turn_finished' and age < 3):
+                candidates[node_id] = session
+        for parent, child in self.events.subagents:
+            node_id = lifecycle_node_id('child', parent, child)
+            row = nodes.get(node_id, {})
+            if not row.get('projectId') or row.get('confidence') != 'observed':
+                continue
+            age = now - timestamp(row['observedAt'])
+            if 0 <= age <= EVENT_TTL and (row.get('status') in ('working', 'waiting') or
+                    row.get('status') == 'turn_finished' and age < 3):
+                candidates[node_id] = child
+        titles = {} if self.runtime.demo else self._cooler_titles.resolve(candidates)
+        resources = []
+        ai_service = getattr(self, 'ai_service', None)
+        if ai_service is not None and hasattr(ai_service, 'cooler_resources'):
+            try:
+                raw = ai_service.cooler_resources()
+                if isinstance(raw, dict):
+                    raw = raw.get('hosts', raw.get('resources', []))
+                seen_hosts = set()
+                for host in raw if isinstance(raw, list) else []:
+                    if not isinstance(host, dict) or host.get('id') not in ('local', 'msi') or host['id'] in seen_hosts:
+                        continue
+                    seen_hosts.add(host['id'])
+                    safe = dict(id=host['id'])
+                    gpu_id = host.get('gpuId')
+                    if isinstance(gpu_id, str) and re.fullmatch(r'GPU-[A-Za-z0-9-]{1,80}', gpu_id):
+                        safe['gpuId'] = gpu_id
+                    for key in ('cpuTemperature', 'gpuTemperature', 'gpuLoad', 'vramUsed', 'vramTotal'):
+                        field = host.get(key)
+                        if not isinstance(field, dict):
+                            continue
+                        value = field.get('value')
+                        if value is not None and (type(value) not in (int, float) or not 0 <= value < float('inf')):
+                            continue
+                        source = field.get('source')
+                        source = source if isinstance(source, str) and source in {'nvidia-smi', 'reviewed-sensor-publisher', 'local-sensor-map'} else 'unavailable'
+                        observed = field.get('observedAt')
+                        try:
+                            age = now - timestamp(observed)
+                        except ValueError:
+                            observed, age = None, -1
+                        valid = source != 'unavailable' and 0 <= age <= 5 and field.get('status') in ('live', 'available', 'verified')
+                        safe[key] = dict(value=value if valid else None, status='available' if valid else 'unavailable',
+                                         source=source, observedAt=observed)
+                    resources.append(safe)
+            except (OSError, ValueError, TypeError, KeyError):
+                pass
+        covered = set()
+        for row in nodes.values():
+            try:
+                if row.get('confidence') == 'observed' and 0 <= now - timestamp(row['observedAt']) <= EVENT_TTL:
+                    covered.add(row.get('projectId'))
+            except (ValueError, KeyError):
+                continue
+        try:
+            ai_available = bool(ai_summary.get('available')) and 0 <= now - timestamp(ai_summary.get('observedAt')) <= 15
+        except ValueError:
+            ai_available = False
+        return dict(observedAt=utc(), titles=titles, resources=resources,
+                    activityAvailable=bool(covered) or ai_available,
+                    activityPartial=bool(graph.get('partial') or ai_summary.get('partial') or self.event_errors or
+                        any(row['id'] not in covered for row in registrations)))
+
     def _refresh_locked(self, collect_git=True):
         self._consume_events()
         with self.lock:
             settings = deepcopy(self._settings)
-        if collect_git and time.monotonic() - self._last_git >= 10 and not self.runtime.demo:
-            for project in settings['projects']:
-                if self.stop.is_set():
-                    return
-                self._git[project['id']] = git_observation(project['root'])
-            self._last_git = time.monotonic()
+        if collect_git and not self.runtime.demo:
+            self._git_collector.schedule(settings['projects'])
+        git_observations = self._git_collector.snapshot(settings['projects'])
         # A reduced controller snapshot, without output, does not recurse into MASTER.
         try:
             operation = self.controller.state()
@@ -1313,11 +2055,30 @@ class MasterService:
             operation = {}
             controller_observed = None
         subagents_by_project, subagents = self.events.subagent_counts(settings['projects'])
+        lifecycle_graph = self.events.lifecycle_graph(settings['projects'])
+        # AI may inspect coordinator locks. Never call it while holding MASTER's
+        # lock: AI request paths may separately read MASTER registrations.
+        ai_summary = dict(available=False, observedAt=None, partial=True, hosts=[], flows=[], pulses=[], otherActiveCount=0)
+        ai_service = getattr(self, 'ai_service', None)
+        if ai_service is not None and hasattr(ai_service, 'observation_summary'):
+            try:
+                observed_ai = ai_service.observation_summary()
+                if isinstance(observed_ai, dict):
+                    ai_summary = deepcopy(observed_ai)
+            except (ValueError, OSError, TypeError, KeyError):
+                pass
         projects = []
         for registration in settings['projects']:
             identifier = registration['id']
             activity = self.events.activity([registration.get('activityRoot'), registration['root']])
-            git = deepcopy(self._git.get(identifier, dict(status='unavailable', branch=None, head=None, dirty=None, observedAt=None)))
+            git = git_observations[identifier]
+            if git.get('status') == 'available':
+                try:
+                    fresh_git = 0 <= time.time() - timestamp(git.get('observedAt')) <= GIT_OBSERVATION_TTL
+                except ValueError:
+                    fresh_git = False
+                if not fresh_git:
+                    git.update(status='stale', stale=True)
             receipt = None
             try:
                 receipt = read_json(self.feed / 'results' / (identifier + '.json'), 16384)
@@ -1360,6 +2121,11 @@ class MasterService:
                         workspace = dict(status='offline', summary='ED-IT Buddy status is stale')
                 except (OSError, ValueError, KeyError, json.JSONDecodeError):
                     workspace = dict(status='offline', summary='ED-IT Buddy status publisher is not connected')
+            active_ai = [row for row in ai_summary.get('flows', []) if row.get('projectId') == identifier
+                         and row.get('phase') in {'queued', 'preparing', 'working', 'reviewing', 'applying', 'request_pending', 'running'}]
+            if ai_summary.get('available') and active_ai:
+                workspace = dict(status='working', summary='INTERLINKED AI: ' + str(len(active_ai)) + ' assigned flow(s)',
+                    observedAt=ai_summary.get('observedAt'), source='INTERLINKED AI coordinator')
             projects.append(dict(id=identifier, label=registration['label'], activity=activity, health=health, git=git,
                 workspace=workspace, subagents=subagents_by_project[identifier],
                 source=activity['source'], observedAt=activity['observedAt']))
@@ -1367,13 +2133,19 @@ class MasterService:
             attention = collect_attention(self.feed, projects)
         except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
             attention = dict(available=False, items=[], pendingCount=0, delivery='Attention queue unavailable')
+        cooler_display = self._collect_cooler_display(lifecycle_graph, settings['projects'], ai_summary)
         with self.lock:
-            self._state.update(utc=utc(), projects=projects, subagents=subagents, violet=self._violet(), attention=attention)
+            self._cooler_display = cooler_display
+            self._state.update(utc=utc(), projects=projects, subagents=subagents, lifecycleGraph=lifecycle_graph,
+                               ai=ai_summary, violet=self._violet(), attention=attention)
             observed = self._state['temperatures'].get('observedAt')
             if observed and time.time() - timestamp(observed) > 5:
                 self._state['temperatures'] = dict(cpu=dict(value=None, unit='C', status='unavailable'), gpu=dict(value=None, unit='C', status='unavailable'), status='stale', observedAt=observed)
             value = self.state()
-        export = {k: deepcopy(value[k]) for k in ('format', 'version', 'utc', 'demo', 'projects', 'subagents', 'violet', 'temperatures', 'attention')}
+            if not value['settingsValid'] or value.get('restartRequired'):
+                self._suspend_recovery('MASTER configuration changed; review it before starting another recovery session.')
+                value = self.state()
+        export = {k: deepcopy(value[k]) for k in ('format', 'version', 'utc', 'demo', 'projects', 'subagents', 'lifecycleGraph', 'ai', 'violet', 'temperatures', 'attention')}
         write_json(self.feed / 'snapshot.json', export)
         if self._worker is not None and self._worker.poll() is None:
             self._send(dict(op='snapshot', snapshot=value))
@@ -1403,7 +2175,7 @@ class MasterService:
             self._auto_cancel_pending = True
         if self._auto_cancel_pending:
             try:
-                self._send(dict(op='display', connect=False))
+                self._request_display(False)
             except ValueError:
                 # A full bounded queue cannot discard the cancellation. Retry
                 # it on the next tick without rearming automatic connection.
@@ -1424,7 +2196,13 @@ class MasterService:
                     or self._state['display'].get('connected')):
                 self._cancel_automatic_startup()
                 return
-            if now < self._auto_start_next or self._state['display'].get('status') == 'connecting':
+            # A startup retry cannot supersede an attempt or its cleanup.
+            # Maintenance owns the watchdog and recovery deadlines; preserve
+            # their cancellation request until cleanup or confirmed exit.
+            if (self._cleanup_deadline or self._pending_failure is not None
+                    or self._attempt_deadline or self._retry_at or self._recovery_until
+                    or now < self._auto_start_next
+                    or self._state['display'].get('status') in {'connecting', 'reconnecting', 'cleaning_up', 'disconnecting'}):
                 return
             # Let the scheduled publisher initialize first, avoiding a competing
             # normal-user vendor publisher. Display still starts if sensors fail.
@@ -1433,33 +2211,45 @@ class MasterService:
             if not self._auto_connect_until:
                 self._auto_connect_until = now + 60
             self._auto_start_next = now + 5
-        self._ensure_worker()
-        with self.lock:
-            if not self._auto_start_until or not self._automatic_startup_allowed():
-                self._cancel_automatic_startup()
-                return
-            self._state['display'].update(status='connecting', message='Connecting the cooler after sign-in', error=None)
             self._auto_connect_sent = True
-            self._send(dict(op='display', connect=True))
+            request = self._request_display(True, now, enqueue=False)
+            self._state['display']['message'] = 'Connecting the cooler after sign-in'
+        self._finish_display_connect(request, now, automatic=True)
 
     def _loop(self):
         while not self.stop.wait(1):
             try:
                 self.refresh()
+            except (ValueError, OSError):
+                self.event_errors += 1
+
+    def _maintenance_loop(self):
+        # Git, AI collection and snapshot storage are deliberately absent here.
+        # Their failures/delays cannot extend a connection or cleanup deadline.
+        while not self.stop.wait(.25):
+            try:
+                self._display_tick()
+            except (ValueError, OSError):
+                self.event_errors += 1
+            try:
                 self._automatic_startup_tick()
             except (ValueError, OSError):
                 self.event_errors += 1
 
     def close(self):
         self.stop.set()
-        if self._worker is not None and self._worker.poll() is None:
-            try:
-                self._send(dict(op='quit'))
-                self._worker.wait(timeout=4)
-            except (OSError, ValueError, subprocess.TimeoutExpired):
-                # Only the worker owned by this service is eligible for termination.
-                self._worker.kill()
-                self._worker.wait(timeout=2)
+        self._git_collector.close()
+        if self._maintenance_thread is not None:
+            self._maintenance_thread.join(timeout=3)
+        with self.worker_start_lock:
+            if self._worker is not None and self._worker.poll() is None:
+                try:
+                    self._send(dict(op='quit'))
+                    self._worker.wait(timeout=5)
+                except (OSError, ValueError, subprocess.TimeoutExpired):
+                    # Only the worker owned by this service is eligible for termination.
+                    self._worker.kill()
+                    self._worker.wait(timeout=2)
         if self._thread is not None:
             self._thread.join(timeout=1)
 

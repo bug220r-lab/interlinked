@@ -122,7 +122,9 @@ class MasterTests(unittest.TestCase):
         self.service._state['temperatures']['status'] = 'available'
         with patch.object(self.service, '_automatic_startup_allowed', return_value=True), patch.object(self.service, '_ensure_worker'), patch.object(self.service, '_send') as send:
             self.service._automatic_startup_tick(20)
-            self.service._state['display']['status'] = 'unavailable'
+            self.service.accept_worker_status(dict(type='status', requestId=self.service._request_serial,
+                displayStatus='unavailable', connected=False, cleanupComplete=True, retryable=True,
+                errorCode='handshake_timeout', error='Synthetic handshake timeout'))
             self.service._automatic_startup_tick(21)
             self.service._automatic_startup_tick(26)
             self.assertEqual(send.call_count, 2)
@@ -138,7 +140,9 @@ class MasterTests(unittest.TestCase):
             self.service._automatic_startup_tick(79)
             send.assert_not_called()
             self.service._automatic_startup_tick(80)
-            self.service._state['display']['status'] = 'unavailable'
+            self.service.accept_worker_status(dict(type='status', requestId=self.service._request_serial,
+                displayStatus='unavailable', connected=False, cleanupComplete=True, retryable=True,
+                errorCode='handshake_timeout', error='Synthetic handshake timeout'))
             self.service._automatic_startup_tick(93)
             self.assertEqual(send.call_count, 2)
             self.assertEqual(self.service._auto_connect_until, 140)
@@ -162,7 +166,7 @@ class MasterTests(unittest.TestCase):
         self.service._state['temperatures']['status'] = 'available'
         with patch.object(self.service, '_automatic_startup_allowed', side_effect=[True, False]), patch.object(self.service, '_ensure_worker'), patch.object(self.service, '_send') as send:
             self.service._automatic_startup_tick(20)
-            send.assert_not_called()
+            self.assertFalse(any(call.args[0].get('connect') is True for call in send.call_args_list))
             self.assertEqual(self.service._auto_start_until, 0)
 
     def test_saving_opt_out_cancels_in_flight_automatic_usb_request(self):
@@ -201,7 +205,7 @@ class MasterTests(unittest.TestCase):
             self.service._automatic_startup_tick(20)
             self.service._automatic_startup_tick(21)
             ensure.assert_not_called()
-        self.assertEqual(list(self.service.commands), [dict(op='display', connect=False)])
+        self.assertEqual(list(self.service.commands), [dict(op='display', connect=False, requestId=self.service._request_serial)])
         self.assertFalse(self.service._auto_cancel_pending)
         self.assertFalse(self.service._auto_connect_sent)
 
@@ -536,7 +540,7 @@ class MasterTests(unittest.TestCase):
         receipt = dict(format='interlinked-master-result-v1', kind='test', result='passed', observedAt=m.utc(), baseline=dict(head=head, clean=True))
         for git in (dict(status='available',head='b'*40,dirty=False), dict(status='available',head=head,dirty=True)):
             self.assertEqual(m.receipt_health(receipt, git)['status'], 'unknown')
-        self.assertEqual(m.receipt_health(receipt, dict(status='available',head=head,dirty=False))['status'], 'passed')
+        self.assertEqual(m.receipt_health(receipt, dict(status='available',head=head,dirty=False,observedAt=m.utc()))['status'], 'passed')
 
     def test_turn_finished_is_not_build_success(self):
         self.register();m.publish_event(self.service.feed, self.event('Stop'));self.service.refresh(collect_git=False)
@@ -564,18 +568,18 @@ class MasterTests(unittest.TestCase):
         with patch.object(self.service, '_ensure_worker'), patch.object(self.service, '_send'):
             self.service.display(dict(connect=True))
         self.assertEqual(self.service.state()['display']['message'], 'Waiting for display worker')
-        self.service.accept_worker_status(dict(type='status', connected=False,
+        self.service.accept_worker_status(dict(type='status', requestId=self.service._request_serial, connected=False,
             displayStatus='unavailable', error='Vendor LCD helper exited.'))
         display = self.service.state()['display']
         self.assertEqual(display['status'], 'unavailable')
         self.assertFalse(display['connected'])
-        self.assertIsNone(display['message'])
+        self.assertEqual(display['message'], 'Vendor LCD helper exited.')
         self.assertEqual(display.get('message') or display.get('error'), 'Vendor LCD helper exited.')
 
     def test_connected_display_clears_pending_message(self):
         with patch.object(self.service, '_ensure_worker'), patch.object(self.service, '_send'):
             self.service.display(dict(connect=True))
-        self.service.accept_worker_status(dict(type='status', connected=True,
+        self.service.accept_worker_status(dict(type='status', requestId=self.service._request_serial, connected=True,
             displayStatus='connected', error=None))
         display = self.service.state()['display']
         self.assertEqual(display['status'], 'connected')
@@ -586,18 +590,18 @@ class MasterTests(unittest.TestCase):
     def test_display_status_preserves_explicit_worker_message(self):
         with patch.object(self.service, '_ensure_worker'), patch.object(self.service, '_send'):
             self.service.display(dict(connect=True))
-        self.service.accept_worker_status(dict(type='status', connected=False,
+        self.service.accept_worker_status(dict(type='status', requestId=self.service._request_serial, connected=False,
             displayStatus='unavailable', message='Close the other LCD writer.', error='Writer conflict'))
         self.assertEqual(self.service.state()['display']['message'], 'Close the other LCD writer.')
 
     def test_display_fast_worker_response_is_not_overwritten_by_pending_state(self):
         def reply(_command):
-            self.service.accept_worker_status(dict(type='status', connected=False,
+            self.service.accept_worker_status(dict(type='status', requestId=self.service._request_serial, connected=False,
                 displayStatus='unavailable', error='Vendor LCD helper exited.'))
         with patch.object(self.service, '_ensure_worker'), patch.object(self.service, '_send', side_effect=reply):
             display = self.service.display(dict(connect=True))['display']
         self.assertEqual(display['status'], 'unavailable')
-        self.assertIsNone(display['message'])
+        self.assertEqual(display['message'], 'Vendor LCD helper exited.')
         self.assertEqual(display['error'], 'Vendor LCD helper exited.')
 
     def test_sensor_validation_requires_fresh_verified_value(self):
@@ -630,9 +634,11 @@ class MasterTests(unittest.TestCase):
                 with self.assertRaises(ValueError):self.service.display({'action':'enable_sensors'})
                 ensure.assert_not_called();send.assert_not_called()
                 self.service._state['display']['connected']=True
+                self.service._worker=SimpleNamespace(poll=lambda:None)
                 self.service.display({'action':'enable_sensors'})
-                ensure.assert_called_once();send.assert_called_once_with({'op':'sensors','enable':True})
-            finally:self.runtime.demo=True
+                ensure.assert_called_once_with(expected_request_id=self.service._request_serial,report_failure=False)
+                send.assert_called_once_with({'op':'sensors','enable':True})
+            finally:self.runtime.demo=True;self.service._worker=None
 
     def test_sensor_staleness_clears_value(self):
         self.service.accept_worker_status(dict(type='sensors',verified=True,cpu=dict(value=55,observedAt=m.utc())))

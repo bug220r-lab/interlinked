@@ -32,6 +32,7 @@ namespace InterlinkedMaster
             if(method==null)throw new MissingMethodException(typeof(Worker).FullName,name);
             return method.Invoke(worker,args);
         }
+        private static void SetField(Worker worker,string name,object value){typeof(Worker).GetField(name,Hidden).SetValue(worker,value);}
         private static Dictionary<string,object> Config(int fps,bool diagnostic=false)
         {
             return new Dictionary<string,object>{{"fps",fps},{"diagnostic",diagnostic}};
@@ -166,6 +167,33 @@ namespace InterlinkedMaster
             }
         }
 
+        private static void TransportChecks()
+        {
+            using(var worker=new Worker())
+            {
+                SetField(worker,"requestId",2L);SetField(worker,"connectRequested",true);
+                Check((bool)Call(worker,"CurrentRequest",2L),"The current explicit transport request is eligible");
+                Check(!(bool)Call(worker,"CurrentRequest",1L),"A superseded handshake cannot commit a connection");
+                Check(!(bool)Call(worker,"StopRequest",1L)&&(bool)Field(worker,"connectRequested"),"An old transport failure cannot clear a newer Connect");
+                Check((bool)Call(worker,"StopRequest",2L)&&!(bool)Field(worker,"connectRequested"),"The matching failure clears only its own transport intent");
+                var watch=Stopwatch.StartNew();bool cancelled=false;
+                try{Call(worker,"WaitIdle",1500,2L);}catch(TargetInvocationException ex){cancelled=ex.InnerException is OperationCanceledException;}
+                Check(cancelled&&watch.ElapsedMilliseconds<200,"Cancelled acknowledgment exits before reading an image map");
+                Check((bool)Call(worker,"StopUsb"),"Cleanup without owned transport resources succeeds");
+                Check(Field(worker,"helper")==null&&Field(worker,"map")==null,"Synthetic cancellation never creates a vendor helper or shared map");
+            }
+            using(var worker=new Worker())
+            {
+                TextReader original=Console.In;
+                try{
+                    Console.SetIn(new StringReader("{\"op\":\"display\",\"connect\":true,\"requestId\":4}\n{\"op\":\"display\",\"connect\":false,\"requestId\":5}\n{\"op\":\"display\",\"connect\":true,\"requestId\":4}\n{\"op\":\"quit\"}\n"));
+                    Call(worker,"ReadInput");
+                }finally{Console.SetIn(original);}
+                Check((long)Field(worker,"requestId")==5L&&!(bool)Field(worker,"connectRequested"),"A delayed Connect command cannot undo a newer Disconnect");
+                Check(Field(worker,"helper")==null&&Field(worker,"map")==null,"Request fencing fixtures never run the USB loop");
+            }
+        }
+
         private sealed class HeldInput : TextReader
         {
             private readonly string command;
@@ -224,7 +252,7 @@ namespace InterlinkedMaster
             bool ok=false;string error=null;
             try
             {
-                DeadlineChecks();HealthChecks();PublicationChecks();
+                DeadlineChecks();HealthChecks();PublicationChecks();TransportChecks();
                 WakeChecks("","EOF");
                 HeldCommandChecks("{\"op\":\"display\",\"connect\":false}",false,"Explicit disconnect");
                 HeldCommandChecks("{\"op\":\"quit\"}",true,"Explicit quit");

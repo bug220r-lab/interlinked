@@ -4,9 +4,13 @@ INTERLINKED is a Windows project library for keeping large project collections o
 
 The source distribution is in [repository](repository/README.md). It preserves the reviewed implementation and test files. Media, personal project catalogs, deployment state, credentials, private keys, and the portable Python payload are excluded. Reviewed source may retain intentional public host pins.
 
+The [November 2 audit fixes and optimization notes](repository/handoff/AUDIT-FIXES-2026-11-02.md) describe the current source changes, compatibility requirements and validation. This revision prepares updated source; it does not install an application or migrate private state.
+
 This is a source snapshot of an existing installation. Several helpers deliberately pin machine identities, file hashes, paths, and ownership receipts. Cloning this repository does not produce a new working deployment by itself. Read the dependency and bootstrap notes before running setup helpers; keep the ownership guards intact.
 
 ## Components
+
+- **AI workspace:** source support for calibrated local-model routing, approved project context, isolated workers with independent review, paired MSI nodes, and image/audio/voice controls. See the [AI workspace guide](repository/app/AI-WORKSPACE.md). Package testing, installation, MSI pairing and live microphone acceptance are separate checks.
 
 - **Library host:** publishes selected local files through an owned read-only SMB library. Same-volume hardlinks avoid a second payload copy; the active SQLite database receives a consistent snapshot.
 - **Working cache:** fetches selected project files, records edits and deletions in a version, verifies saved content, and releases only an explicitly confirmed owned cache.

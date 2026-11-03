@@ -82,11 +82,25 @@ public static class InterlinkedCoolerModuleGuard {
                 # A worker-only release preserves the installed GUI schema but
                 # must still account for every one of its sealed companions.
                 $guiSeal=Read-DesktopJson (Join-DesktopSafe $kit 'INTERLINKED-App/GUI-CHECKSUMS.json') -SingleLink
-                if($guiSeal.format-cnotin @('interlinked-gui-checksums-v5','interlinked-gui-checksums-v6','interlinked-gui-checksums-v7')){throw 'Cooler publication requires an exact v5, v6 or v7 installed GUI baseline.'}
-                if($guiSeal.format-cin @('interlinked-gui-checksums-v6','interlinked-gui-checksums-v7')){
+                if($guiSeal.format-cnotin @('interlinked-gui-checksums-v5','interlinked-gui-checksums-v6','interlinked-gui-checksums-v7','interlinked-gui-checksums-v8','interlinked-gui-checksums-v9','interlinked-gui-checksums-v10')){throw 'Cooler publication requires an exact reviewed v5 through v10 installed GUI baseline.'}
+                if($guiSeal.format-cin @('interlinked-gui-checksums-v6','interlinked-gui-checksums-v7','interlinked-gui-checksums-v8','interlinked-gui-checksums-v9','interlinked-gui-checksums-v10')){
                     $allowed+=@('INTERLINKED-App/interlinked_stats.py','INTERLINKED-App/interlinked_stats_process.py')
                 }
-                if($guiSeal.format-ceq 'interlinked-gui-checksums-v7'){$allowed+='INTERLINKED-App/interlinked_configuration.py'}
+                if($guiSeal.format-cin @('interlinked-gui-checksums-v7','interlinked-gui-checksums-v8','interlinked-gui-checksums-v9','interlinked-gui-checksums-v10')){$allowed+='INTERLINKED-App/interlinked_configuration.py'}
+                if($guiSeal.format-cin @('interlinked-gui-checksums-v8','interlinked-gui-checksums-v9','interlinked-gui-checksums-v10')){
+                    $allowed+=@('INTERLINKED-App/interlinked_ai.py','INTERLINKED-App/interlinked_ai_node.py','INTERLINKED-App/interlinked_ai_workspaces.py')
+                }
+                if($guiSeal.format-cin @('interlinked-gui-checksums-v9','interlinked-gui-checksums-v10')){
+                    $allowed+=@('INTERLINKED-App/interlinked_ai_bridge.py','INTERLINKED-App/interlinked_ai_ipc.py','INTERLINKED-App/ai_bridge.py')
+                }
+                if($guiSeal.format-ceq 'interlinked-gui-checksums-v10'){
+                    $allowed+=@('INTERLINKED-App/interlinked_history_import.py','INTERLINKED-App/interlinked_history_store.py','INTERLINKED-App/interlinked_history_service.py','INTERLINKED-App/interlinked_history_runtime.py','INTERLINKED-App/interlinked_history_gateway.py')
+                }
+                # These are closed baseline sets (26/28/29/32/35/40 rows), not a
+                # GUI migration or a caller-supplied companion allowlist. The
+                # shared baseline guard independently validates the unchanged
+                # installed seal and every named companion, without invoking
+                # its prospective-GUI publication path.
                 $planCount=$allowed.Count
                 $receipt['guiSealFormat']=$guiSeal.format
                 $manifest=[IO.Path]::GetFullPath($ManifestPath)

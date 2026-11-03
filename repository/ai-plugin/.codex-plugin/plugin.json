@@ -1,0 +1,13 @@
+{
+  "name": "interlinked-ai",
+  "version": "1.1.0",
+  "description": "Manage approved local AI analysis, isolated workers and existing models through the running INTERLINKED coordinator.",
+  "requires_local_executor": true,
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "INTERLINKED AI",
+    "shortDescription": "Violet's local model and isolated worker tools.",
+    "brandColor": "#9B30EE"
+  }
+}
