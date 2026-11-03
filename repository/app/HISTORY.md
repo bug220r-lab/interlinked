@@ -113,6 +113,30 @@ Select active-archive sources, open **Handoff**, and optionally add a note. Prep
 
 ## Deployment and verification
 
+Passive Site-bundle reading also requires the separately sealed Git runtime at
+`%LOCALAPPDATA%\INTERLINKED\HistoryRuntime\git-2.56.0.4`. Its 375 payload files
+come from the official Git for Windows MinGit 2.56.0(4) x64 release. The upstream
+ZIP SHA-256 is `e3bf78351fe777fba47ddee5950082f8a98bb0f02604fdc7ba3ee2cb68ffa877`;
+the INTERLINKED `GIT-CHECKSUMS.json` pin is
+`e9a869b77285c741ad786edf0deb2fc403231b13d3fff4f39068ee0bd4559c78`.
+The loader verifies every member and rejects extra files or path redirections.
+It changes no system PATH or Git settings. Bundle reads clear inherited Git
+configuration, disable templates/hooks, and never check out or execute source.
+A missing dependency is reported in coverage rather than silently counted as
+complete Site coverage.
+
+An operator can repair incomplete coverage through the authenticated paired
+node import operation with an explicit `reuseGeneration` proof. Ordinary
+desktop imports are unchanged. The proof binds the selected completed donor's
+metadata, SQLite index and vector hashes, embedding identity and processing
+policy; its vectors and position map are verified before use. The donor supplies
+only matching chunk vectors. Record retention still follows the active archive,
+and neither the donor nor the active pointer is changed by building a new
+generation. The proof is retained in the new build checkpoint. Historical R4
+donors require a separate explicit `reviewed-r4-vector-format-v1` attestation
+after reviewing their original processor provenance; a missing format marker
+never enables reuse implicitly. Review the repaired coverage before activation.
+
 History dependencies are packaged separately from the existing sealed Python runtime at `%LOCALAPPDATA%\INTERLINKED\HistoryRuntime\py312` or `py313`. The loader verifies the exact manifest and every file before adding this directory to Python's import path. The reviewed dependency set is NumPy 2.3.5 and pypdf 6.10.0. Manifest SHA-256 pins in `interlinked_history_runtime.py` are:
 
 | Python | `DEPENDENCIES.json` SHA-256 |

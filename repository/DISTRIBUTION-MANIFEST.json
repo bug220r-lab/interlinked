@@ -133,8 +133,8 @@
     {
       "path": "repository/app/HISTORY.md",
       "origin": "authored local history integration and validation source",
-      "bytes": 12929,
-      "sha256": "c52dc5e9e42902a2c0dfb673b85b8feffce6d57016c635f87be7473676fb592b"
+      "bytes": 14552,
+      "sha256": "c84ae94df27cabf86e2c0ad8e12c4f07dcd58b63791075a61201ea65bcd9620f"
     },
     {
       "path": "repository/app/INTERLINKED-Browser.cmd",
@@ -241,26 +241,26 @@
     {
       "path": "repository/app/interlinked_history_import.py",
       "origin": "authored local history integration and validation source",
-      "bytes": 54695,
-      "sha256": "2b8cf70de2730aad5627774aa151418c507d68ea7a72e339e11f6abbb58939a1"
+      "bytes": 54883,
+      "sha256": "d46bfcff066920ca28b69677149c0fc797567b8a0d3c2b47789540640c654a2a"
     },
     {
       "path": "repository/app/interlinked_history_runtime.py",
       "origin": "authored local history integration and validation source",
-      "bytes": 3606,
-      "sha256": "98d9c57cf9d9080eb7446e9c5a7c4fe993b7cb11dab191ee68b1285ea47019f6"
+      "bytes": 5806,
+      "sha256": "0fbf79a5c27963c961fc874fd4a4a0695503a8d27bb6cf123562b7f785921de4"
     },
     {
       "path": "repository/app/interlinked_history_service.py",
       "origin": "authored local history integration and validation source",
-      "bytes": 64506,
-      "sha256": "59dd2f3aa670d9f3027b8dd566a3bcfdb08761195ae1b761d0178372ae461825"
+      "bytes": 64593,
+      "sha256": "8a5254a1986d921a0dc03f39b54ecf547b52788bff392708ed3f0b782ff2c071"
     },
     {
       "path": "repository/app/interlinked_history_store.py",
       "origin": "authored local history integration and validation source",
-      "bytes": 98943,
-      "sha256": "2076e16b5dd4dbf4d66953746b1955ae4ae4907c8728259cc1435e1c2fa6af97"
+      "bytes": 104633,
+      "sha256": "4d175642adfcf04a1f575465c15dca025ae1424645e149043004f8f4409d43a4"
     },
     {
       "path": "repository/app/interlinked_hub.py",
@@ -461,6 +461,12 @@
       "sha256": "a640d5663c93de46f0a9ca483f60c757688001772fab88c6edb9119a4b0d6618"
     },
     {
+      "path": "repository/app/test_history_git_runtime.py",
+      "origin": "authored history coverage repair verification source",
+      "bytes": 4707,
+      "sha256": "eff36b40341194cf95451d018c8e63ead61366e8052b35a2c4f105b70b360b78"
+    },
+    {
       "path": "repository/app/test_history_import.py",
       "origin": "authored local history integration and validation source",
       "bytes": 21359,
@@ -471,6 +477,12 @@
       "origin": "audit fixes, coordinated optimizations, regression tests or release documentation",
       "bytes": 19375,
       "sha256": "c70bbc68282f9a45c30f8d0d73148524feaaad91d6c522c61e6dab08f1389bf3"
+    },
+    {
+      "path": "repository/app/test_history_reuse.py",
+      "origin": "authored history coverage repair verification source",
+      "bytes": 13987,
+      "sha256": "65de16b188d7a46a9943e99f71fcf206bc45d7466587789eb0fe6aa51f4d47c2"
     },
     {
       "path": "repository/app/test_history_scheduler.py",
@@ -805,8 +817,8 @@
     {
       "path": "repository/desktop/Build-MsiCpuOnly.ps1",
       "origin": "MSI CPU-only fixed publisher, guarded migration and dependency provenance",
-      "bytes": 5428,
-      "sha256": "b453f0586a87f07f71928107c3ebb0fdf30c9be8d2a9a19bc7bda537ea533395"
+      "bytes": 6684,
+      "sha256": "e348e6248e220b9a921bb677abfdbba765aceb5c3ea7f118e6a8a56481848aac"
     },
     {
       "path": "repository/desktop/Build-MsiSensors.ps1",
@@ -835,8 +847,8 @@
     {
       "path": "repository/desktop/MSI-SENSORS.md",
       "origin": "Reviewed Violet Web private metadata or MSI-specific sensor source; no private payloads",
-      "bytes": 7451,
-      "sha256": "254cf979930df5942ec3975488a9d6133b89e72258c766f8ed12ffe26489248a"
+      "bytes": 10685,
+      "sha256": "b9366bd027b8381ab2e7bcb1397d72667a45ee35bc0db0f7c082db35958b93f8"
     },
     {
       "path": "repository/desktop/MasterCaptureFixture.cs",
@@ -907,8 +919,26 @@
     {
       "path": "repository/desktop/MsiCpuOnly.cs",
       "origin": "MSI CPU-only fixed publisher, guarded migration and dependency provenance",
-      "bytes": 13067,
-      "sha256": "d6698b10bba5535a2d8cf1cab3854c02291cd16af5b0b8690c9ca58adc9b306c"
+      "bytes": 18256,
+      "sha256": "a03a933f35dda59c441ca6dd398bf01b5695cfcf494aca1a8ed6269734b77668"
+    },
+    {
+      "path": "repository/desktop/MsiCpuSupervisor.cs",
+      "origin": "authored MSI CPU-only supervised recovery source and isolated verification",
+      "bytes": 20368,
+      "sha256": "d7899c4e98136c84ba95ecbb0633db6679a4094feb6dcc250d4a403dec739668"
+    },
+    {
+      "path": "repository/desktop/MsiCpuSupervisorFixture.cs",
+      "origin": "authored MSI CPU-only supervised recovery source and isolated verification",
+      "bytes": 9692,
+      "sha256": "3dccaff7b7f161cc26fadf7f1f025eeaf604a080fa14c67b1a885e1b53158c18"
+    },
+    {
+      "path": "repository/desktop/MsiCpuWatchdogFixture.cs",
+      "origin": "authored MSI CPU-only progress recovery source and isolated verification",
+      "bytes": 6233,
+      "sha256": "63f3b65eaa4f8ad901e6b20d89742a667b0f474e8a0d5cf0e4842fdd11df594a"
     },
     {
       "path": "repository/desktop/MsiSensorCommon.cs",
@@ -1017,6 +1047,18 @@
       "origin": "Existing pending application source retained during MSI observer integration",
       "bytes": 1132,
       "sha256": "e86b2bd31462a5095e23343b155ae1e876e293788b0dfe59237f18ec25d3c7ef"
+    },
+    {
+      "path": "repository/desktop/Test-MsiCpuSupervisor.ps1",
+      "origin": "authored MSI CPU-only supervised recovery source and isolated verification",
+      "bytes": 5437,
+      "sha256": "122378fa2bbe6b17c40e00b3ba7ca110eb12cd90fd5afe935666349ea1b873bf"
+    },
+    {
+      "path": "repository/desktop/Test-MsiCpuWatchdog.ps1",
+      "origin": "authored MSI CPU-only progress recovery source and isolated verification",
+      "bytes": 3965,
+      "sha256": "a7793e239a4bf58445038c962d7c33720c03572b057da12dfcecabfe4dea6816"
     },
     {
       "path": "repository/desktop/Test-MsiSensors.ps1",
@@ -1710,9 +1752,9 @@
     }
   ],
   "summary": {
-    "files": 284,
-    "bytes": 4288903.0,
-    "pythonSourcesParsed": 116
+    "files": 291,
+    "bytes": 4372759,
+    "pythonSourcesParsed": 118
   },
   "preservedBaseline": "Original SOURCE-MANIFEST, MAGIX-EXTENSION-MANIFEST, frozen workspace base and original launcher source remain exact. Buddy launcher is a separate current source addition.",
   "privacy": "No personal catalog, media audit report, deployment seal, source media, cache, credential or runtime binary is included.",

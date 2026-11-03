@@ -11,6 +11,48 @@ EXPECTED_MANIFESTS = {
     (3, 12): 'e31b8ad42386acb5ff820efc6c9dc7ac6b8bc0c7b5ebbffaeed27e4c328d026e',
     (3, 13): '95de595745770093e36a2db7b8b56ae4bbf18fc76f5e3a5eb4b915b1fbd28236',
 }
+GIT_MANIFEST_SHA256 = 'e9a869b77285c741ad786edf0deb2fc403231b13d3fff4f39068ee0bd4559c78'
+
+
+def load_git():
+    """Return only the independently sealed passive Git dependency, if installed."""
+    base = Path(os.environ.get('LOCALAPPDATA', str(Path.home()))) / 'INTERLINKED' / 'HistoryRuntime' / 'git-2.56.0.4'
+    manifest = base / 'GIT-CHECKSUMS.json'
+    if not manifest.exists():
+        if Path(__file__).parent.name == 'app' and Path(__file__).parent.parent.name == 'repository':
+            import shutil
+            return shutil.which('git')  # Existing synthetic source fixtures only.
+        return None
+    import interlinked_configuration as config
+    raw = config.read_bytes(manifest, 4 * 1024 * 1024)
+    if hashlib.sha256(raw).hexdigest() != GIT_MANIFEST_SHA256:
+        raise ValueError('History Git dependency manifest differs.')
+    value = json.loads(raw)
+    if value.get('format') != 'interlinked-history-git-v1' or value.get('platform') != 'windows-x64' or value.get('executable') != 'cmd/git.exe':
+        raise ValueError('History Git dependency identity differs.')
+    expected = {'GIT-CHECKSUMS.json'}
+    for row in value['files']:
+        rel = Path(row['path'])
+        if rel.is_absolute() or '..' in rel.parts or ':' in str(rel) or rel.as_posix().casefold() in {x.casefold() for x in expected}:
+            raise ValueError('Invalid Git dependency path.')
+        expected.add(rel.as_posix())
+        path = config.ordinary(base / rel)
+        if path.stat().st_size != row['bytes']:
+            raise ValueError('History Git dependency size differs.')
+        digest = hashlib.sha256()
+        with path.open('rb') as stream:
+            for block in iter(lambda: stream.read(1024 * 1024), b''):
+                digest.update(block)
+        if digest.hexdigest() != row['sha256']:
+            raise ValueError('History Git dependency hash differs.')
+    actual = set()
+    for path in base.rglob('*'):
+        config.ordinary(path)
+        if path.is_file():
+            actual.add(path.relative_to(base).as_posix())
+    if actual != expected:
+        raise ValueError('Unexpected history Git dependency files.')
+    return str(config.ordinary(base / 'cmd/git.exe'))
 
 
 def load_service():

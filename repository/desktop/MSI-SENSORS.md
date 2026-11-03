@@ -17,7 +17,7 @@ Windows administrator prompt. Setup creates the protected
 `C:\ProgramData\INTERLINKED\MSI-Sensors` telemetry directories. Only SYSTEM and
 Administrators can write; ordinary users can read. Setup owns one fixed elevated
 interactive-logon task, `INTERLINKED MSI Sensor Telemetry`, with at most three
-one-minute failure retries. Existing paths/tasks are refused, not adopted or
+one-minute launch-failure retries. Existing paths/tasks are refused, not adopted or
 overwritten. An active sensor publisher is preserved and blocks setup. The
 explicit `--install` invocation performs the same fixed installation without
 message boxes and emits a bounded result; it does not request or acquire
@@ -62,8 +62,9 @@ requests are `IA32_TEMPERATURE_TARGET` (`0x1a2`) and
 `IA32_PACKAGE_THERM_STATUS` (`0x1b1`), on logical CPU zero. Invalid driver reads,
 an unset package-valid bit, or an implausible temperature target produce an
 unavailable sample. Constant valid temperatures remain fresh when reread.
-There is no EC, motherboard, battery, fan, GPU or USB polling, child process,
-register-write operation, configurable device path or arbitrary MSR argument.
+There is no EC, motherboard, battery, fan, GPU or USB polling, register-write
+operation, configurable device path or arbitrary MSR argument. One contained
+CPU-only worker performs the reads under its fixed sensor supervisor.
 
 The package embeds only the signed IntelMSR module from LibreHardwareMonitor
 **v0.9.6**, SHA256
@@ -90,10 +91,15 @@ MSI account and CPU and be less than 24 hours old. The publisher supports:
 - `--self-test`: pure register-decoding, module-integrity and task-action checks;
   no hardware or privilege requirement.
 - `--probe`: exactly fifteen samples on the reviewed MSI administrator account,
-  without changing the production telemetry file or scheduled task.
+  without changing the production telemetry file or scheduled task. It requires
+  the protected sensor data directory and the same exclusive reader lease, so an
+  active production reader blocks a second hardware reader.
 - No arguments: protected production location, descriptor and executable hash
-  must match; a protected exclusive file lease prevents overlapping publishers.
-  The publisher atomically replaces the existing bounded JSON once per second.
+  must match. The supervisor holds a protected exclusive lease and starts only
+  its exact installed CPU-only worker. The worker authenticates its parent over
+  a private local pipe and acquires the original exclusive reader lease before
+  opening PawnIO. It atomically replaces the existing bounded JSON once per
+  second. Its internal worker mode accepts no device, register or payload path.
 - `--disable`: verifies the installed CPU-only identity and owned task before
   disabling/stopping that task. Empty Task Scheduler arguments may be `null` or
   an empty string; both represent the same fixed action.
@@ -111,6 +117,46 @@ The new descriptor retains the node's existing format, account, fixed paths and
 `reviewed-sensor-publisher` provenance, while recording its CPU-only backend and
 module hash. No node or THIS-MACHINE application replacement is needed. Existing
 five-second per-field expiry and independent NVIDIA GPU telemetry remain active.
+
+The CPU-only worker has an independent progress watchdog, armed before worker
+initialization and refreshed only after a complete atomic publication. Its
+supervisor also monitors completed-publication heartbeats independently of the
+worker's potentially blocked calls. A thirty-second progress failure stops only
+the owned worker. The supervisor waits for confirmed exit before another reader
+and permits at most three restarts, sixty seconds apart. It never publishes a new
+timestamp or reuses an old sample. An unconfirmed exit or exhausted retry budget
+refuses replacement. The fifteen-sample probe marks progress after each completed
+sample without writing production telemetry.
+
+The worker is assigned to its parent's kill-on-close Job Object during process
+creation using the Windows 10-or-newer job-list startup attribute. It cannot run
+outside containment during a later assignment step. The pinned MSI installation
+is Windows 11. Pipe peers are bound to the retained child process and the exact
+parent image and creation identity; partial or stale progress frames do not
+renew the deadline.
+
+The task's fixed action, account, security and three one-minute launch-failure
+retries are retained. Live exit-minus-one and exit-four tests did not trigger
+automatic task restart, so worker recovery is handled by the sensor supervisor.
+Microsoft's [MS-TSCH RestartOnFailure specification](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-tsch/2ff4aa5a-7bc4-449f-bbb1-27475645867f)
+describes retrying unmet start conditions or failure to start an action; it does
+not promise restarting an already started program after its exit.
+
+`Test-MsiCpuWatchdog.ps1` and the focused supervisor fixtures compile isolated
+native checks for blocked work, authenticated child ownership, completed progress,
+bounded recovery and shutdown. These fixtures do not open the driver, alter a
+task or write production telemetry. The Windows process termination API requests
+cancellation of pending I/O; a driver that cannot complete or cancel that I/O can
+still prevent process exit. An updater must confirm the exact previous process
+has exited before replacing bytes or starting another reader. See Microsoft's
+[TerminateProcess documentation](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-terminateprocess).
+
+The same guarded migration can update a CPU-only predecessor by supplying its
+exact reviewed executable and descriptor hashes explicitly. Disable only the
+verified owned task and confirm its publisher exits first. Preserve the existing
+driver and vendor rollback files. Source fixtures, installed-byte verification,
+fresh telemetry, scheduler restart acceptance and physical cooler confirmation
+remain separate checks.
 
 Actual installed hashes, task readback, probe results, stop/expiry/restart checks,
 bounded power observations and human cooler acceptance belong in private release

@@ -6,7 +6,7 @@ The caller owns model scheduling, archive intake and cross-machine transport.
 """
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 import datetime as dt
 import hashlib
 import importlib.util
@@ -39,6 +39,7 @@ MEMORY_SCAN_LIMIT = 512
 _UNSET = object()
 VECTOR_FORMAT = dict(chunker='utf8-chars-v1', bytes=CHUNK_BYTES, overlap=OVERLAP_BYTES,
                      normalization='l2-float32-v1')
+REUSE_POLICIES = {'sealed-vector-format-v1', 'reviewed-r4-vector-format-v1'}
 
 
 def utc():
@@ -300,13 +301,67 @@ class HistoryStore:
             CREATE VIRTUAL TABLE IF NOT EXISTS fts USING fts5(id UNINDEXED,revision UNINDEXED,title,text);
         ''')
 
-    def build(self, records, receipt=None, coverage=None, cancel=None, progress=None):
+    def _vector_donor(self, proof, identity, cancel=None):
+        """Explicit immutable vector donor; never a record-retention/activation base.
+
+        The R4 policy is an explicit operator attestation for the historical
+        utf8-chars-v1/1400/160 and l2-float32-v1 processor. R4 omitted vectorFormat.
+        Its reviewed chunker and embedding-prefix code match this format;
+        absence of a marker alone never grants compatibility.
+        """
+        need(isinstance(proof, dict) and set(proof) == {'generationId', 'metadataSha256', 'indexSha256', 'vectorsSha256', 'processingPolicy'},
+             'An exact vector reuse proof is required.')
+        need(isinstance(proof['processingPolicy'], str) and proof['processingPolicy'] in REUSE_POLICIES and
+             all(isinstance(proof[k], str) and HEX.fullmatch(proof[k]) for k in ('metadataSha256', 'indexSha256', 'vectorsSha256')),
+             'Invalid vector reuse proof.')
+        path, info = self._generation(proof['generationId'])
+        for filename, key in [('generation.json', 'metadataSha256'), ('index.sqlite3', 'indexSha256'), ('vectors.npy', 'vectorsSha256')]:
+            cancelled(cancel)
+            need(file_hash(_config.ordinary(path / filename)) == proof[key], 'Vector donor bytes differ from the reviewed proof.')
+        need(info.get('semantic') is True and info.get('embeddingIdentity') == identity and
+             info.get('indexSha256') == proof['indexSha256'] and info.get('vectorsSha256') == proof['vectorsSha256'],
+             'Vector donor embedding identity or seal differs.')
+        format_ok = info.get('vectorFormat') == VECTOR_FORMAT
+        if proof['processingPolicy'] == 'reviewed-r4-vector-format-v1':
+            format_ok = 'vectorFormat' not in info
+        need(format_ok, 'Vector donor processing format differs; explicit reviewed legacy compatibility is required.')
+        import numpy as np
+        values = np.load(_config.ordinary(path / 'vectors.npy'), mmap_mode='r', allow_pickle=False)
+        try:
+            need(type(info.get('chunks')) is int and info['chunks'] > 0 and type(info.get('dimensions')) is int and
+                 1 <= info['dimensions'] <= 8192 and values.shape == (info['chunks'], info['dimensions']) and
+                 str(values.dtype) == 'float32' and values.flags.c_contiguous and
+                 (path / 'vectors.npy').stat().st_size == values.offset + values.nbytes, 'Vector donor shape differs.')
+            for start in range(0, len(values), 2048):
+                cancelled(cancel)
+                rows = np.asarray(values[start:start + 2048])
+                need(np.isfinite(rows).all() and np.all(np.abs(np.linalg.norm(rows, axis=1) - 1) < 1e-4),
+                     'Vector donor contains invalid or unnormalized rows.')
+        finally:
+            del values
+        with closing(sqlite3.connect((path / 'index.sqlite3').as_uri() + '?mode=ro&immutable=1', uri=True)) as db:
+            db.execute('PRAGMA trusted_schema=OFF')
+            need(db.execute('PRAGMA quick_check').fetchone()[0] == 'ok', 'Vector donor index is invalid.')
+            size, low, high, unique_positions, integer_positions = db.execute(
+                "SELECT count(*),min(position),max(position),count(distinct position),"
+                "sum(typeof(position)='integer') FROM vector_ids").fetchone()
+            need(size == info['chunks'] and low == 0 and high == size - 1 and
+                 unique_positions == size and integer_positions == size and
+                 db.execute('SELECT count(*) FROM chunks').fetchone()[0] == size and
+                 db.execute('SELECT count(*) FROM (SELECT id,revision FROM chunks GROUP BY id,revision)').fetchone()[0] == size and
+                 db.execute('SELECT count(*) FROM (SELECT id,revision FROM vector_ids GROUP BY id,revision)').fetchone()[0] == size and
+                 db.execute('SELECT count(*) FROM vector_ids v JOIN chunks c ON c.id=v.id AND c.revision=v.revision').fetchone()[0] == size,
+                 'Vector donor position map differs.')
+        return path, dict(info, vectorFormat=dict(VECTOR_FORMAT))
+
+    def build(self, records, receipt=None, coverage=None, cancel=None, progress=None, reuse_generation=None):
         self._primary()
         generation_id = uuid.uuid4().hex
         build_embedder = self.embedder
         embedding_identity = self._embedding_identity(build_embedder)
         with self._writer('build'):
             cancelled(cancel)
+            donor = self._vector_donor(reuse_generation, embedding_identity, cancel) if reuse_generation is not None else None
             path = self.root / 'generations' / generation_id
             path.mkdir()
             _config.ordinary(path)
@@ -387,8 +442,11 @@ class HistoryStore:
                             receipt=receipt or {}, coverage=coverage or {}, semantic=False,
                             embeddingIdentity=embedding_identity, vectorFormat=VECTOR_FORMAT,
                             reusedVectors=0, newVectors=0)
+                if donor is not None:
+                    info['vectorReuseProof'] = dict(reuse_generation)
                 build_key = hashlib.sha256(canonical(dict(inputs=inputs.hexdigest(), base=previous[1]['generationId'] if previous else None,
-                    embedding=info['embeddingIdentity'], chunker=dict(format=CHECKPOINT, bytes=CHUNK_BYTES, overlap=OVERLAP_BYTES)))).hexdigest()
+                    embedding=info['embeddingIdentity'], chunker=dict(format=CHECKPOINT, bytes=CHUNK_BYTES, overlap=OVERLAP_BYTES),
+                    **({'vectorReuseProof': reuse_generation} if reuse_generation is not None else {})))).hexdigest()
                 checkpoint = self._resume_checkpoint(build_key, generation_id)
                 if checkpoint:
                     candidate = path
@@ -417,7 +475,10 @@ class HistoryStore:
                         prefixSha256=hashlib.sha256(b'').hexdigest(), total=info['chunks'], dimensions=None, info=info)
                     json_write(path / 'BUILD.json', checkpoint)
                 if build_embedder is not None:
-                    self._build_vectors(db, path, info, cancel, progress, checkpoint, build_embedder, previous)
+                    self._build_vectors(db, path, info, cancel, progress, checkpoint, build_embedder, donor or previous)
+                if donor is not None:
+                    for filename, key in [('generation.json', 'metadataSha256'), ('index.sqlite3', 'indexSha256'), ('vectors.npy', 'vectorsSha256')]:
+                        need(file_hash(_config.ordinary(donor[0] / filename)) == reuse_generation[key], 'Vector donor changed during build.')
                 cancelled(cancel)
                 db.commit()
                 need(db.execute('PRAGMA quick_check').fetchone()[0] == 'ok', 'History index verification failed.')
@@ -481,6 +542,15 @@ class HistoryStore:
                         old_matrix = candidate
                         old_db = sqlite3.connect((old_path / 'index.sqlite3').as_uri() + '?mode=ro&immutable=1',uri=True)
                         old_db.execute('PRAGMA trusted_schema=OFF')
+                        # Historical donors have no id/revision index. Keep the
+                        # donor immutable and bound the lookup cache on disk.
+                        old_db.execute('PRAGMA temp_store=FILE')
+                        old_db.execute('PRAGMA temp.cache_size=-2048')
+                        old_db.execute('CREATE TEMP TABLE vector_lookup(id TEXT NOT NULL,revision TEXT NOT NULL,position INTEGER NOT NULL,PRIMARY KEY(id,revision)) WITHOUT ROWID')
+                        positions = old_db.execute('SELECT id,revision,position FROM vector_ids')
+                        while batch := positions.fetchmany(2048):
+                            cancelled(cancel)
+                            old_db.executemany('INSERT INTO temp.vector_lookup VALUES(?,?,?)', batch)
                     else:
                         del candidate
             if position:
@@ -498,7 +568,7 @@ class HistoryStore:
                 cancelled(cancel)
                 reused, missing = {}, []
                 for i,row in enumerate(rows):
-                    prior = old_db.execute('SELECT position FROM vector_ids WHERE id=? AND revision=?',(row['id'],row['revision'])).fetchone() if old_db else None
+                    prior = old_db.execute('SELECT position FROM temp.vector_lookup WHERE id=? AND revision=?',(row['id'],row['revision'])).fetchone() if old_db else None
                     if prior and 0 <= prior[0] < len(old_matrix):
                         vector = np.asarray(old_matrix[prior[0]])
                         need(np.isfinite(vector).all() and abs(float(np.linalg.norm(vector))-1) < .001, 'Prior normalized embedding differs.')

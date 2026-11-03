@@ -233,6 +233,7 @@ class HistoryNode:
         if action == 'import':
             transfer = self._transfer(body['id'])
             expected = body.get('expectedManifestSha256')
+            reuse = copy.deepcopy(body.get('reuseGeneration'))
             def run(event, progress):
                 from interlinked_history_import import stage_export, iter_records
                 manifest = read(transfer / 'transfer.json')
@@ -246,7 +247,7 @@ class HistoryNode:
                 receipt = stage_export(transfer / 'source', self.root / 'intake' / body['id'], expected_manifest_sha256=expected, cancel=event, progress=progress)
                 self.store.embedder = Embedder(self.node, stop=event)
                 coverage = {}
-                result = self.store.build(iter_records(receipt['stagedRoot'], coverage, event), receipt=receipt, coverage=coverage, cancel=event, progress=progress)
+                result = self.store.build(iter_records(receipt['stagedRoot'], coverage, event), receipt=receipt, coverage=coverage, cancel=event, progress=progress, reuse_generation=reuse)
                 return dict(result, coverage=coverage)
             return self.jobs.start('import', run)
         if action == 'cancel': return self.jobs.cancel(body['id'])

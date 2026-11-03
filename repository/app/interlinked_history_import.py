@@ -746,22 +746,25 @@ def _document(data, filename, coverage, depth=0, cancel=None):
 
 def _git_bundle(path, coverage, cancel):
     """Read bounded blobs through a temporary object store; never check out files."""
-    git = shutil.which('git')
+    from interlinked_history_runtime import load_git
+    git = load_git()
     if not git:
         _issues(coverage, 'git_dependency_unavailable'); return
     with tempfile.TemporaryDirectory(prefix='interlinked-history-git-') as directory:
         temp = Path(directory)
-        env = dict(os.environ, GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull, GIT_TERMINAL_PROMPT='0', GIT_NO_REPLACE_OBJECTS='1')
-        for key in list(env):
-            if key.startswith(('GIT_DIR', 'GIT_WORK_TREE', 'GIT_OBJECT_DIRECTORY', 'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_CONFIG_COUNT', 'GIT_CONFIG_KEY_', 'GIT_CONFIG_VALUE_')):
-                env.pop(key, None)
+        env = dict({key: value for key, value in os.environ.items() if not key.upper().startswith('GIT_')},
+                   GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull, GIT_TERMINAL_PROMPT='0', GIT_NO_REPLACE_OBJECTS='1')
+        if Path(git).parent.parent.name == 'git-2.56.0.4':
+            exec_path = ordinary(Path(git).parent.parent / 'ucrt64/libexec/git-core')
+            _need(exec_path.is_dir(), 'Sealed Git helper directory is missing.')
+            env['GIT_EXEC_PATH'] = str(exec_path)
         def run(args, limit=MAX_TEXT):
             _check(cancel)
             result = subprocess.run([git, '-c', 'core.longpaths=true', '-c', 'core.hooksPath=' + os.devnull, '-c', 'protocol.file.allow=always', *args], cwd=temp, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
             _need(result.returncode == 0 and len(result.stdout) <= limit, 'Site bundle operation failed or exceeded its limit.')
             return result.stdout
         try:
-            run(['init', '--bare', '--quiet', '.'])
+            run(['init', '--bare', '--quiet', '--template=', '.'])
             heads = run(['bundle', 'unbundle', str(path)]).decode('utf-8').splitlines()
             commits = []
             for line in heads:

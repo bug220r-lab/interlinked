@@ -15,6 +15,74 @@ using Microsoft.Win32.SafeHandles;
 
 internal interface IMsiCpuMsr { bool Read(uint register, out ulong value); }
 
+// A stalled driver, conflict check or durable publication must fail the owned
+// task instead of leaving a permanently Running process with expired output.
+// This watcher never publishes a replacement timestamp or touches another PID.
+internal sealed class MsiCpuWatchdog : IDisposable
+{
+    internal const int DeadlineMilliseconds=30000, ExitCode=4;
+    private readonly Func<long> timestamp;
+    private readonly Action timedOut;
+    private readonly long deadlineTicks;
+    private readonly int pollMilliseconds;
+    private readonly ManualResetEvent stop=new ManualResetEvent(false);
+    private readonly Thread watcher;
+    private const long Terminal=Int64.MinValue;
+    private long completedAt;
+    private int state,disposed;
+    [DllImport("kernel32.dll")] private static extern IntPtr GetCurrentProcess();
+    [DllImport("kernel32.dll",SetLastError=true)] private static extern bool TerminateProcess(IntPtr process,uint code);
+    internal static void TerminateSelf() {
+        // No potentially blocking console, file or cleanup operation precedes
+        // termination. The scheduler retains its existing bounded retry policy.
+        if(!TerminateProcess(GetCurrentProcess(),ExitCode))Environment.FailFast("CPU publisher watchdog could not terminate its own process.");
+    }
+    internal MsiCpuWatchdog():this(DeadlineMilliseconds,250,Stopwatch.GetTimestamp,Stopwatch.Frequency,TerminateSelf){}
+    // Injectable only within this assembly: fixtures use a separate entry point,
+    // not an alternate production command or configurable hardware path.
+    internal MsiCpuWatchdog(int deadlineMilliseconds,int pollMilliseconds,Func<long> timestamp,long frequency,Action timedOut) {
+        if(deadlineMilliseconds<=0||pollMilliseconds<=0||pollMilliseconds>deadlineMilliseconds||frequency<=0)throw new ArgumentOutOfRangeException("deadlineMilliseconds");
+        if(timestamp==null||timedOut==null)throw new ArgumentNullException("timestamp");
+        deadlineTicks=checked((long)deadlineMilliseconds*frequency/1000);
+        if(deadlineTicks<=0)throw new ArgumentOutOfRangeException("frequency");
+        this.timestamp=timestamp;this.timedOut=timedOut;this.pollMilliseconds=pollMilliseconds;
+        completedAt=timestamp();
+        watcher=new Thread(Watch);watcher.IsBackground=true;watcher.Name="MSI CPU progress watchdog";watcher.Start();
+    }
+    internal static bool Expired(long completed,long now,long deadline) {
+        return now>=completed&&unchecked((ulong)(now-completed))>=(ulong)deadline;
+    }
+    internal void Heartbeat(){
+        if(Interlocked.CompareExchange(ref state,0,0)!=0)return;
+        // Compute first: a stalled caller must never hold a watcher claim.
+        long completed=timestamp();
+        while(Interlocked.CompareExchange(ref state,0,0)==0) {
+            long previous=Interlocked.Read(ref completedAt);
+            if(previous==Terminal)return;
+            if(Interlocked.CompareExchange(ref completedAt,completed,previous)==previous)return;
+        }
+    }
+    internal bool IsAlive {get{return watcher.IsAlive;}}
+    private void Watch() {
+        while(!stop.WaitOne(pollMilliseconds)) {
+            if(Interlocked.CompareExchange(ref state,0,0)!=0)return;
+            long completed=Interlocked.Read(ref completedAt);
+            if(completed==Terminal)return;
+            if(Expired(completed,timestamp(),deadlineTicks)&&Interlocked.CompareExchange(ref completedAt,Terminal,completed)==completed) {
+                // A fresh heartbeat changes this exact stamp and defeats the
+                // claim. A delayed heartbeat cannot revive a terminal stamp.
+                if(Interlocked.CompareExchange(ref state,2,0)==0)timedOut();return;
+            }
+        }
+    }
+    public void Dispose() {
+        if(Interlocked.Exchange(ref disposed,1)!=0)return;
+        Interlocked.Exchange(ref state,1);Interlocked.Exchange(ref completedAt,Terminal);stop.Set();
+        if(!watcher.Join(1000))throw new IOException("CPU publisher watchdog did not stop within its bound.");
+        stop.Dispose();
+    }
+}
+
 internal sealed class MsiCpuPawn : IMsiCpuMsr, IDisposable
 {
     private SafeFileHandle handle;
@@ -94,6 +162,13 @@ internal static class MsiCpuOnly
     private static void Conflict() {
         foreach(string name in new[]{"HWINFO","HWiNFO64","LibreHardwareMonitor","OpenHardwareMonitor"})foreach(var p in Process.GetProcessesByName(name))using(p)throw new IOException("Existing sensor reader preserved.");
     }
+    internal static FileStream OpenReaderLease(string path){return File.Open(path,FileMode.Open,FileAccess.ReadWrite,FileShare.None);}
+    private static FileStream ReaderLease() {
+        MsiSensorCommon.Protected(MsiSensorCommon.DataParent,true);MsiSensorCommon.Protected(MsiSensorCommon.DataFolder,true);
+        string path=Path.Combine(MsiSensorCommon.DataFolder,"cpu-only.lock");
+        if(!File.Exists(path))using(var created=MsiSensorCommon.NewProtectedFile(path)){}
+        MsiSensorCommon.Protected(path,false);return OpenReaderLease(path);
+    }
     internal static bool TaskActionMatches(int count,string path,string arguments,string sid) {
         return count==1&&String.Equals(path,MsiSensorCommon.PublisherPath,StringComparison.OrdinalIgnoreCase)&&String.IsNullOrEmpty(arguments)&&sid==MsiCpuOnlyPins.UserSid;
     }
@@ -124,16 +199,26 @@ internal static class MsiCpuOnly
     [STAThread] private static int Main(string[] args) {
         try {
             if(args.Length==1&&args[0]=="--self-test"){SelfTest();return 0;}
+            if(args.Length>0&&args[0]=="--cpu-worker") {
+                var auth=MsiCpuSupervisor.Auth.Parse(args,1);
+                using(var watchdog=new MsiCpuWatchdog()) {
+                    Identity();Conflict();var workerDescriptor=Installed();
+                    using(var pipe=MsiCpuSupervisor.ConnectWorker(auth,MsiSensorCommon.PublisherPath,(string)workerDescriptor["publisherSha256"])) {
+                        long sequence=0;
+                        using(var singleton=ReaderLease())
+                        using(var reader=new MsiCpuPawn())while(true){Conflict();Publish((string)workerDescriptor["publisherSha256"],ReadCpu(reader));MsiCpuSupervisor.CompletedPublication(pipe,ref sequence);watchdog.Heartbeat();Thread.Sleep(1000);}
+                    }
+                }
+            }
             bool probe=args.Length==1&&args[0]=="--probe";
             if(args.Length>1||(args.Length==1&&!probe&&args[0]!="--disable"))return 2;
+            Dictionary<string,object> descriptor;
+            using(var watchdog=new MsiCpuWatchdog()) {
             Identity();Conflict();
-            if(probe){using(var reader=new MsiCpuPawn()){var samples=new List<object>();for(int n=0;n<15;n++){double? sample=ReadCpu(reader);samples.Add(new{utc=DateTime.UtcNow.ToString("o"),cpuPackageC=sample});Thread.Sleep(1000);}Console.WriteLine(MsiSensorCommon.Json.Serialize(new{format="interlinked-cpu-only-probe-v1",moduleSha256=MsiCpuOnlyPins.ModuleHash,samples=samples}));}return 0;}
-            var descriptor=Installed();if(args.Length==1){Disable();Console.WriteLine("{\"status\":\"DISABLED\"}");return 0;}
-            string lockPath=Path.Combine(MsiSensorCommon.DataFolder,"cpu-only.lock");
-            if(!File.Exists(lockPath))using(var created=MsiSensorCommon.NewProtectedFile(lockPath)){}
-            MsiSensorCommon.Protected(lockPath,false);
-            using(var singleton=File.Open(lockPath,FileMode.Open,FileAccess.ReadWrite,FileShare.None))
-            using(var reader=new MsiCpuPawn())while(true){Conflict();Publish((string)descriptor["publisherSha256"],ReadCpu(reader));Thread.Sleep(1000);}
+            if(probe){using(var singleton=ReaderLease())using(var reader=new MsiCpuPawn()){var samples=new List<object>();for(int n=0;n<15;n++){double? sample=ReadCpu(reader);samples.Add(new{utc=DateTime.UtcNow.ToString("o"),cpuPackageC=sample});watchdog.Heartbeat();Thread.Sleep(1000);}Console.WriteLine(MsiSensorCommon.Json.Serialize(new{format="interlinked-cpu-only-probe-v1",moduleSha256=MsiCpuOnlyPins.ModuleHash,samples=samples}));}return 0;}
+            descriptor=Installed();if(args.Length==1){Disable();Console.WriteLine("{\"status\":\"DISABLED\"}");return 0;}
+            }
+            return MsiCpuSupervisor.RunProduction((string)descriptor["publisherSha256"]);
         }catch(Exception e){Console.Error.WriteLine(e.GetType().Name+": "+e.Message);return 3;}
     }
 }
